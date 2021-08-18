@@ -56,19 +56,18 @@ namespace siddiqsoft
 	{
 		std::basic_string<CharT> Uri {};
 		std::basic_string<CharT> Key {};
-		bool                     ReadOnly {false};
 
 
 		CosmosConnectionString() { }
 
 
-		CosmosConnectionString(const std::basic_string<CharT>& s) noexcept(false)
+		CosmosConnectionString(const std::basic_string<CharT>& s)
 		{
 			this.operator=(s);
 		}
 
 
-		CosmosConnectionString<CharT>& operator=(const std::basic_string<CharT>& s) noexcept(false)
+		CosmosConnectionString<CharT>& operator=(const std::basic_string<CharT>& s)
 		{
 			std::basic_string<CharT> MatchAccountEndpoint = _NORW(CharT, "AccountEndpoint=");
 			std::basic_string<CharT> MatchAccountKey      = _NORW(CharT, ";AccountKey=");
@@ -98,6 +97,7 @@ namespace siddiqsoft
 		}
 	};
 
+
 	/// @brief JSON serializer
 	/// @tparam CharT We currently only support char (as the underlying json library does not support wchar_t)
 	/// @param dest Destination json object
@@ -106,13 +106,14 @@ namespace siddiqsoft
 		requires std::same_as<CharT, char>
 	static void to_json(nlohmann::json& dest, const CosmosConnectionString<CharT>& src)
 	{
-		dest["uri"]      = src.Uri;
-		dest["key"]      = src.Key;
-		dest["readOnly"] = src.ReadOnly;
+		dest["uri"] = src.Uri;
+		dest["key"] = src.Key;
 	}
 } // namespace siddiqsoft
 
 
+/// @brief Serializer for CosmosConnectionString for the char type
+/// @tparam CharT Either char or wchar_t
 template <typename CharT>
 struct std::formatter<siddiqsoft::CosmosConnectionString<CharT>, CharT> : std::formatter<std::basic_string<CharT>, CharT>
 {
