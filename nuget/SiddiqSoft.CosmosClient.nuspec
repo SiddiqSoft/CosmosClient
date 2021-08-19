@@ -23,8 +23,9 @@
     <copyright>Copyright (c) 2021 Siddiq Software LLC</copyright>
     <!-- Dependencies -->
     <dependencies>
-      <dependency id="nlohmann.json" version="3"/>
+      <dependency id="nlohmann.json" version="3.10"/>
       <dependency id="SiddiqSoft.restcl" version="0.5"/>
+      <dependency id="SiddiqSoft.RWLEnvelope" version="1"/>
     </dependencies>
   </metadata>
 

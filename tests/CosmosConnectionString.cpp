@@ -1,5 +1,5 @@
 /*
-    CosmosClient
+    CosmosClient - Tests
     Azure Cosmos REST-API Client for Modern C++
 
     BSD 3-Clause License
@@ -42,30 +42,35 @@
 #include "../src/CosmosClient.hpp"
 
 
-TEST(CosmosClient, test1_n)
+TEST(CosmosConnectionString, test1_n)
 {
 	siddiqsoft::CosmosConnectionString cs;
 
 	cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
-	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", cs.Uri);
+	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.Uri));
 	EXPECT_EQ("SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON", cs.Key);
 	EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;",
 	          std::string(cs));
+	std::cerr << "operator<<......" << cs << std::endl;
 	std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
+	std::cerr << "std::format.Uri." << std::format("{}", cs.Uri) << std::endl;
+	std::cerr << "string.operator." << std::string(cs.Uri) << std::endl;
 	auto info = nlohmann::json(cs);
-	EXPECT_EQ(3, info.size());
+	EXPECT_EQ(2, info.size());
 	std::cerr << "json............" << info.dump(3) << std::endl;
 }
 
-TEST(CosmosClient, test1_w)
+TEST(CosmosConnectionString, test1_w)
 {
 	siddiqsoft::CosmosConnectionString<wchar_t> cs;
 
 	cs = L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
-
-	EXPECT_EQ(L"https://YOURDBNAME.documents.azure.com:443/", cs.Uri);
+	EXPECT_EQ(L"https://YOURDBNAME.documents.azure.com:443/", std::wstring(cs.Uri));
 	EXPECT_EQ(L"SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON", cs.Key);
 	EXPECT_EQ(L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;",
 	          std::wstring(cs));
+	std::wcerr << L"operator<<......" << cs << std::endl;
 	std::wcerr << L"std::format....." << std::format(L"{}", cs) << std::endl;
+	std::wcerr << L"std::format.Uri." << std::format(L"{}", cs.Uri) << std::endl;
+	std::wcerr << L"string.operator." << std::wstring(cs.Uri) << std::endl;
 }
