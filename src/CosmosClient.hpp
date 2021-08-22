@@ -101,69 +101,70 @@ namespace siddiqsoft
 			return std::format(_NORW(CharT, "AccountEndpoint={};AccountKey={};"), Uri, Key);
 		}
 
-		/// @brief Create the Cosmos Authorization Token
-		/// @param ts Date in RFC7231 as string
+		/// @brief Create the Cosmos Authorization Token using the Key for this connection
+		/// @param date Date in RFC7231 as string
 		/// @param verb GET, POST, PUT, DELETE
 		/// @param type One of the following: dbs, docs, colls, attachments or empty
-		/// @param resource The resource link sub-uri
+		/// @param resourceLink The resource link sub-uri
 		/// @return Cosmos Authorization signature as std::string
-		std::string signature(const std::string& date, const std::string& verb, const std::string& type, const std::string& resource)
-		{
-		auto urlEncode = [](const std::string& s) {
-			std::string retOutput {};
-			std::for_each(s.begin(), s.end(), [&](auto ch) {
-				switch (ch) {
-					case '%': retOutput += "%25"; break;
-					case ' ': retOutput += "%20"; break;
-					case '&': retOutput += "%26"; break;
-					case '<': retOutput += "%3c"; break;
-					case '>': retOutput += "%3e"; break;
-					case '{': retOutput += "%7b"; break;
-					case '}': retOutput += "%7d"; break;
-					case '\'': retOutput += "%27"; break;
-					case '\"': retOutput += "%22"; break;
-					case '/': retOutput += "%2f"; break;
-					case '\\': retOutput += "%5c"; break;
-					case '@': retOutput += "%40"; break;
-					case '~': retOutput += "%7e"; break;
-					case '|': retOutput += "%7c"; break;
-					case ',': retOutput += "%2c"; break;
-					case '+': retOutput += "%2b"; break;
-					case ':': retOutput += "%3a"; break;
-					case '`': retOutput += "%60"; break;
-					case '[': retOutput += "%5b"; break;
-					case ']': retOutput += "%5d"; break;
-					case '?': retOutput += "%3f"; break;
-					case '=': retOutput += "%3d"; break;
-					case '$': retOutput += "%24"; break;
-					case '#': retOutput += "%23"; break;
-					default: retOutput += ch;
-				};
-			});
-			return retOutput;
-		};
-
-		if (verb.empty() || date.empty()) throw invalid_argument("Verb and date must not be empty!");
-
-		// Assignment is critical to ensure that the destinations are properly sized and terminated!
-		// This one assignment allows us to play with the values without casting the const out.
-		string myVerb(verb), myType(type), myDate(date);
-
-		// Ensure the items are lower-case
-		transform(verb.begin(), verb.end(), myVerb.begin(), ::tolower);
-		transform(type.begin(), type.end(), myType.begin(), ::tolower);
-		transform(date.begin(), date.end(), myDate.begin(), ::tolower);
-
-		// The formula is expressed as per
-		// https://docs.microsoft.com/en-us/rest/api/documentdb/access-control-on-documentdb-resources?redirectedfrom=MSDN
-		string strToHash = std::format("{}\n{}\n{}\n{}\n\n", myVerb, myType, resourceLink, myDate);
-		// Sign using SHA256 using the master key and base64 encode
-		string hmac = base64encode(createHMAC(strToHash, m_PrimaryAccessKey));
-		// Return the encoded signature as follows:
-		auto ret = std::format("type%3dmaster%26ver%3d1.0%26sig%3d{}", urlEncode(hmac));
-
-		return std::move(ret);
-		}
+		//std::string
+		//signature(const std::string& date, const std::string& verb, const std::string& type, const std::string& resourceLink)
+		//{
+		//	auto urlEncode = [](const std::string& s) -> std::string {
+		//		std::string retOutput {};
+		//		std::for_each(s.begin(), s.end(), [&](auto ch) {
+		//			switch (ch) {
+		//				case '%': retOutput += "%25"; break;
+		//				case ' ': retOutput += "%20"; break;
+		//				case '&': retOutput += "%26"; break;
+		//				case '<': retOutput += "%3c"; break;
+		//				case '>': retOutput += "%3e"; break;
+		//				case '{': retOutput += "%7b"; break;
+		//				case '}': retOutput += "%7d"; break;
+		//				case '\'': retOutput += "%27"; break;
+		//				case '\"': retOutput += "%22"; break;
+		//				case '/': retOutput += "%2f"; break;
+		//				case '\\': retOutput += "%5c"; break;
+		//				case '@': retOutput += "%40"; break;
+		//				case '~': retOutput += "%7e"; break;
+		//				case '|': retOutput += "%7c"; break;
+		//				case ',': retOutput += "%2c"; break;
+		//				case '+': retOutput += "%2b"; break;
+		//				case ':': retOutput += "%3a"; break;
+		//				case '`': retOutput += "%60"; break;
+		//				case '[': retOutput += "%5b"; break;
+		//				case ']': retOutput += "%5d"; break;
+		//				case '?': retOutput += "%3f"; break;
+		//				case '=': retOutput += "%3d"; break;
+		//				case '$': retOutput += "%24"; break;
+		//				case '#': retOutput += "%23"; break;
+		//				default: retOutput += ch;
+		//			};
+		//		});
+		//		return retOutput;
+		//	};
+		//
+		//	if (verb.empty() || date.empty()) throw std::invalid_argument("Verb and date must not be empty!");
+		//
+		//	// Assignment is critical to ensure that the destinations are properly sized and terminated!
+		//	// This one assignment allows us to play with the values without casting the const out.
+		//	std::string myVerb(verb), myType(type), myDate(date);
+		//
+		//	// Ensure the items are lower-case
+		//	std::transform(verb.begin(), verb.end(), myVerb.begin(), std::tolower);
+		//	std::transform(type.begin(), type.end(), myType.begin(), std::tolower);
+		//	std::transform(date.begin(), date.end(), myDate.begin(), std::tolower);
+		//
+		//	// The formula is expressed as per
+		//	// https://docs.microsoft.com/en-us/rest/api/documentdb/access-control-on-documentdb-resources?redirectedfrom=MSDN
+		//	std::string strToHash = std::format("{}\n{}\n{}\n{}\n\n", myVerb, myType, resourceLink, myDate);
+		//	// Sign using SHA256 using the master key and base64 encode
+		//	std::string hmac = base64encode(createHMAC(strToHash, Key));
+		//	// Return the encoded signature as follows:
+		//	auto ret = std::format("type%3dmaster%26ver%3d1.0%26sig%3d{}", urlEncode(hmac));
+		//
+		//	return std::move(ret);
+		//}
 	};
 
 
