@@ -98,43 +98,12 @@ namespace siddiqsoft
 
 		operator std::basic_string<CharT>() const
 		{
-			return std::format(_NORW(CharT, "AccountEndpoint={};AccountKey={};"), Uri, Key);
+			return string();
 		}
 
-		/// @brief Create the Cosmos Authorization Token using the Key for this connection
-		/// @param date Date in RFC7231 as string
-		/// @param verb GET, POST, PUT, DELETE
-		/// @param type One of the following: dbs, docs, colls, attachments or empty
-		/// @param resourceLink The resource link sub-uri
-		/// @return Cosmos Authorization signature as std::string
-		std::string
-		signature(const std::string& date, const std::string& verb, const std::string& type, const std::string& resourceLink)
+		std::basic_string<CharT> string() const
 		{
-			if (verb.empty() || date.empty()) throw std::invalid_argument("Verb and date must not be empty!");
-
-			// Assignment is critical to ensure that the destinations are properly sized and terminated!
-			// This one assignment allows us to play with the values without casting the const out.
-			std::string myVerb(verb), myType(type), myDate(date);
-
-			// Ensure the items are lower-case
-			std::transform(verb.begin(), verb.end(), myVerb.begin(), std::tolower);
-			std::transform(type.begin(), type.end(), myType.begin(), std::tolower);
-			std::transform(date.begin(), date.end(), myDate.begin(), std::tolower);
-
-			// The formula is expressed as per
-			// https://docs.microsoft.com/en-us/rest/api/documentdb/access-control-on-documentdb-resources?redirectedfrom=MSDN
-			if (auto strToHash = std::format("{}\n{}\n{}\n{}\n\n", myVerb, myType, resourceLink, myDate); !strToHash.empty()) {
-				// Sign using SHA256 using the master key and base64 encode
-				if (auto hmacBase64UrlEscaped = UrlUtils::encode(Base64Utils::encode(EncryptionUtils::HMAC(strToHash, Key)));
-				    !hmacBase64UrlEscaped.empty())
-				{
-					// Return the encoded signature as follows:
-					return std::format("type%3dmaster%26ver%3d1.0%26sig%3d{}", hmacBase64UrlEscaped);
-				}
-			}
-
-			// Fall-through failure
-			return {};
+			return std::format(_NORW(CharT, "AccountEndpoint={};AccountKey={};"), Uri, Key);
 		}
 	};
 
@@ -165,25 +134,87 @@ namespace siddiqsoft
 		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
 	struct CosmosDatabase
 	{
-		::siddiqsoft::Uri<CharT>      Uri {};
-		CosmosConnectionString<CharT> Primary {};
-		CosmosConnectionString<CharT> Secondary {};
-		std::basic_string<CharT>      DBName {};
+		/// @brief Current Connection: 0=Not Set 1=Primary 2=Secondary
+		uint16_t CurrentConnectionId {0};
 
-		CosmosDatabase(const std::basic_string<CharT>& p)
-		    : Primary(p)
+		/// @brief The Primary connection string from the Azure Portal
+		CosmosConnectionString<CharT> Primary {};
+
+		/// @brief The Secondary connection string from the Azure Portal
+		CosmosConnectionString<CharT> Secondary {};
+
+		/// @brief The Uri to the current connection
+		::siddiqsoft::Uri<CharT> Uri {};
+
+		/// @brief The DBName is derived from the current connection string
+		std::basic_string<CharT> DBName {};
+
+
+		CosmosDatabase() = default;
+
+		/// @brief Constructor with Primary and optional Secondary.
+		/// @param p Primary Connection String from Azure portal
+		/// @param s Secondary Connection String from Azure portal
+		CosmosDatabase(const std::basic_string<CharT>& p, const std::basic_string<CharT>& s = {})
 		{
-			if (!Primary.Uri.empty()) Uri = Primary.Uri;
-			// Extract the DBName from the convention where the first portion of the hostname is the name of the database.
-			// The client may override this field at any point after the construction stage.
-			if (!Uri.authority.host.empty()) DBName = Uri.authority.host.substr(0, Uri.authority.host.find(_NORW(CharT, ".")));
+			configure(p, s);
 		}
 
-		CosmosDatabase(const std::basic_string<CharT>& p, const std::basic_string<CharT>& s)
-		    : CosmosDatabase(p)
-		    , Secondary(s)
+		/// @brief Configure the Primary and Secondary. Also resets the current connection to the "Primary"
+		/// @param p Primary Connection String from Azure portal
+		/// @param s Secondary Connection String from Azure portal
+		void configure(const std::basic_string<CharT>& p, const std::basic_string<CharT>& s)
 		{
-			// NOTE: We will only take the Uri from the primary and the secondary connection string is used to store the backup key.
+			if (p.empty() && s.empty()) throw std::invalid_argument("Primary or Secondary must be present");
+
+			if (!s.empty()) Secondary = s;
+			if (!p.empty()) Primary = p;
+
+			// Reset at the "top"; start with Primary
+			rotateConnection(1);
+		}
+
+		/// @brief Get the current active connection string
+		/// @return Cosmos connection string
+		const CosmosConnectionString<CharT>& currentConnection()
+		{
+			// If the Secondary is selected and non-empty then return Secondary otherwise return Primary.
+			return (CurrentConnectionId == 2 && !Secondary.Uri.empty() && !Secondary.Key.empty()) ? Secondary : Primary;
+		}
+
+		/// @brief Swaps the current connection by incrementing the current and if we hit past Secondary, we restart at Primary.
+		/// @param c Maybe 0=Swap 1=Use Primary 2=Use Secondary
+		/// @return Cosmos connection string
+		const CosmosConnectionString<CharT>& rotateConnection(const uint16_t c = 0)
+		{
+			// If c==0 then we increment
+			// otherwise accept the given parameter
+			CurrentConnectionId = (c == 0) ? ++CurrentConnectionId : c;
+			// If CurrentConnectionId exceeds "2" then we roll back to "1".
+			// This will "rotate" between Primary and Secondary.
+			CurrentConnectionId = CurrentConnectionId > 2 ? 1 : CurrentConnectionId;
+			// "Swap" or "rotate"
+			switch (CurrentConnectionId) {
+				case 1: Uri = Primary.Uri; break;
+				case 2:
+					// One more check.. if we're asked to use Secondary..
+					// but the value is empty..well..
+					// we should just not do it..
+					if (!Secondary.Uri.empty() && !Secondary.Key.empty()) {
+						Uri = Secondary.Uri;
+					}
+					else {
+						// Failed to satisfy non-empty Secondary, use Primary
+						Uri                 = Primary.Uri;
+						CurrentConnectionId = 1;
+					}
+					break;
+			}
+
+			// Extract the DBName
+			if (!Uri.authority.host.empty()) DBName = Uri.authority.host.substr(0, Uri.authority.host.find(_NORW(CharT, ".")));
+
+			return currentConnection();
 		}
 	};
 
@@ -192,19 +223,18 @@ namespace siddiqsoft
 		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
 	static void to_json(nlohmann::json& dest, const CosmosDatabase<CharT>& src)
 	{
+		dest["Uri"]                 = src.Uri;
+		dest["CurrentConnectionId"] = src.CurrentConnectionId;
+		dest["Primary"]             = src.Primary;
+		dest["Secondary"]           = src.Secondary;
+
 		if constexpr (std::is_same_v<CharT, char>) {
-			dest["Uri"]       = src.Uri;
-			dest["Primary"]   = src.Primary;
-			dest["Secondary"] = src.Secondary;
-			dest["DBName"]    = src.DBName;
+			dest["DBName"] = src.DBName;
 		}
 		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			auto converter    = std::wstring_convert<std::codecvt_utf8<CharT>> {};
+			auto converter = std::wstring_convert<std::codecvt_utf8<CharT>> {};
 
-			dest["Uri"]       = src.Uri;
-			dest["Primary"]   = src.Primary;
-			dest["Secondary"] = src.Secondary;
-			dest["DBName"]    = converter.to_bytes(src.DBName);
+			dest["DBName"] = converter.to_bytes(src.DBName);
 		}
 	}
 #pragma endregion
@@ -259,27 +289,21 @@ namespace siddiqsoft
 
 		/// @brief Construct from Cosmos Connection String argument
 		/// @param cs Cosmos Connection String
-		explicit CosmosClient(const std::basic_string<CharT>& cs)
-		    : Database(cs)
+		explicit CosmosClient(const std::basic_string<CharT>& pcs, const std::basic_string<CharT>& scs = {})
+		    : Database(pcs, scs)
 		{
-			m_config["ConnectionStrings"][0] = cs;
+			m_config["ConnectionStrings"][0] = Database.Primary;
+			m_config["ConnectionStrings"][1] = Database.Secondary;
 		}
 
-		/// @brief Construct from Cosmos Connection String argument
-		/// @param cs Cosmos Connection String
-		explicit CosmosClient(const CosmosConnectionString<CharT>& cs)
-		    : Database(cs)
-		{
-			m_config["ConnectionStrings"][0] = cs;
-		}
 
 		/// @brief Construct from CosmosDatabase argument
 		/// @param db CosmosDatabase argument
 		explicit CosmosClient(const CosmosDatabase<CharT>& db)
 		    : Database(db)
 		{
-			m_config["ConnectionStrings"][0] = db.Primary;
-			m_config["ConnectionStrings"][1] = db.Secondary;
+			m_config["ConnectionStrings"][0] = Database.Primary;
+			m_config["ConnectionStrings"][1] = Database.Secondary;
 		}
 
 

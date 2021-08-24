@@ -62,8 +62,8 @@
     <Import Project="..\packages\SiddiqSoft.SplitUri.1.6.4\build\native\SiddiqSoft.SplitUri.targets" Condition="Exists('..\packages\SiddiqSoft.SplitUri.1.6.4\build\native\SiddiqSoft.SplitUri.targets')" />
     <Import Project="..\packages\SiddiqSoft.restcl.0.5.5\build\native\SiddiqSoft.restcl.targets" Condition="Exists('..\packages\SiddiqSoft.restcl.0.5.5\build\native\SiddiqSoft.restcl.targets')" />
     <Import Project="..\packages\SiddiqSoft.RWLEnvelope.1.1.0\build\native\SiddiqSoft.RWLEnvelope.targets" Condition="Exists('..\packages\SiddiqSoft.RWLEnvelope.1.1.0\build\native\SiddiqSoft.RWLEnvelope.targets')" />
-    <Import Project="..\packages\SiddiqSoft.AzureCppUtils.1.0.1\build\native\SiddiqSoft.AzureCppUtils.targets" Condition="Exists('..\packages\SiddiqSoft.AzureCppUtils.1.0.1\build\native\SiddiqSoft.AzureCppUtils.targets')" />
     <Import Project="..\packages\SiddiqSoft.RunOnEnd.1.2.0\build\native\SiddiqSoft.RunOnEnd.targets" Condition="Exists('..\packages\SiddiqSoft.RunOnEnd.1.2.0\build\native\SiddiqSoft.RunOnEnd.targets')" />
+    <Import Project="..\packages\SiddiqSoft.AzureCppUtils.1.1.0\build\native\SiddiqSoft.AzureCppUtils.targets" Condition="Exists('..\packages\SiddiqSoft.AzureCppUtils.1.1.0\build\native\SiddiqSoft.AzureCppUtils.targets')" />
   </ImportGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -125,7 +125,7 @@
     <Error Condition="!Exists('..\packages\SiddiqSoft.SplitUri.1.6.4\build\native\SiddiqSoft.SplitUri.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.SplitUri.1.6.4\build\native\SiddiqSoft.SplitUri.targets'))" />
     <Error Condition="!Exists('..\packages\SiddiqSoft.restcl.0.5.5\build\native\SiddiqSoft.restcl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.restcl.0.5.5\build\native\SiddiqSoft.restcl.targets'))" />
     <Error Condition="!Exists('..\packages\SiddiqSoft.RWLEnvelope.1.1.0\build\native\SiddiqSoft.RWLEnvelope.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.RWLEnvelope.1.1.0\build\native\SiddiqSoft.RWLEnvelope.targets'))" />
-    <Error Condition="!Exists('..\packages\SiddiqSoft.AzureCppUtils.1.0.1\build\native\SiddiqSoft.AzureCppUtils.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.AzureCppUtils.1.0.1\build\native\SiddiqSoft.AzureCppUtils.targets'))" />
     <Error Condition="!Exists('..\packages\SiddiqSoft.RunOnEnd.1.2.0\build\native\SiddiqSoft.RunOnEnd.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.RunOnEnd.1.2.0\build\native\SiddiqSoft.RunOnEnd.targets'))" />
+    <Error Condition="!Exists('..\packages\SiddiqSoft.AzureCppUtils.1.1.0\build\native\SiddiqSoft.AzureCppUtils.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.AzureCppUtils.1.1.0\build\native\SiddiqSoft.AzureCppUtils.targets'))" />
   </Target>
 </Project>

@@ -50,7 +50,7 @@ TEST(CosmosClient, test1_n)
 
 
 	nlohmann::json           info = cc;
-	EXPECT_EQ(3, info.size());
+	EXPECT_EQ(2, info.size());
 	std::cerr << "json............" << info.dump(3) << std::endl;
 	std::cerr << "operator<<......" << cc << std::endl;
 	std::cerr << "std:format......" << std::format("{}", cc) << std::endl;

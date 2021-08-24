@@ -74,7 +74,7 @@ TEST(CosmosDatabase, test2_n)
 	siddiqsoft::CosmosDatabase cd {cs};
 
 	nlohmann::json             info = cd;
-	EXPECT_EQ(4, info.size());
+	EXPECT_EQ(5, info.size());
 	std::cerr << "json............" << info.dump(3) << std::endl;
 	std::cerr << "operator<<......" << cd << std::endl;
 	std::cerr << "std:format......" << std::format("{}", cd) << std::endl;
@@ -88,8 +88,82 @@ TEST(CosmosDatabase, test2_w)
 
 	// Conversion from wchar_t object to narrow json object
 	nlohmann::json info = cd;
-	EXPECT_EQ(4, info.size());
-	std::cerr <<   "json............" << info.dump(3) << std::endl;
+	EXPECT_EQ(5, info.size());
+	std::cerr << "json............" << info.dump(3) << std::endl;
 	std::wcerr << L"operator<<......" << cd << std::endl;
 	std::wcerr << L"std:format......" << std::format(L"{}", cd) << std::endl;
+}
+
+TEST(CosmosDatabase, rotateConnection_1)
+{
+	std::string pcs =
+	        "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	std::string scs =
+	        "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	siddiqsoft::CosmosDatabase cd {pcs, scs};
+
+	// We must start at Primary
+	std::cerr << "0. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+
+	// Swap to the secondary..
+	cd.rotateConnection();
+	std::cerr << "1. Should be Secondary." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(2, cd.CurrentConnectionId);
+	EXPECT_EQ(scs, cd.currentConnection().string());
+
+	// Swap again.. which should end up at Primary
+	cd.rotateConnection();
+	std::cerr << "2. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+
+	// Force set at 2
+	cd.rotateConnection(2);
+	std::cerr << "3. Should be Secondary." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(2, cd.CurrentConnectionId);
+	EXPECT_EQ(scs, cd.currentConnection().string());
+
+	// Force set at 1
+	cd.rotateConnection(1);
+	std::cerr << "4. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+}
+
+TEST(CosmosDatabase, rotateConnection_2)
+{
+	std::string pcs =
+	        "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	siddiqsoft::CosmosDatabase cd {pcs};
+
+	// We must start at Primary
+	std::cerr << "0. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+
+	// Swap to the secondary..
+	cd.rotateConnection();
+	std::cerr << "0. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+
+	// Swap again.. which should end up at Primary
+	cd.rotateConnection();
+	std::cerr << "2. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+
+	// Force set at 2
+	cd.rotateConnection(2);
+	std::cerr << "0. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
+
+	// Force set at 1
+	cd.rotateConnection(1);
+	std::cerr << "4. Should be Primary..." << cd.currentConnection() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.currentConnection().string());
 }
