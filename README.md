@@ -13,9 +13,13 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 
 ## Features
 - C++20 Azure Cosmos REST API client.
-- JSON everywhere
+- JSON everywhere; configuration, I/O, results.
 - Simple interface -- this means we limit the options you can fiddle
 - Implement the SQL REST API
+- Single header
+- Use Microsoft Win32 API for IO, encryption
+- Dependency on [nlohmann.json](https://github.com/nlohmann/json)
+- Simplicity and ease of use--focus on your problem set and let the libraries evolve.
 
 ## Development Style
 
@@ -31,6 +35,15 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 # API / Usage
 - Use the nuget [SiddiqSoft.CosmosClient](https://www.nuget.org/packages/SiddiqSoft.CosmosClient/)
 - Copy paste..whatever works.
+
+# Testing
+
+Testing requires that we declare the following environment variables (either from your local terminal or during the CI step.)
+
+Environment Variable      | Purpose
+--------------------------|:----------------
+`CCTEST_PRIMARY_CS`   | The Primary Account Connection String from the Azure Portal for Cosmos.
+`CCTEST_SECONDARY_CS` | The Secondary Account Connection String from the Azure Portal for Cosmos.
 
 
 <p align="right">

@@ -45,32 +45,32 @@
 TEST(CosmosDatabase, test1_n)
 {
 	std::string cs =
-	        "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	        "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	siddiqsoft::CosmosDatabase cd {cs};
 
-	EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;",
+	EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
 	          std::string(cd.Primary));
 	std::cerr << "Primary........." << std::string(cd.Primary) << std::endl;
 
-	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", cd.Primary.Uri);
-	std::cerr << "Primary Uri....." << cd.Primary.Uri << std::endl;
+	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cd.Primary.BaseUri));
+	std::cerr << "Primary Uri....." << std::string(cd.Primary.BaseUri) << std::endl;
 
-	EXPECT_EQ("SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON", cd.Primary.Key);
-	std::cerr << "Primary Key....." << cd.Primary.Key << std::endl;
+	EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cd.Primary.EncodedKey);
+	std::cerr << "Primary Key....." << cd.Primary.EncodedKey << std::endl;
 
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cd.Uri.authority.host);
-	std::cerr << "Primary.host...." << cd.Primary.Key << std::endl;
+	EXPECT_EQ("YOURDBNAME.documents.azure.com", cd.Primary.BaseUri.authority.host);
+	std::cerr << "Primary.host...." << cd.Primary.BaseUri.authority.host << std::endl;
 
-	EXPECT_EQ("YOURDBNAME", cd.DBName);
-	std::cerr << "DBName.........." << cd.DBName << std::endl;
+	EXPECT_EQ("YOURDBNAME", cd.currentConnection().DBName);
+	std::cerr << "DBName.........." << cd.currentConnection().DBName << std::endl;
 
-	std::cerr << "Uri............." << std::string(cd.Uri) << std::endl;
+	std::cerr << "Uri............." << std::string(cd.Primary.BaseUri) << std::endl;
 }
 
 TEST(CosmosDatabase, test2_n)
 {
 	std::string cs =
-	        "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	        "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	siddiqsoft::CosmosDatabase cd {cs};
 
 	nlohmann::json             info = cd;
@@ -83,7 +83,7 @@ TEST(CosmosDatabase, test2_n)
 TEST(CosmosDatabase, test2_w)
 {
 	std::wstring cs =
-	        L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	        L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	siddiqsoft::CosmosDatabase cd {cs};
 
 	// Conversion from wchar_t object to narrow json object
@@ -97,9 +97,9 @@ TEST(CosmosDatabase, test2_w)
 TEST(CosmosDatabase, rotateConnection_1)
 {
 	std::string pcs =
-	        "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	        "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	std::string scs =
-	        "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	        "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	siddiqsoft::CosmosDatabase cd {pcs, scs};
 
 	// We must start at Primary
@@ -135,7 +135,7 @@ TEST(CosmosDatabase, rotateConnection_1)
 TEST(CosmosDatabase, rotateConnection_2)
 {
 	std::string pcs =
-	        "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;";
+	        "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	siddiqsoft::CosmosDatabase cd {pcs};
 
 	// We must start at Primary

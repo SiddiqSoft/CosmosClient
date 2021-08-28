@@ -41,17 +41,42 @@
 #include "nlohmann/json.hpp"
 #include "../src/CosmosClient.hpp"
 
+/*
+ * Required Environment Variables
+ * CCTEST_PRIMARY_CS
+ *
+ * Optional Environment Variables
+ * CCTEST_SECONDARY_CS
+ */
 
-TEST(CosmosClient, test1_n)
+TEST(CosmosClient, configure_1)
 {
-	std::string connStr {
-	        "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=SOMEBASE64ENCODEDKEYTHATENDSWITHSEMICOLON;"};
-	siddiqsoft::CosmosClient cc {connStr};
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
-	nlohmann::json           info = cc;
-	EXPECT_EQ(2, info.size());
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(
+	        std::cerr << "Configuration: "
+	                  << cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}).dump(3)
+	                  << std::endl;);
+
+	nlohmann::json info = cc;
+	EXPECT_EQ(2, info.size()) << info.dump(3);
 	std::cerr << "json............" << info.dump(3) << std::endl;
-	std::cerr << "operator<<......" << cc << std::endl;
-	std::cerr << "std:format......" << std::format("{}", cc) << std::endl;
+
+    // Check that we have read/write locations detected.
+	auto currentConfig = cc.configure();
+
+	EXPECT_TRUE(currentConfig["writableLocations"].is_array());
+	EXPECT_TRUE(currentConfig["readableLocations"].is_array());
+
+	// Atleast one read location
+	EXPECT_LE(1, currentConfig["readableLocations"].size());
+	// Atleast one write location
+	EXPECT_LE(1, currentConfig["writableLocations"].size());
+
 }
