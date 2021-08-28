@@ -33,9 +33,6 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
-
-#include <codecvt>
 #include "gtest/gtest.h"
 
 #include "nlohmann/json.hpp"
