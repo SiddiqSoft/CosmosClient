@@ -55,12 +55,16 @@ steps:
     maximumCpuCount: true
     msbuildArchitecture: 'x64'
 
-- task: CmdLine@2
+- task: PowerShell@2
   inputs:
+    targetType: 'inline'
     script: |
-      echo Running googletest
-      cd output\Release
+      Write-Host "Run GoogleTest: basic_tests.exe..."
+      
+      dir env:*
+      
       basic_tests.exe --gtest_output=xml:..\..\TestResults\
+    workingDirectory: 'output\Release'
 
 - task: PublishTestResults@2
   displayName: 'Publish Release Test Results **/TEST-*.xml'
