@@ -432,31 +432,20 @@ namespace siddiqsoft
 #pragma region Serializer CosmosConnection
 /// @brief Serializer for CosmosConnection for the char type
 /// @tparam CharT Either char or wchar_t
-template <typename CharT>
-struct std::formatter<siddiqsoft::CosmosConnection, CharT> : std::formatter<std::basic_string<CharT>, CharT>
+template <>
+struct std::formatter<siddiqsoft::CosmosConnection> : std::formatter<std::basic_string<char>>
 {
 	template <class FC>
 	auto format(const siddiqsoft::CosmosConnection& s, FC& ctx)
 	{
-		if constexpr (std::is_same_v<CharT, char>) {
 			auto str = std::format("AccountEndpoint={};AccountKey={};", s.BaseUri, s.EncodedKey);
-			return std::formatter<std::basic_string<CharT>, CharT>::format(str, ctx);
-		}
-
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			auto str = std::format(L"AccountEndpoint={};AccountKey={};", s.BaseUri, s.EncodedKey);
-			return std::formatter<std::basic_string<CharT>, CharT>::format(str, ctx);
-		}
-
-		return ctx.out();
+			return std::formatter<std::basic_string<char>>::format(str, ctx);
 	}
 };
 
-template <typename CharT>
-	requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const siddiqsoft::CosmosConnection& s)
+static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosConnection& s)
 {
-	os << std::basic_string<CharT>(s);
+	os << std::basic_string<char>(s);
 	return os;
 }
 
@@ -466,23 +455,13 @@ static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, cons
 #pragma region Serializer CosmosDatabase
 /// @brief Serializer for CosmosDatabase for the char type
 /// @tparam CharT Either char or wchar_t
-template <typename CharT>
-struct std::formatter<siddiqsoft::CosmosDatabase, CharT> : std::formatter<std::basic_string<CharT>, CharT>
+template <>
+struct std::formatter<siddiqsoft::CosmosDatabase> : std::formatter<std::basic_string<char>>
 {
 	template <class FC>
 	auto format(const siddiqsoft::CosmosDatabase& s, FC& ctx)
 	{
-		if constexpr (std::is_same_v<CharT, char>) {
-			return std::formatter<std::basic_string<CharT>, CharT>::format(nlohmann::json(s).dump(), ctx);
-		}
-
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			auto str  = nlohmann::json(s).dump();
-			auto wstr = ::siddiqsoft::ConversionUtils::wideFromAscii(str);
-			return std::formatter<std::basic_string<CharT>, CharT>::format(wstr, ctx);
-		}
-
-		return ctx.out();
+			return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
 	}
 };
 
