@@ -77,19 +77,19 @@ TEST(CosmosDatabase, test2_n)
 	std::cerr << "std:format......" << std::format("{}", cd) << std::endl;
 }
 
-TEST(CosmosDatabase, test2_w)
-{
-	std::wstring cs =
-	        L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-	siddiqsoft::CosmosDatabase cd {cs};
-
-	// Conversion from wchar_t object to narrow json object
-	nlohmann::json info = cd;
-	EXPECT_EQ(5, info.size());
-	std::cerr << "json............" << info.dump(3) << std::endl;
-	std::wcerr << L"operator<<......" << cd << std::endl;
-	std::wcerr << L"std:format......" << std::format(L"{}", cd) << std::endl;
-}
+//TEST(CosmosDatabase, test2_w)
+//{
+//	std::wstring cs =
+//	        L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+//	siddiqsoft::CosmosDatabase cd {cs};
+//
+//	// Conversion from wchar_t object to narrow json object
+//	nlohmann::json info = cd;
+//	EXPECT_EQ(5, info.size());
+//	std::cerr << "json............" << info.dump(3) << std::endl;
+//	std::wcerr << L"operator<<......" << cd << std::endl;
+//	std::wcerr << L"std:format......" << std::format(L"{}", cd) << std::endl;
+//}
 
 TEST(CosmosDatabase, rotateConnection_1)
 {

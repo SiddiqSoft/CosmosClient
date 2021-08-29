@@ -49,8 +49,8 @@
 TEST(CosmosClient, configure_1)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
 	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
@@ -67,11 +67,13 @@ TEST(CosmosClient, configure_1)
 	// Check that we have read/write locations detected.
 	auto currentConfig = cc.configure();
 
-	EXPECT_TRUE(currentConfig["writableLocations"].is_array());
-	EXPECT_TRUE(currentConfig["readableLocations"].is_array());
+	EXPECT_TRUE(currentConfig["serviceSettings"]["writableLocations"].is_array());
+	EXPECT_TRUE(currentConfig["serviceSettings"]["readableLocations"].is_array());
 
 	// Atleast one read location
-	EXPECT_LE(1, currentConfig["readableLocations"].size());
+	EXPECT_LE(1, currentConfig["serviceSettings"]["readableLocations"].size());
+	EXPECT_LE(1, cc.Database.currentConnection().ReadableUris.size());
 	// Atleast one write location
-	EXPECT_LE(1, currentConfig["writableLocations"].size());
+	EXPECT_LE(1, currentConfig["serviceSettings"]["writableLocations"].size());
+	EXPECT_LE(1, cc.Database.currentConnection().WritableUris.size());
 }

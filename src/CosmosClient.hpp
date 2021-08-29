@@ -54,32 +54,29 @@ namespace siddiqsoft
 {
 #pragma region CosmosConnection
 	/// @brief Cosmos Connection String as available in the Azure Portal
-	/// @tparam CharT Must be char or wchar_t
-	template <typename CharT = char>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
 	struct CosmosConnection
 	{
 		/// @brief The "home" or base Uri points to the home location.
 		///	For globally partitioned/availability zones, we use this to build the readable/writable
-		::siddiqsoft::Uri<CharT> BaseUri {};
+		::siddiqsoft::Uri<char> BaseUri {};
 
 		/// @brief The Base64 encoded key
-		std::basic_string<CharT> EncodedKey {};
+		std::basic_string<char> EncodedKey {};
 
 		/// @brief The "binary" key decoded from the EncodedKey stored as std::string
 		std::string Key {};
 
 		/// @brief The DBName
-		std::basic_string<CharT> DBName {};
+		std::basic_string<char> DBName {};
 
 		/// @brief Read Locations for the region
-		std::vector<::siddiqsoft::Uri<CharT>> ReadableUris {};
+		std::vector<::siddiqsoft::Uri<char>> ReadableUris {};
 
 		/// @brief Current Read location within the ReadableUris
 		size_t CurrentReadUriId {};
 
 		/// @brief Write Locations for the region
-		std::vector<::siddiqsoft::Uri<CharT>> WritableUris {};
+		std::vector<::siddiqsoft::Uri<char>> WritableUris {};
 
 		/// @brief Current Write Location within the WritableUris
 		size_t CurrentWriteUriId {};
@@ -90,7 +87,7 @@ namespace siddiqsoft
 
 		/// @brief Construct the connection string object from the Connection String obtained from the Azure Portal
 		/// @param s Connection String obtained from the Azure Portal
-		CosmosConnection(const std::basic_string<CharT>& s)
+		CosmosConnection(const std::basic_string<char>& s)
 		{
 			this->operator=(s);
 		}
@@ -98,10 +95,10 @@ namespace siddiqsoft
 		/// @brief Operator assignment
 		/// @param s Source string obtained from the Azure portal
 		/// @return Self
-		CosmosConnection<CharT>& operator=(const std::basic_string<CharT>& s)
+		CosmosConnection& operator=(const std::basic_string<char>& s)
 		{
-			std::basic_string<CharT> MatchAccountEndpoint = _NORW(CharT, "AccountEndpoint=");
-			std::basic_string<CharT> MatchAccountKey      = _NORW(CharT, ";AccountKey=");
+			std::basic_string<char> MatchAccountEndpoint = "AccountEndpoint=";
+			std::basic_string<char> MatchAccountKey      = ";AccountKey=";
 
 			// The Azure Cosmos Connection string has the following format
 			// AccountEndpoint=Uri;AccountKey=Key
@@ -114,38 +111,44 @@ namespace siddiqsoft
 					EncodedKey = s.substr(posAccountKey + MatchAccountKey.length(),
 					                      s.length() - (posAccountKey + MatchAccountKey.length()));
 					// Make sure to strip off the trailing ; if present
-					if (EncodedKey.ends_with(_NORW(CharT, ";"))) EncodedKey.resize(EncodedKey.length() - 1);
+					if (EncodedKey.ends_with(";")) EncodedKey.resize(EncodedKey.length() - 1);
 					// Store the decoded key (only for std::string)
-					if constexpr (std::is_same_v<CharT, char>)
-						Key = Base64Utils::decode(EncodedKey);
-					else
-						Key = Base64Utils::decode(ConversionUtils::asciiFromWide(EncodedKey));
+					Key = Base64Utils::decode(EncodedKey);
 					// Extract the DBName
 					if (!BaseUri.authority.host.empty())
-						DBName = BaseUri.authority.host.substr(0, BaseUri.authority.host.find(_NORW(CharT, ".")));
+						DBName = BaseUri.authority.host.substr(0, BaseUri.authority.host.find("."));
 				}
 			}
 
 			return *this;
 		}
 
+
+		/// @brief Checks if the BaseUri and the EncodedKey is non-empty
+		operator bool()
+		{
+			return !BaseUri.authority.host.empty() && !EncodedKey.empty();
+		}
+
+
 		/// @brief Cast operator for string
-		operator std::basic_string<CharT>() const
+		operator std::basic_string<char>() const
 		{
 			return string();
 		}
 
+
 		/// @brief Encodes the contents back into the original connection string from Azure Portal
 		/// @return The rebuilt connection string must match that of the original connection string from the Azure Portal
-		const std::basic_string<CharT> string() const
+		const std::basic_string<char> string() const
 		{
-			return std::format(_NORW(CharT, "AccountEndpoint={};AccountKey={};"), BaseUri, EncodedKey);
+			return std::format("AccountEndpoint={};AccountKey={};", BaseUri, EncodedKey);
 		}
 
 
 		/// @brief Current read Uri
 		/// @return Current read Uri or the base Uri
-		const ::siddiqsoft::Uri<CharT>& currentReadUri() const
+		const ::siddiqsoft::Uri<char>& currentReadUri() const
 		{
 			if (!ReadableUris.empty() && CurrentReadUriId < ReadableUris.size()) return ReadableUris.at(CurrentReadUriId);
 			return BaseUri;
@@ -153,7 +156,7 @@ namespace siddiqsoft
 
 		/// @brief Current write Uri
 		/// @return Current write Uri or the base Uri
-		const ::siddiqsoft::Uri<CharT>& currentWriteUri() const
+		const ::siddiqsoft::Uri<char>& currentWriteUri() const
 		{
 			if (!WritableUris.empty() && CurrentWriteUriId < WritableUris.size()) return WritableUris.at(CurrentWriteUriId);
 			return BaseUri;
@@ -161,7 +164,7 @@ namespace siddiqsoft
 
 		/// @brief Increment the read Uri to the next one in the list and if we reach the end, go back to start
 		/// @return Self
-		CosmosConnection<CharT>& rotateReadUri()
+		CosmosConnection& rotateReadUri()
 		{
 			if (ReadableUris.empty()) // If empty; use the baseUri
 				CurrentReadUriId = 0;
@@ -178,7 +181,7 @@ namespace siddiqsoft
 
 		/// @brief Increment the write Uri to the next one in the list and if we reach the end, go back to start
 		/// @return Self
-		CosmosConnection<CharT>& rotateWriteUri()
+		CosmosConnection& rotateWriteUri()
 		{
 			if (WritableUris.empty()) // If empty, use the baseUri
 				CurrentWriteUriId = 0;
@@ -199,23 +202,15 @@ namespace siddiqsoft
 	/// @tparam CharT We currently only support char (as the underlying json library does not support wchar_t)
 	/// @param dest Destination json object
 	/// @param src The source cosmos connection string
-	template <typename CharT>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-	static void to_json(nlohmann::json& dest, const CosmosConnection<CharT>& src)
+	static void to_json(nlohmann::json& dest, const CosmosConnection& src)
 	{
 		dest["baseUri"]           = src.BaseUri;
 		dest["readUris"]          = src.ReadableUris;
 		dest["currentReadUriId"]  = src.CurrentReadUriId;
 		dest["writeUris"]         = src.WritableUris;
 		dest["currentWriteUriId"] = src.CurrentWriteUriId;
-		if constexpr (std::is_same_v<CharT, char>) {
-			dest["key"]    = src.EncodedKey;
-			dest["dbName"] = src.DBName;
-		}
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			dest["key"]    = ConversionUtils::asciiFromWide(src.EncodedKey);
-			dest["dbName"] = ConversionUtils::asciiFromWide(src.DBName);
-		}
+		dest["key"]               = src.EncodedKey;
+		dest["dbName"]            = src.DBName;
 	}
 #pragma endregion
 
@@ -224,63 +219,77 @@ namespace siddiqsoft
 	using CosmosResponseType = std::tuple<uint32_t, nlohmann::json>;
 
 	/// @brief Represents the Cosmos Database
-	/// @tparam CharT may be char or wchar_t
-	template <typename CharT = char>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
 	struct CosmosDatabase
 	{
 		/// @brief Current Connection: 0=Not Set 1=Primary 2=Secondary
 		uint16_t CurrentConnectionId {0};
 
 		/// @brief The Primary connection string from the Azure Portal
-		CosmosConnection<CharT> Primary {};
+		CosmosConnection Primary {};
 
 		/// @brief The Secondary connection string from the Azure Portal
-		CosmosConnection<CharT> Secondary {};
+		CosmosConnection Secondary {};
 
-
+		/// @brief Default constructor
 		CosmosDatabase() = default;
 
 		/// @brief Constructor with Primary and optional Secondary.
 		/// @param p Primary Connection String from Azure portal
 		/// @param s Secondary Connection String from Azure portal
-		CosmosDatabase(const std::basic_string<CharT>& p, const std::basic_string<CharT>& s = {})
+		CosmosDatabase(const std::basic_string<char>& p, const std::basic_string<char>& s = {})
 		{
-			configure(p, s);
+			configure({{"connectionStrings", {p, s}}});
 		}
 
 		/// @brief Configure the Primary and Secondary. Also resets the current connection to the "Primary"
 		/// @param p Primary Connection String from Azure portal
 		/// @param s Secondary Connection String from Azure portal
-		void configure(const std::basic_string<CharT>& p, const std::basic_string<CharT>& s = {})
+		/// @return Self
+		CosmosDatabase& configure(const nlohmann::json& config)
 		{
-			if (p.empty() && s.empty()) throw std::invalid_argument("Primary or Secondary must be present");
+			Primary   = config.value("/connectionStrings/0"_json_pointer, "");
+			Secondary = config.value("/connectionStrings/1"_json_pointer, "");
 
-			if (!s.empty()) Secondary = s;
-			if (!p.empty()) Primary = p;
+			if (!Primary) throw std::invalid_argument("Primary must be present");
+
+			// If we have readLocations then load them up for the current connection
+			// If we "switch" we will repopulate the Primary or Secondary as current
+			if (currentConnection()) {
+				if (config.contains("/serviceSettings/readableLocations"_json_pointer)) {
+					for (auto& item : config.at("/serviceSettings/readableLocations"_json_pointer)) {
+						currentConnection().ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
+					}
+				}
+				if (config.contains("/serviceSettings/writableLocations"_json_pointer)) {
+					for (auto& item : config.at("/serviceSettings/writableLocations"_json_pointer)) {
+						currentConnection().WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
+					}
+				}
+			}
 
 			// Reset at the "top"; start with Primary
 			rotateConnection(1);
+			return *this;
 		}
 
 		/// @brief Get the current active connection string
 		/// @return Cosmos connection string
-		CosmosConnection<CharT>& currentConnection()
+		/// @return Reference to the current active Connection Primary/Secondary
+		CosmosConnection& currentConnection()
 		{
 			// If the Secondary is selected and non-empty then return Secondary otherwise return Primary.
 			if (CurrentConnectionId == 2 && !Secondary.Key.empty()) {
 				return std::ref(Secondary);
 			}
-			else {
-				// The secondary is empty; force back to primary!
-				return std::ref(Primary);
-			}
+
+			// The secondary is empty; force back to primary!
+			return std::ref(Primary);
 		}
 
 		/// @brief Swaps the current connection by incrementing the current and if we hit past Secondary, we restart at Primary.
 		/// @param c Maybe 0=Swap 1=Use Primary 2=Use Secondary
-		/// @return Cosmos connection string
-		CosmosConnection<CharT>& rotateConnection(const uint16_t c = 0)
+		/// @return Self
+		CosmosDatabase& rotateConnection(const uint16_t c = 0)
 		{
 			// If c==0 then we increment
 			// otherwise accept the given parameter
@@ -291,50 +300,32 @@ namespace siddiqsoft
 			// If the Secondary is empty, then reset back to primary
 			if (Secondary.Key.empty()) CurrentConnectionId = 1;
 
-			return currentConnection();
+			return *this;
 		}
 	};
 
 
-	template <typename CharT = char>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-	static void to_json(nlohmann::json& dest, const CosmosDatabase<CharT>& src)
+	static void to_json(nlohmann::json& dest, const CosmosDatabase& src)
 	{
 		dest["currentConnectionId"] = src.CurrentConnectionId;
 		dest["primary"]             = src.Primary;
 		dest["secondary"]           = src.Secondary;
-		dest["currentConnection"]   = const_cast<CosmosDatabase<CharT>&>(src).currentConnection();
-
-		if constexpr (std::is_same_v<CharT, char>) {
-			dest["dBName"] = const_cast<CosmosDatabase<CharT>&>(src).currentConnection().DBName;
-		}
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			dest["dBName"] = ::siddiqsoft::ConversionUtils::asciiFromWide(
-			        const_cast<CosmosDatabase<CharT>&>(src).currentConnection().DBName);
-		}
+		dest["currentConnection"]   = const_cast<CosmosDatabase&>(src).currentConnection();
+		dest["dBName"]              = const_cast<CosmosDatabase&>(src).currentConnection().DBName;
 	}
 #pragma endregion
 
 
 #pragma region CosmosCollection
-	template <typename CharT = char>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
 	struct CosmosCollection
 	{
-		std::basic_string<CharT> Name {};
+		std::basic_string<char> Name {};
 	};
 
 
-	template <typename CharT = char>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-	static void to_json(nlohmann::json& dest, const CosmosCollection<CharT>& src)
+	static void to_json(nlohmann::json& dest, const CosmosCollection& src)
 	{
-		if constexpr (std::is_same_v<CharT, char>) {
-			dest["name"] = src.Name;
-		}
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			dest["name"] = ::siddiqsoft::ConversionUtils::asciiFromWide(src.Name);
-		}
+		dest["name"] = src.Name;
 	}
 #pragma endregion
 
@@ -343,8 +334,6 @@ namespace siddiqsoft
 	static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.1.0"};
 
 
-	template <typename CharT = char>
-		requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
 	class CosmosClient
 	{
 	protected:
@@ -352,6 +341,7 @@ namespace siddiqsoft
                                  {"apiVersion", "2018-12-31"},   // The API version for Cosmos REST API
                                  {"customHeaders", nullptr},     // Optional custom headers
                                  {"azureRegion", nullptr},       // The preferred Azure Regions requested
+                                 {"serviceSettings", nullptr},   // Populated with response from call to REST API discover regions
                                  {"connectionStrings", nullptr}, // The Connection String from the Azure portal
                                  {"uniqueKeys", nullptr},        // Array of unique keys (see your Azure Cosmos configuration)
                                  {"documentIdKeyName", "id"},    // This is the default
@@ -360,8 +350,8 @@ namespace siddiqsoft
 		std::atomic_bool m_isConfigured {false};
 
 	public:
-		WinHttpRESTClient     RestClient {CosmosClientUserAgentString};
-		CosmosDatabase<CharT> Database {};
+		WinHttpRESTClient RestClient {CosmosClientUserAgentString};
+		CosmosDatabase    Database {};
 
 	public:
 		CosmosClient() = default;
@@ -390,23 +380,19 @@ namespace siddiqsoft
 					throw std::invalid_argument("connectionStrings array must contain atleast primary element");
 
 				// Update the database configuration
-				Database.configure(m_config.value("/connectionStrings/0"_json_pointer, ""),
-				                   m_config.value("/connectionStrings/1"_json_pointer, ""));
+				Database.configure(m_config);
 				// Mark as updated
 				m_isConfigured = true;
 
 				// Discover the regions..
 				auto [rc, regionInfo] = discoverRegions();
 				if (rc == 200 && !regionInfo.empty()) {
-					// Read Locations
-					if (nlohmann::json readableLocations = regionInfo["readableLocations"]; readableLocations.is_array()) {
-						m_config["readableLocations"] = regionInfo["readableLocations"];
-					}
-
-					// Write Locations..
-					if (nlohmann::json writableLocations = regionInfo["writableLocations"]; writableLocations.is_array()) {
-						m_config["writableLocations"] = regionInfo["writableLocations"];
-					}
+#ifdef _DEBUG
+					std::cerr << "Response from discoverRegions()\n" << regionInfo.dump(3) << std::endl;
+#endif //  _DEBUG
+					m_config["serviceSettings"] = regionInfo;
+					// Reconfigure/update the information such as the read location
+					Database.configure(m_config);
 				}
 			}
 
@@ -414,12 +400,13 @@ namespace siddiqsoft
 		}
 
 
+		/// @brief Discover the Regions for the current base Uri
+		/// @return Tuple of the status code and the json response (or empty)
 		CosmosResponseType discoverRegions()
 		{
 			CosmosResponseType ret {0xFA17, {}};
-			auto               ts         = DateUtils::RFC7231();
-			auto               currentKey = Database.currentConnection().Key;
-			auto               auth       = EncryptionUtils::CosmosToken<char>(currentKey, "GET", "", "", ts);
+			auto               ts   = DateUtils::RFC7231();
+			auto               auth = EncryptionUtils::CosmosToken<char>(Database.currentConnection().Key, "GET", "", "", ts);
 
 			RestClient.send(ReqGet(Database.currentConnection().currentReadUri(),
 			                       {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", m_config["apiVersion"]}}),
@@ -429,30 +416,13 @@ namespace siddiqsoft
 			return ret;
 		}
 
-		// friend std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>&, const CosmosClient<CharT>&);
-		// friend void to_json(nlohmann::json& dest, const CosmosClient<CharT>& src);
-		friend void to_json(nlohmann::json& dest, const CosmosClient<char>& src);
-		friend void to_json(nlohmann::json& dest, const CosmosClient<wchar_t>& src);
+		friend void to_json(nlohmann::json& dest, const CosmosClient& src);
 	};
 
-	// template <typename CharT = char>
-	//	requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-	// static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient<CharT>& src)
-	//{
-	//	dest["Database"]      = src.Database;
-	//	dest["Configuration"] = src.m_config;
-	//}
 
-
-	static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient<char>& src)
+	static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient& src)
 	{
 		dest["database"]      = src.Database;
-		dest["configuration"] = src.m_config;
-	}
-
-	static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient<wchar_t>& src)
-	{
-		dest["catabase"]      = src.Database;
 		dest["configuration"] = src.m_config;
 	}
 #pragma endregion
@@ -463,10 +433,10 @@ namespace siddiqsoft
 /// @brief Serializer for CosmosConnection for the char type
 /// @tparam CharT Either char or wchar_t
 template <typename CharT>
-struct std::formatter<siddiqsoft::CosmosConnection<CharT>, CharT> : std::formatter<std::basic_string<CharT>, CharT>
+struct std::formatter<siddiqsoft::CosmosConnection, CharT> : std::formatter<std::basic_string<CharT>, CharT>
 {
 	template <class FC>
-	auto format(const siddiqsoft::CosmosConnection<CharT>& s, FC& ctx)
+	auto format(const siddiqsoft::CosmosConnection& s, FC& ctx)
 	{
 		if constexpr (std::is_same_v<CharT, char>) {
 			auto str = std::format("AccountEndpoint={};AccountKey={};", s.BaseUri, s.EncodedKey);
@@ -484,7 +454,7 @@ struct std::formatter<siddiqsoft::CosmosConnection<CharT>, CharT> : std::formatt
 
 template <typename CharT>
 	requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const siddiqsoft::CosmosConnection<CharT>& s)
+static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const siddiqsoft::CosmosConnection& s)
 {
 	os << std::basic_string<CharT>(s);
 	return os;
@@ -497,10 +467,10 @@ static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, cons
 /// @brief Serializer for CosmosDatabase for the char type
 /// @tparam CharT Either char or wchar_t
 template <typename CharT>
-struct std::formatter<siddiqsoft::CosmosDatabase<CharT>, CharT> : std::formatter<std::basic_string<CharT>, CharT>
+struct std::formatter<siddiqsoft::CosmosDatabase, CharT> : std::formatter<std::basic_string<CharT>, CharT>
 {
 	template <class FC>
-	auto format(const siddiqsoft::CosmosDatabase<CharT>& s, FC& ctx)
+	auto format(const siddiqsoft::CosmosDatabase& s, FC& ctx)
 	{
 		if constexpr (std::is_same_v<CharT, char>) {
 			return std::formatter<std::basic_string<CharT>, CharT>::format(nlohmann::json(s).dump(), ctx);
@@ -521,12 +491,9 @@ struct std::formatter<siddiqsoft::CosmosDatabase<CharT>, CharT> : std::formatter
 /// @param os The output stream
 /// @param s The CosmosDatabase object
 /// @return The output stream
-template <typename CharT>
-	requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const siddiqsoft::CosmosDatabase<CharT>& s)
+static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosDatabase& s)
 {
-	using namespace siddiqsoft;
-	os << std::format(_NORW(CharT, "{}"), s);
+	os << std::format("{}", s);
 	return os;
 }
 
@@ -536,32 +503,19 @@ static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, cons
 #pragma region Serializer CosmosCollection
 /// @brief Serializer for CosmosCollection for the char type
 /// @tparam CharT Either char or wchar_t
-template <typename CharT>
-struct std::formatter<siddiqsoft::CosmosCollection<CharT>, CharT> : std::formatter<std::basic_string<CharT>, CharT>
+template <>
+struct std::formatter<siddiqsoft::CosmosCollection> : std::formatter<std::basic_string<char>>
 {
 	template <class FC>
-	auto format(const siddiqsoft::CosmosCollection<CharT>& s, FC& ctx)
+	auto format(const siddiqsoft::CosmosCollection& s, FC& ctx)
 	{
-		if constexpr (std::is_same_v<CharT, char>) {
-			return std::formatter<std::basic_string<CharT>, CharT>::format(nlohmann::json(s).dump(), ctx);
-		}
-
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			auto str  = nlohmann::json(s).dump();
-			auto wstr = std::wstring_convert<std::codecvt_utf8<wchar_t>> {}.from_bytes(str);
-			return std::formatter<std::basic_string<CharT>, CharT>::format(wstr, ctx);
-		}
-
-		return ctx.out();
+		return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
 	}
 };
 
-template <typename CharT>
-	requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const siddiqsoft::CosmosCollection<CharT>& s)
+static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosCollection& s)
 {
-	using namespace siddiqsoft;
-	os << std::format(_NORW(CharT, "{}"), s);
+	os << std::format("{}", s);
 	return os;
 }
 
@@ -571,30 +525,18 @@ static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, cons
 #pragma region Serializer CosmosClient
 /// @brief Serializer for CosmosClient for the char type
 /// @tparam CharT Either char or wchar_t
-template <typename CharT>
-struct std::formatter<siddiqsoft::CosmosClient<CharT>, CharT> : std::formatter<std::basic_string<CharT>, CharT>
+template <>
+struct std::formatter<siddiqsoft::CosmosClient> : std::formatter<std::basic_string<char>>
 {
 	template <class FC>
-	auto format(const siddiqsoft::CosmosClient<CharT>& s, FC& ctx)
+	auto format(const siddiqsoft::CosmosClient& s, FC& ctx)
 	{
-		if constexpr (std::is_same_v<CharT, char>) {
-			return std::formatter<std::basic_string<CharT>, CharT>::format(nlohmann::json(s).dump(), ctx);
-		}
-
-		if constexpr (std::is_same_v<CharT, wchar_t>) {
-			auto str  = nlohmann::json(s).dump();
-			auto wstr = std::wstring_convert<std::codecvt_utf8<wchar_t>> {}.from_bytes(str);
-			return std::formatter<std::basic_string<CharT>, CharT>::format(wstr, ctx);
-		}
-
-		return ctx.out();
+		return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
 	}
 };
 
 
-template <typename CharT = char>
-	requires std::same_as<CharT, char> || std::same_as<CharT, wchar_t>
-static std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const siddiqsoft::CosmosClient<CharT>& s)
+static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosClient& s)
 {
 	os << nlohmann::json(s).dump();
 	return os;

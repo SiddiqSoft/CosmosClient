@@ -68,22 +68,22 @@ TEST(CosmosConnection, test1_n)
 	std::cerr << "json............" << info.dump(3) << std::endl;
 }
 
-TEST(CosmosConnection, test1_w)
-{
-	siddiqsoft::CosmosConnection<wchar_t> cs;
-
-	cs = L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-	     L";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-	EXPECT_EQ(L"https://YOURDBNAME.documents.azure.com:443/", std::wstring(cs.BaseUri));
-	EXPECT_EQ(L"U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
-	EXPECT_EQ(L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-	          L";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-	          std::wstring(cs));
-	std::wcerr << L"operator<<......" << cs << std::endl;
-	std::wcerr << L"std::format....." << std::format(L"{}", cs) << std::endl;
-	std::wcerr << L"std::format.Uri." << std::format(L"{}", cs.BaseUri) << std::endl;
-	std::wcerr << L"string.operator." << std::wstring(cs.BaseUri) << std::endl;
-}
+//TEST(CosmosConnection, test1_w)
+//{
+//	siddiqsoft::CosmosConnection<wchar_t> cs;
+//
+//	cs = L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+//	     L";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+//	EXPECT_EQ(L"https://YOURDBNAME.documents.azure.com:443/", std::wstring(cs.BaseUri));
+//	EXPECT_EQ(L"U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
+//	EXPECT_EQ(L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+//	          L";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
+//	          std::wstring(cs));
+//	std::wcerr << L"operator<<......" << cs << std::endl;
+//	std::wcerr << L"std::format....." << std::format(L"{}", cs) << std::endl;
+//	std::wcerr << L"std::format.Uri." << std::format(L"{}", cs.BaseUri) << std::endl;
+//	std::wcerr << L"string.operator." << std::wstring(cs.BaseUri) << std::endl;
+//}
 
 
 TEST(CosmosConnection, test2_n)
