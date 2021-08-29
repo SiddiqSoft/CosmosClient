@@ -61,10 +61,11 @@ steps:
     script: |
       Write-Host "Run GoogleTest: basic_tests.exe..."
       
-      dir env:*
-      
+      cd output\Release
       basic_tests.exe --gtest_output=xml:..\..\TestResults\
-    workingDirectory: 'output\Release'
+  env:
+    CCTEST_PRIMARY_CS: $(CCTEST_PRIMARY_CS)
+    CCTEST_SECONDARY_CS: $(CCTEST_SECONDARY_CS)
 
 - task: PublishTestResults@2
   displayName: 'Publish Release Test Results **/TEST-*.xml'
