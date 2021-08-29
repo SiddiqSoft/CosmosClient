@@ -62,7 +62,7 @@ steps:
       Write-Host "Run GoogleTest: basic_tests.exe..."
       cd output\Release
       dir .
-      basic_tests.exe --gtest_output=xml:..\..\TestResults\
+      .\basic_tests.exe --gtest_output=xml:..\..\TestResults\
   env:
     CCTEST_PRIMARY_CS: $(CCTEST_PRIMARY_CS)
     CCTEST_SECONDARY_CS: $(CCTEST_SECONDARY_CS)
