@@ -48,6 +48,9 @@
 
 TEST(CosmosClient, configure_1)
 {
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+    // WARNING!
+    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
 	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
@@ -56,16 +59,12 @@ TEST(CosmosClient, configure_1)
 
 	siddiqsoft::CosmosClient cc;
 
-	EXPECT_NO_THROW(
-	        std::cerr << "Configuration: "
-	                  << cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}).dump(3)
-	                  << std::endl;);
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
 	nlohmann::json info = cc;
-	EXPECT_EQ(2, info.size()) << info.dump(3);
-	std::cerr << "json............" << info.dump(3) << std::endl;
+	EXPECT_EQ(2, info.size());
 
-    // Check that we have read/write locations detected.
+	// Check that we have read/write locations detected.
 	auto currentConfig = cc.configure();
 
 	EXPECT_TRUE(currentConfig["writableLocations"].is_array());
@@ -75,5 +74,4 @@ TEST(CosmosClient, configure_1)
 	EXPECT_LE(1, currentConfig["readableLocations"].size());
 	// Atleast one write location
 	EXPECT_LE(1, currentConfig["writableLocations"].size());
-
 }
