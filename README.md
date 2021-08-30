@@ -13,12 +13,20 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 
 ## Features
 - C++20 Azure Cosmos REST API client.
+  - Be instructive *and* functional.
+  - Low-overhead
+  - C++20 sugarcoating
 - JSON everywhere; configuration, I/O, results.
 - Simple interface -- this means we limit the options you can fiddle
 - Implement the SQL REST API
 - Single header
 - Use Microsoft Win32 API for IO, encryption
-- Dependency on [nlohmann.json](https://github.com/nlohmann/json)
+  - Dependency on [nlohmann.json](https://github.com/nlohmann/json)
+    - The best interface
+  - Dependency on [azure-cpp-utils](https://github.com/siddiqsoft/azure-cpp-utils) our own library.
+    - We do not implement any encryption functions. We only add a thin modern C++ coating on the underlying Win32 SDK.
+  - Dependency on [restcl](https://github.com/siddiqsoft/restcl) our own library.
+    - Again, we wrap a modern C++ sugar coat on the Win32 WinHTTP library. Nothing overly heavy or force you to use std::wstring or invent yet-another-string!
 - Simplicity and ease of use--focus on your problem set and let the libraries evolve.
 
 ## Development Style
