@@ -43,15 +43,41 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 #include "nlohmann/json.hpp"
 #include "siddiqsoft/azure-cosmos-restcl.hpp"
 
-nlohmann::json myDoc {{"id", "uniqueId"},
-                      {"__pk", "partitionKey"},
-                      {"ttl", 3600}};
+// See the example1 test for full source code
+// Code here has been trimmed for brevity.
+void example1(const std::string& p, const std::string& s)
+{
+    siddiqsoft::CosmosClient cc;
 
-CosmosClient cc;
+    // If you provide valid information, this will configure by probing Azure for
+    // region information and sets up the read and write locations.
+    // We use JSON object as the primary configuration interface.
+    // The items you provide are muxed with the defaults so you can provide as much
+    // or as little as the following elements.
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {p, s}}});
 
-cc.configure( {{ "connectionStrings", { primaryConnectionString} }} );
+    // This is all we need to worry about when creating a document!
+    // Cosmos requires the "id" field be in the document so we perform
+    // no checks for id nor the primaryKey field.
+    // The goal is to get you the response from Cosmos with little more
+    // than convenience overhead.
+    // No useless abstractions.
+    // Just use the JSON object!
+    if (auto [rc3, cDoc] = cc.create(dbName, collectionName,
+                                     {{"id", docId},  // We send the JSON document
+                                      {"ttl", 360},   // inline for this example
+                                      {"__pk", pkId}, // PKID is required
+                                      {"func", __func__},
+                                      {"source", "basic_tests.exe"}});
+        201 == rc3)
+    {
+        // ...do something
+        // ...useful with cDoc..
 
-cc.create( "db", "collection", myDoc );
+        // Remove the just created document..
+        auto [rc4, delDoc] = cc.remove(dbName, collectionName, cDoc.value("id", docId), pkId);
+    }
+}
 ```
 
 # Testing
