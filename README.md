@@ -42,8 +42,32 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 
 # API / Usage
 
-- Use the nuget [SiddiqSoft.CosmosClient](https://www.nuget.org/packages/SiddiqSoft.CosmosClient/)
-- Copy paste..whatever works.
+You can start saving your documents in Cosmos with just 3 lines of code!
+- Declare the instance
+- Configure with json via `configure`
+- Make call to `create`
+
+
+## Configuration
+
+We use JSON object to configure the client.
+- Service level configuration
+- No "per-document" defaults. The library does not inject `ttl` and it is entirely the client's responsibility to ensure that the json document contains `id` and the partition key fields.
+- Just enough customization.
+
+```json
+{ 
+    "_typever": UA,               // SemVer of the 
+    "apiVersion": "2018-12-31",   // The API version for Cosmos REST API
+    "connectionStrings": [],      // The Connection String from the Azure portal
+    "uniqueKeys": [],             // Array of unique keys (see your Azure Cosmos configuration)
+    "documentIdKeyName": ["id"],  // This is the default
+    "partitionKeyNames": []       // The partition key names is an array of partition key names
+}
+```
+
+> When you invoke `cosmosClient.configure( myConfig );` the contents of your `myConfig` json object are merged/replace the defaults. 
+As a user, you need only provide: `connectionStrings` and the `partitionKeyName`.
 
 ## Sample
 
@@ -55,6 +79,8 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 // Code here has been trimmed for brevity.
 void example1(const std::string& p, const std::string& s)
 {
+    // You should maintain one instance for each Cosmos service
+    // It is advised to maintain a single instance per runtime (exe/dll/service)
     siddiqsoft::CosmosClient cc;
 
     // If you provide valid information, this will configure by probing Azure for

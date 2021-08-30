@@ -91,6 +91,25 @@ TEST(CosmosClient, example1)
 		}
 	}
 }
+
+
+TEST(CosmosClient, configure_Defaults)
+{
+	siddiqsoft::CosmosClient cc;
+
+	// Check that we have read/write locations detected.
+	auto currentConfig = cc.configure();
+
+	EXPECT_TRUE(currentConfig.contains("apiVersion"));
+	// This forces us to make sure we check side-effects whenever the version changes!
+	EXPECT_EQ("2018-12-31", currentConfig.value("apiVersion", ""));
+	EXPECT_TRUE(currentConfig.contains("connectionStrings"));
+	EXPECT_TRUE(currentConfig.contains("uniqueKeys"));
+	EXPECT_TRUE(currentConfig.contains("documentIdKeyName"));
+	EXPECT_EQ("id", currentConfig.value("documentIdKeyName", ""));
+	EXPECT_TRUE(currentConfig.contains("partitionKeyNames"));
+}
+
 TEST(CosmosClient, configure_1)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -112,14 +131,14 @@ TEST(CosmosClient, configure_1)
 	// Check that we have read/write locations detected.
 	auto currentConfig = cc.configure();
 
-	EXPECT_TRUE(currentConfig["serviceSettings"]["writableLocations"].is_array());
-	EXPECT_TRUE(currentConfig["serviceSettings"]["readableLocations"].is_array());
+	EXPECT_TRUE(currentConfig["_serviceSettings"]["writableLocations"].is_array());
+	EXPECT_TRUE(currentConfig["_serviceSettings"]["readableLocations"].is_array());
 
 	// Atleast one read location
-	EXPECT_LE(1, currentConfig["serviceSettings"]["readableLocations"].size());
+	EXPECT_LE(1, currentConfig["_serviceSettings"]["readableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
 	// Atleast one write location
-	EXPECT_LE(1, currentConfig["serviceSettings"]["writableLocations"].size());
+	EXPECT_LE(1, currentConfig["_serviceSettings"]["writableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
 }
 
@@ -144,10 +163,10 @@ TEST(CosmosClient, discoverRegion)
 
 	// Check that we have read/write locations detected.
 	// Atleast one read location
-	EXPECT_LE(1, cc.configure()["serviceSettings"]["readableLocations"].size());
+	EXPECT_LE(1, cc.configure()["_serviceSettings"]["readableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
 	// Atleast one write location
-	EXPECT_LE(1, cc.configure()["serviceSettings"]["writableLocations"].size());
+	EXPECT_LE(1, cc.configure()["_serviceSettings"]["writableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
 }
 

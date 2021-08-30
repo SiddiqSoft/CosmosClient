@@ -58,7 +58,7 @@ namespace siddiqsoft
 	{
 		/// @brief The "home" or base Uri points to the home location.
 		///	For globally partitioned/availability zones, we use this to build the readable/writable
-		::siddiqsoft::Uri<char> BaseUri {};
+		std::basic_string<char> BaseUri {};
 
 		/// @brief The Base64 encoded key
 		std::basic_string<char> EncodedKey {};
@@ -70,13 +70,13 @@ namespace siddiqsoft
 		std::basic_string<char> Name {};
 
 		/// @brief Read Locations for the region
-		std::vector<::siddiqsoft::Uri<char>> ReadableUris {};
+		std::vector<std::basic_string<char>> ReadableUris {};
 
 		/// @brief Current Read location within the ReadableUris
 		size_t CurrentReadUriId {};
 
 		/// @brief Write Locations for the region
-		std::vector<::siddiqsoft::Uri<char>> WritableUris {};
+		std::vector<std::basic_string<char>> WritableUris {};
 
 		/// @brief Current Write Location within the WritableUris
 		size_t CurrentWriteUriId {};
@@ -114,8 +114,8 @@ namespace siddiqsoft
 					if (EncodedKey.ends_with(";")) EncodedKey.resize(EncodedKey.length() - 1);
 					// Store the decoded key (only for std::string)
 					Key = Base64Utils::decode(EncodedKey);
-					// Extract the DBName
-					if (!BaseUri.authority.host.empty()) Name = BaseUri.authority.host.substr(0, BaseUri.authority.host.find("."));
+					// Extract the DBName (skip over the https:// which is 8 chars.
+					if (!BaseUri.empty()) Name = BaseUri.substr(8, BaseUri.find(".")-8);
 				}
 			}
 
@@ -126,7 +126,7 @@ namespace siddiqsoft
 		/// @brief Checks if the BaseUri and the EncodedKey is non-empty
 		operator bool()
 		{
-			return !BaseUri.authority.host.empty() && !EncodedKey.empty();
+			return !BaseUri.empty() && !EncodedKey.empty();
 		}
 
 
@@ -147,7 +147,7 @@ namespace siddiqsoft
 
 		/// @brief Current read Uri
 		/// @return Current read Uri or the base Uri
-		const ::siddiqsoft::Uri<char>& currentReadUri() const
+		const auto& currentReadUri() const
 		{
 			if (!ReadableUris.empty() && CurrentReadUriId < ReadableUris.size()) return ReadableUris.at(CurrentReadUriId);
 			return BaseUri;
@@ -155,7 +155,7 @@ namespace siddiqsoft
 
 		/// @brief Current write Uri
 		/// @return Current write Uri or the base Uri
-		const ::siddiqsoft::Uri<char>& currentWriteUri() const
+		const auto& currentWriteUri() const
 		{
 			if (!WritableUris.empty() && CurrentWriteUriId < WritableUris.size()) return WritableUris.at(CurrentWriteUriId);
 			return BaseUri;
@@ -254,13 +254,13 @@ namespace siddiqsoft
 			// If we have readLocations then load them up for the current connection
 			// If we "switch" we will repopulate the Primary or Secondary as current
 			if (current()) {
-				if (config.contains("/serviceSettings/readableLocations"_json_pointer)) {
-					for (auto& item : config.at("/serviceSettings/readableLocations"_json_pointer)) {
+				if (config.contains("/_serviceSettings/readableLocations"_json_pointer)) {
+					for (auto& item : config.at("/_serviceSettings/readableLocations"_json_pointer)) {
 						current().ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
-				if (config.contains("/serviceSettings/writableLocations"_json_pointer)) {
-					for (auto& item : config.at("/serviceSettings/writableLocations"_json_pointer)) {
+				if (config.contains("/_serviceSettings/writableLocations"_json_pointer)) {
+					for (auto& item : config.at("/_serviceSettings/writableLocations"_json_pointer)) {
 						current().WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
@@ -310,7 +310,6 @@ namespace siddiqsoft
 		dest["primary"]             = src.Primary;
 		dest["secondary"]           = src.Secondary;
 		dest["currentConnection"]   = const_cast<CosmosConnection&>(src).current();
-		dest["name"]                = const_cast<CosmosConnection&>(src).current().Name;
 	}
 #pragma endregion
 
@@ -322,16 +321,18 @@ namespace siddiqsoft
 	class CosmosClient
 	{
 	protected:
-		nlohmann::json   m_config {{"_typever", CosmosClientUserAgentString},
-                                 {"apiVersion", "2018-12-31"},   // The API version for Cosmos REST API
-                                 {"customHeaders", nullptr},     // Optional custom headers
-                                 {"azureRegion", nullptr},       // The preferred Azure Regions requested
-                                 {"serviceSettings", nullptr},   // Populated with response from call to REST API discover regions
-                                 {"connectionStrings", nullptr}, // The Connection String from the Azure portal
-                                 {"uniqueKeys", nullptr},        // Array of unique keys (see your Azure Cosmos configuration)
-                                 {"documentIdKeyName", "id"},    // This is the default
-                                 {"partitionKeyNames", nullptr}, // The partition key names is an array of partition key names
-                                 {"timeToLive", 0}};             // Default time to live
+		nlohmann::json m_config {
+		        {"_typever", CosmosClientUserAgentString},
+		        {"apiVersion", "2018-12-31"},  // The API version for Cosmos REST API
+		        {"connectionStrings", {}},     // The Connection String from the Azure portal
+		        {"uniqueKeys", {}},            // Array of unique keys (see your Azure Cosmos configuration)
+		        {"documentIdKeyName", "id"},   // This is the default
+		        {"partitionKeyNames", nullptr} // The partition key names is an array of partition key names
+		};
+
+		/// @brief Service Settings saved from discoverRegion
+		nlohmann::json   serviceSettings;
+
 		std::atomic_bool m_isConfigured {false};
 
 	public:
@@ -357,6 +358,10 @@ namespace siddiqsoft
 				// The minimum is that the ConnectionStrings exist with at least one element; a string from the Azure portal with
 				// the Primary Connection String.
 				if (!src.contains("connectionStrings")) throw std::invalid_argument("connectionStrings missing");
+				// The current implementation requires that the Azure Cosmos service be configured with
+				// partition keys--most non-trivial implementations use Geo-spatial deployments and partition keys
+				// are required during setup.
+				if (!src.contains("partitionKeyNames")) throw std::invalid_argument("partitionKeyNames missing");
 
 				// Update our local configuration
 				m_config.update(src);
@@ -378,7 +383,7 @@ namespace siddiqsoft
 #ifdef _DEBUG
 					std::cerr << "Response from discoverRegions()\n" << regionInfo.dump(3) << std::endl;
 #endif //  _DEBUG
-					m_config["serviceSettings"] = regionInfo;
+					m_config["_serviceSettings"] = regionInfo;
 					// Reconfigure/update the information such as the read location
 					Cnxn.configure(m_config);
 				}
@@ -405,13 +410,9 @@ namespace siddiqsoft
 		}
 
 
-		//
-		// listDatabases
-		// Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
-		//
-
-		/// @brief
-		/// @return
+		/// @brief List all databases for the given service
+		/// Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
+		/// @return The json document response or error code
 		CosmosResponseType listDatabases()
 		{
 			CosmosResponseType ret {0xFA17, {}};
@@ -419,7 +420,7 @@ namespace siddiqsoft
 			// We need to add the same value to the header in the field x-ms-date as well as the Authorization field
 			auto ts   = DateUtils::RFC7231();
 			auto auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "dbs", "", ts);
-			auto path = Cnxn.current().currentReadUri().string() + "dbs";
+			auto path = Cnxn.current().currentReadUri() + "dbs";
 
 			RestClient.send(ReqGet(path,                                        // the url
 			                       {{"Authorization", auth},                    // headers and for this op, no content
@@ -441,7 +442,7 @@ namespace siddiqsoft
 
 			// We need to add the same value to the header in the field x-ms-date as well as the Authorization field
 			auto ts   = DateUtils::RFC7231();
-			auto path = std::format("{}dbs/{}/colls", Cnxn.current().currentReadUri().string(), dbName);
+			auto path = std::format("{}dbs/{}/colls", Cnxn.current().currentReadUri(), dbName);
 			auto auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "colls", {"dbs/" + dbName}, ts);
 
 			RestClient.send(ReqGet(path,                                        // the url
@@ -462,10 +463,10 @@ namespace siddiqsoft
 		CosmosResponseType listDocuments(const std::string& dbName, const std::string& collName)
 		{
 			CosmosResponseType ret {0xFA17, {}};
-			auto               ts = DateUtils::RFC7231();
-			auto path = std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentReadUri().string(), dbName, collName);
-			auto auth = EncryptionUtils::CosmosToken<char>(
-			        Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts);
+			auto               ts   = DateUtils::RFC7231();
+			auto               path = std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentReadUri(), dbName, collName);
+			auto               auth = EncryptionUtils::CosmosToken<char>(
+                    Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts);
 
 			RestClient.send(ReqGet(path,                                        // the url
 			                       {{"Authorization", auth},                    // headers and for this op, no content
@@ -499,7 +500,7 @@ namespace siddiqsoft
 
 			RestClient.send(
 			        siddiqsoft::ReqPost {
-			                std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentWriteUri().string(), dbName, collName),
+			                std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentWriteUri(), dbName, collName),
 			                {{"Authorization",
 			                  EncryptionUtils::CosmosToken<char>(
 			                          Cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
@@ -532,25 +533,22 @@ namespace siddiqsoft
 			if (docId.empty()) throw std::invalid_argument("remove - I need the docId of the document");
 			if (pkId.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
 
-			RestClient.send(siddiqsoft::ReqDelete {std::format("{}dbs/{}/colls/{}/docs/{}",
-			                                                   Cnxn.current().currentWriteUri().string(),
-			                                                   dbName,
-			                                                   collName,
-			                                                   docId),
-			                                       {{"Authorization",
-			                                         EncryptionUtils::CosmosToken<char>(
-			                                                 Cnxn.current().Key,
-			                                                 "DELETE",
-			                                                 "docs",
-			                                                 std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
-			                                                 ts)},
-			                                        {"x-ms-date", ts},
-			                                        {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
-			                                        {"x-ms-version", m_config["apiVersion"]},
-			                                        {"x-ms-cosmos-allow-tentative-writes", "true"}}},
-			                [&ret](const auto& req, const auto& resp) {
-				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-			                });
+			RestClient.send(
+			        siddiqsoft::ReqDelete {
+			                std::format("{}dbs/{}/colls/{}/docs/{}", Cnxn.current().currentWriteUri(), dbName, collName, docId),
+			                {{"Authorization",
+			                  EncryptionUtils::CosmosToken<char>(Cnxn.current().Key,
+			                                                     "DELETE",
+			                                                     "docs",
+			                                                     std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
+			                                                     ts)},
+			                 {"x-ms-date", ts},
+			                 {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+			                 {"x-ms-version", m_config["apiVersion"]},
+			                 {"x-ms-cosmos-allow-tentative-writes", "true"}}},
+			        [&ret](const auto& req, const auto& resp) {
+				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			        });
 
 			return std::move(ret);
 		}
@@ -571,25 +569,22 @@ namespace siddiqsoft
 			if (docId.empty()) throw std::invalid_argument("find - I need the docId of the document");
 			if (pkId.empty()) throw std::invalid_argument("find - I need the pkId of the document");
 
-			RestClient.send(siddiqsoft::ReqGet {std::format("{}dbs/{}/colls/{}/docs/{}",
-			                                                Cnxn.current().currentWriteUri().string(),
-			                                                dbName,
-			                                                collName,
-			                                                docId),
-			                                    {{"Authorization",
-			                                      EncryptionUtils::CosmosToken<char>(
-			                                              Cnxn.current().Key,
-			                                              "GET",
-			                                              "docs",
-			                                              std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
-			                                              ts)},
-			                                     {"x-ms-date", ts},
-			                                     {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
-			                                     {"x-ms-version", m_config["apiVersion"]},
-			                                     {"x-ms-cosmos-allow-tentative-writes", "true"}}},
-			                [&ret](const auto& req, const auto& resp) {
-				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-			                });
+			RestClient.send(
+			        siddiqsoft::ReqGet {
+			                std::format("{}dbs/{}/colls/{}/docs/{}", Cnxn.current().currentWriteUri(), dbName, collName, docId),
+			                {{"Authorization",
+			                  EncryptionUtils::CosmosToken<char>(Cnxn.current().Key,
+			                                                     "GET",
+			                                                     "docs",
+			                                                     std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
+			                                                     ts)},
+			                 {"x-ms-date", ts},
+			                 {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+			                 {"x-ms-version", m_config["apiVersion"]},
+			                 {"x-ms-cosmos-allow-tentative-writes", "true"}}},
+			        [&ret](const auto& req, const auto& resp) {
+				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			        });
 
 			return std::move(ret);
 		}
