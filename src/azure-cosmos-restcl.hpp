@@ -410,7 +410,8 @@ namespace siddiqsoft
 		// Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
 		//
 
-
+		/// @brief
+		/// @return
 		CosmosResponseType listDatabases()
 		{
 			CosmosResponseType ret {0xFA17, {}};
@@ -431,7 +432,9 @@ namespace siddiqsoft
 			return std::move(ret);
 		}
 
-
+		/// @brief
+		/// @param dbName
+		/// @return
 		CosmosResponseType listCollections(const std::string& dbName)
 		{
 			CosmosResponseType ret {0xFA17, {}};
@@ -452,7 +455,10 @@ namespace siddiqsoft
 			return std::move(ret);
 		}
 
-
+		/// @brief
+		/// @param dbName
+		/// @param collName
+		/// @return
 		CosmosResponseType listDocuments(const std::string& dbName, const std::string& collName)
 		{
 			CosmosResponseType ret {0xFA17, {}};
@@ -470,10 +476,94 @@ namespace siddiqsoft
 			                });
 
 			return std::move(ret);
-		};
+		}
+
+
+		/// @brief
+		/// opCreate an entity in documentdb using the doc nlohmann::json object as the payload.
+		/// See example
+		/// https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
+		/// @param dbName
+		/// @param collName
+		/// @param doc
+		/// @return
+		CosmosResponseType create(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
+		{
+			if (doc.value("id", "").empty()) throw std::invalid_argument("remove - I need the uniqueid of the document");
+			if (doc.value(m_config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+				throw std::invalid_argument("remove - I need the partitionId of the document");
+
+			CosmosResponseType ret {0xFA17, {}};
+			auto               ts   = DateUtils::RFC7231();
+			auto               pkId = doc.value(m_config.at("/partitionKeyNames/0"_json_pointer), "");
+
+			RestClient.send(
+			        siddiqsoft::ReqPost {
+			                std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentWriteUri().string(), dbName, collName),
+			                {{"Authorization",
+			                  EncryptionUtils::CosmosToken<char>(
+			                          Cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+			                 {"x-ms-date", ts},
+			                 {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+			                 {"x-ms-version", m_config["apiVersion"]},
+			                 {"x-ms-cosmos-allow-tentative-writes", "true"}},
+			                doc},
+			        [&ret](const auto& req, const auto& resp) {
+				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			        });
+
+			return std::move(ret);
+		}
+
+
+		/// @brief Removes the document given the docId and pkId
+		/// https://docs.microsoft.com/en-us/rest/api/documentdb/delete-a-document
+		/// @param dbName Cosmos Database name
+		/// @param collName Cosmos Collection Name
+		/// @param docId Unique document Id
+		/// @param pkId The partition Id
+		/// @return Status code
+		CosmosResponseType
+		remove(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
+		{
+			using namespace siddiqsoft;
+
+			CosmosResponseType ret {0xFA17, {}};
+			auto               ts = DateUtils::RFC7231();
+
+			if (docId.empty()) throw std::invalid_argument("remove - I need the docId of the document");
+			if (pkId.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
+
+
+			// {"x-ms-documentdb-partitionkey", std::format("[\"{}\"]", partitionId)},
+
+			RestClient.send(siddiqsoft::ReqDelete {std::format("{}dbs/{}/colls/{}/docs/{}",
+			                                                   Cnxn.current().currentWriteUri().string(),
+			                                                   dbName,
+			                                                   collName,
+			                                                   docId),
+			                                       {{"Authorization",
+			                                         EncryptionUtils::CosmosToken<char>(
+			                                                 Cnxn.current().Key,
+			                                                 "DELETE",
+			                                                 "docs",
+			                                                 std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
+			                                                 ts)},
+			                                        {"x-ms-date", ts},
+			                                        {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+			                                        {"x-ms-version", m_config["apiVersion"]},
+			                                        {"x-ms-cosmos-allow-tentative-writes", "true"}}},
+			                [&ret](const auto& req, const auto& resp) {
+				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			                });
+
+			return std::move(ret);
+		}
 	};
 
-
+	/// @brief
+	/// @param dest
+	/// @param src
 	static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient& src)
 	{
 		dest["database"]      = src.Cnxn;
