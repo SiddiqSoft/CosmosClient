@@ -526,16 +526,11 @@ namespace siddiqsoft
 		CosmosResponseType
 		remove(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
 		{
-			using namespace siddiqsoft;
-
 			CosmosResponseType ret {0xFA17, {}};
 			auto               ts = DateUtils::RFC7231();
 
 			if (docId.empty()) throw std::invalid_argument("remove - I need the docId of the document");
 			if (pkId.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
-
-
-			// {"x-ms-documentdb-partitionkey", std::format("[\"{}\"]", partitionId)},
 
 			RestClient.send(siddiqsoft::ReqDelete {std::format("{}dbs/{}/colls/{}/docs/{}",
 			                                                   Cnxn.current().currentWriteUri().string(),
@@ -553,6 +548,45 @@ namespace siddiqsoft
 			                                        {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
 			                                        {"x-ms-version", m_config["apiVersion"]},
 			                                        {"x-ms-cosmos-allow-tentative-writes", "true"}}},
+			                [&ret](const auto& req, const auto& resp) {
+				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			                });
+
+			return std::move(ret);
+		}
+
+
+		/// @brief Find a given document by id
+		/// @param dbName
+		/// @param collName
+		/// @param docId
+		/// @param pkId
+		/// @return
+		CosmosResponseType
+		find(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
+		{
+			CosmosResponseType ret {0xFA17, {}};
+			auto               ts = DateUtils::RFC7231();
+
+			if (docId.empty()) throw std::invalid_argument("find - I need the docId of the document");
+			if (pkId.empty()) throw std::invalid_argument("find - I need the pkId of the document");
+
+			RestClient.send(siddiqsoft::ReqGet {std::format("{}dbs/{}/colls/{}/docs/{}",
+			                                                Cnxn.current().currentWriteUri().string(),
+			                                                dbName,
+			                                                collName,
+			                                                docId),
+			                                    {{"Authorization",
+			                                      EncryptionUtils::CosmosToken<char>(
+			                                              Cnxn.current().Key,
+			                                              "GET",
+			                                              "docs",
+			                                              std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
+			                                              ts)},
+			                                     {"x-ms-date", ts},
+			                                     {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+			                                     {"x-ms-version", m_config["apiVersion"]},
+			                                     {"x-ms-cosmos-allow-tentative-writes", "true"}}},
 			                [&ret](const auto& req, const auto& resp) {
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });

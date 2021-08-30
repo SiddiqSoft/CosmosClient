@@ -335,3 +335,49 @@ TEST(CosmosClient, createDocument_MissingPkId)
 	        cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}});
 	        , std::invalid_argument);
 }
+
+
+TEST(CosmosClient, findDocument)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+	std::string dbName {};
+	std::string collectionName {};
+	std::string docId {};
+	std::string pkId {};
+
+
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+	auto [rc, resp] = cc.listDatabases();
+	EXPECT_EQ(200, rc);
+	dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+
+	auto [rc2, respCollections] = cc.listCollections(dbName);
+	EXPECT_EQ(200, rc2);
+	collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+
+	// Now, let us create the document
+	docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+	pkId  = "siddiqsoft.com";
+
+	auto [rc3, createdDoc] =
+	        cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
+	EXPECT_EQ(201, rc3);
+
+	// Find the document we just created
+	auto [rc4, findDoc] = cc.find(dbName, collectionName, docId, pkId);
+	EXPECT_EQ(200, rc4);
+	EXPECT_EQ(docId, findDoc.value("id", ""));
+
+	auto [rc5, delDoc] = cc.remove(dbName, collectionName, docId, pkId);
+	EXPECT_EQ(204, rc5);
+}
