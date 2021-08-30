@@ -157,7 +157,7 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
 	// WARNING!
 	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-	std::string priConnStr = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+	std::string priConnStr = "AccountEndpoint=https://localhost:4043/"
 	                         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
@@ -173,7 +173,7 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 
 	auto [rc, resp] = cc.discoverRegions();
 	// Expect failure.
-	EXPECT_EQ(12007, rc);
+	EXPECT_NE(200, rc);
 
 	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
@@ -184,7 +184,7 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 	cc.Cnxn.rotate();
 	// Try again.. we should fail again!
 	std::tie(rc, resp) = cc.discoverRegions();
-	EXPECT_EQ(12007, rc);
+	EXPECT_NE(200, rc);
 }
 
 
@@ -206,7 +206,6 @@ TEST(CosmosClient, listDatabases)
 	auto [rc, resp] = cc.listDatabases();
 	// Expect success.
 	EXPECT_EQ(200, rc);
-	std::cerr << "listDatabases():" << resp.dump(3) << std::endl;
 }
 
 
@@ -228,12 +227,10 @@ TEST(CosmosClient, listCollections)
 	auto [rc, resp] = cc.listDatabases();
 	// Expect success.
 	EXPECT_EQ(200, rc);
-	std::cerr << "listDatabases():" << resp.dump(3) << std::endl;
 
 	auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
 	// Expect success.
 	EXPECT_EQ(200, rc2);
-	std::cerr << "listCollections():" << respCollections.dump(3) << std::endl;
 }
 
 
