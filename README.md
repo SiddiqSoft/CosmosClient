@@ -19,6 +19,8 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 - JSON everywhere; configuration, I/O, results.
 - Simple interface -- this means we limit the options you can fiddle
 - Implement the SQL REST API
+  - All of the responses are JSON documents as returned from Azure Cosmos. We do not abstract/encapsulate unless there is value.
+  - Implement Azure REST API best practices.
 - Single header
 - Use Microsoft Win32 API for IO, encryption
   - Dependency on [nlohmann.json](https://github.com/nlohmann/json)

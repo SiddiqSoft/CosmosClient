@@ -441,3 +441,64 @@ TEST(CosmosClient, findDocument)
 	auto [rc5, delDoc] = cc.remove(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(204, rc5);
 }
+
+
+TEST(CosmosClient, upsertDocument)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+	std::string dbName {};
+	std::string collectionName {};
+	std::string docId {};
+	std::string pkId {};
+
+
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+	auto [rc, resp] = cc.listDatabases();
+	EXPECT_EQ(200, rc);
+	dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+
+	auto [rc2, respCollections] = cc.listCollections(dbName);
+	EXPECT_EQ(200, rc2);
+	collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+
+	// Now, let us create the document
+	docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+	pkId  = "siddiqsoft.com";
+
+	// Create the document.. (this should be insert
+	auto [rc4, iDoc] =
+	        cc.upsert(dbName,
+	                  collectionName,
+	                  {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "insert"}, {"source", "basic_tests.exe"}});
+	EXPECT_EQ(201, rc4);
+	EXPECT_EQ("insert", iDoc.value("upsert", ""));
+
+	// Calling upsert again updates the same document.
+	auto [rc5, uDoc] =
+	        cc.upsert(dbName,
+	                  collectionName,
+	                  {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}});
+	EXPECT_EQ(200, rc5);
+	EXPECT_EQ("update", uDoc.value("upsert", ""));
+
+	// And to check if we call create on the same docId it should fail
+	auto rc6 =
+	        cc.create(dbName,
+	                  collectionName,
+	                  {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}});
+	EXPECT_EQ(409, std::get<0>(rc6));
+
+	// Remove the document
+	auto rc7 = cc.remove(dbName, collectionName, docId, pkId);
+	EXPECT_EQ(204, std::get<0>(rc7));
+}

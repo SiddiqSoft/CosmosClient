@@ -115,7 +115,7 @@ namespace siddiqsoft
 					// Store the decoded key (only for std::string)
 					Key = Base64Utils::decode(EncodedKey);
 					// Extract the DBName (skip over the https:// which is 8 chars.
-					if (!BaseUri.empty()) Name = BaseUri.substr(8, BaseUri.find(".")-8);
+					if (!BaseUri.empty()) Name = BaseUri.substr(8, BaseUri.find(".") - 8);
 				}
 			}
 
@@ -398,11 +398,12 @@ namespace siddiqsoft
 		CosmosResponseType discoverRegions()
 		{
 			CosmosResponseType ret {0xFA17, {}};
-			auto               ts   = DateUtils::RFC7231();
-			auto               auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "", "", ts);
+			auto               ts = DateUtils::RFC7231();
 
 			RestClient.send(ReqGet(Cnxn.current().currentReadUri(),
-			                       {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", m_config["apiVersion"]}}),
+			                       {{"Authorization", EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "", "", ts)},
+			                        {"x-ms-date", ts},
+			                        {"x-ms-version", m_config["apiVersion"]}}),
 			                [&ret](const auto& req, const auto& resp) {
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
@@ -419,13 +420,12 @@ namespace siddiqsoft
 
 			// We need to add the same value to the header in the field x-ms-date as well as the Authorization field
 			auto ts   = DateUtils::RFC7231();
-			auto auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "dbs", "", ts);
 			auto path = Cnxn.current().currentReadUri() + "dbs";
 
-			RestClient.send(ReqGet(path,                                        // the url
-			                       {{"Authorization", auth},                    // headers and for this op, no content
-			                        {"x-ms-date", ts},                          // timestamp
-			                        {"x-ms-version", m_config["apiVersion"]}}), // api version
+			RestClient.send(ReqGet(path,
+			                       {{"Authorization", EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "dbs", "", ts)},
+			                        {"x-ms-date", ts},
+			                        {"x-ms-version", m_config["apiVersion"]}}),
 			                [&ret](const auto& req, const auto& resp) {
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
@@ -445,10 +445,10 @@ namespace siddiqsoft
 			auto path = std::format("{}dbs/{}/colls", Cnxn.current().currentReadUri(), dbName);
 			auto auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "colls", {"dbs/" + dbName}, ts);
 
-			RestClient.send(ReqGet(path,                                        // the url
-			                       {{"Authorization", auth},                    // headers and for this op, no content
-			                        {"x-ms-date", ts},                          // timestamp
-			                        {"x-ms-version", m_config["apiVersion"]}}), // api version
+			RestClient.send(ReqGet(path,                                       
+			                       {{"Authorization", auth},                   
+			                        {"x-ms-date", ts},                         
+			                        {"x-ms-version", m_config["apiVersion"]}}),
 			                [&ret](const auto& req, const auto& resp) {
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
@@ -516,6 +516,40 @@ namespace siddiqsoft
 			return std::move(ret);
 		}
 
+
+		/// @brief Insert or Update existing document for the given id
+		/// @param dbName 
+		/// @param collName 
+		/// @param doc 
+		/// @return 
+		CosmosResponseType upsert(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
+		{
+			if (doc.value("id", "").empty()) throw std::invalid_argument("remove - I need the uniqueid of the document");
+			if (doc.value(m_config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+				throw std::invalid_argument("remove - I need the partitionId of the document");
+
+			CosmosResponseType ret {0xFA17, {}};
+			auto               ts   = DateUtils::RFC7231();
+			auto               pkId = doc.value(m_config.at("/partitionKeyNames/0"_json_pointer), "");
+
+			RestClient.send(
+			        siddiqsoft::ReqPost {
+			                std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentWriteUri(), dbName, collName),
+			                {{"Authorization",
+			                  EncryptionUtils::CosmosToken<char>(
+			                          Cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+			                 {"x-ms-date", ts},
+			                 {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+			                 {"x-ms-documentdb-is-upsert", "true"},
+			                 {"x-ms-version", m_config["apiVersion"]},
+			                 {"x-ms-cosmos-allow-tentative-writes", "true"}},
+			                doc},
+			        [&ret](const auto& req, const auto& resp) {
+				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			        });
+
+			return std::move(ret);
+		}
 
 		/// @brief Removes the document given the docId and pkId
 		/// https://docs.microsoft.com/en-us/rest/api/documentdb/delete-a-document
