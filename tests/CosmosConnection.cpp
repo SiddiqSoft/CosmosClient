@@ -36,103 +36,132 @@
 #include "gtest/gtest.h"
 
 #include "nlohmann/json.hpp"
-#include "../src/CosmosClient.hpp"
+#include "../src/azure-cosmos-restcl.hpp"
 
 
 TEST(CosmosConnection, test1_n)
 {
-	siddiqsoft::CosmosConnection cs;
+	std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+	                 ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+	siddiqsoft::CosmosConnection cd {cs};
 
-	cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-	     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.BaseUri));
-	EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
 	EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
 	          ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-	          std::string(cs));
-	std::cerr << "operator<<......" << cs << std::endl;
-	std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
-	std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
-	std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
+	          std::string(cd.Primary));
+	std::cerr << "Primary........." << std::string(cd.Primary) << std::endl;
 
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentReadUri().authority.host);
-	cs.rotateReadUri();
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentReadUri().authority.host);
+	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cd.Primary.BaseUri));
+	std::cerr << "Primary Uri....." << std::string(cd.Primary.BaseUri) << std::endl;
 
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentWriteUri().authority.host);
-	cs.rotateWriteUri();
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentWriteUri().authority.host);
+	EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cd.Primary.EncodedKey);
+	std::cerr << "Primary Key....." << cd.Primary.EncodedKey << std::endl;
 
-	auto info = nlohmann::json(cs);
-	EXPECT_EQ(7, info.size());
-	std::cerr << "json............" << info.dump(3) << std::endl;
+	EXPECT_EQ("YOURDBNAME.documents.azure.com", cd.Primary.BaseUri.authority.host);
+	std::cerr << "Primary.host...." << cd.Primary.BaseUri.authority.host << std::endl;
+
+	EXPECT_EQ("YOURDBNAME", cd.current().Name);
+	std::cerr << "CosmosName.........." << cd.current().Name << std::endl;
+
+	std::cerr << "Uri............." << std::string(cd.Primary.BaseUri) << std::endl;
 }
-
-//TEST(CosmosConnection, test1_w)
-//{
-//	siddiqsoft::CosmosConnection<wchar_t> cs;
-//
-//	cs = L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-//	     L";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-//	EXPECT_EQ(L"https://YOURDBNAME.documents.azure.com:443/", std::wstring(cs.BaseUri));
-//	EXPECT_EQ(L"U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
-//	EXPECT_EQ(L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-//	          L";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-//	          std::wstring(cs));
-//	std::wcerr << L"operator<<......" << cs << std::endl;
-//	std::wcerr << L"std::format....." << std::format(L"{}", cs) << std::endl;
-//	std::wcerr << L"std::format.Uri." << std::format(L"{}", cs.BaseUri) << std::endl;
-//	std::wcerr << L"string.operator." << std::wstring(cs.BaseUri) << std::endl;
-//}
-
 
 TEST(CosmosConnection, test2_n)
 {
-	using namespace siddiqsoft::literals;
+	std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+	                 ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+	siddiqsoft::CosmosConnection cd {cs};
 
-	siddiqsoft::CosmosConnection cs;
+	nlohmann::json               info = cd;
+	EXPECT_EQ(5, info.size());
+	std::cerr << "json............" << info.dump(3) << std::endl;
+	std::cerr << "operator<<......" << cd << std::endl;
+	std::cerr << "std:format......" << std::format("{}", cd) << std::endl;
+}
 
-	cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-	     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-	EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.BaseUri));
-	EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
-	EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-	          ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-	          std::string(cs));
+// TEST(CosmosConnection, test2_w)
+//{
+//	std::wstring cs =
+//	        L"AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+//	siddiqsoft::CosmosConnection cd {cs};
+//
+//	// Conversion from wchar_t object to narrow json object
+//	nlohmann::json info = cd;
+//	EXPECT_EQ(5, info.size());
+//	std::cerr << "json............" << info.dump(3) << std::endl;
+//	std::wcerr << L"operator<<......" << cd << std::endl;
+//	std::wcerr << L"std:format......" << std::format(L"{}", cd) << std::endl;
+//}
 
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentReadUri().authority.host);
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentWriteUri().authority.host);
+TEST(CosmosConnection, rotateConnection_1)
+{
+	std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
+	                  ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+	std::string scs = "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/"
+	                  ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+	siddiqsoft::CosmosConnection cd {pcs, scs};
 
-	// Feed some readlocations and writelocations
-	cs.ReadableUris.push_back("https://YOURDBNAME-r1.documents.azure.com:10/"_Uri);
-	cs.ReadableUris.push_back("https://YOURDBNAME-r2.documents.azure.com:11/"_Uri);
-	// Note that writable uris have ports 90 and 91 so we can test the parser
-	cs.WritableUris.push_back("https://YOURDBNAME-w1.documents.azure.com:90/"_Uri);
-	cs.WritableUris.push_back("https://YOURDBNAME-w2.documents.azure.com:91/"_Uri);
+	// We must start at Primary
+	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
 
-	std::cerr << "operator<<......" << cs << std::endl;
-	std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
-	std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
-	std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
+	// Swap to the secondary..
+	cd.rotate();
+	std::cerr << "1. Should be Secondary." << cd.current() << std::endl;
+	EXPECT_EQ(2, cd.CurrentConnectionId);
+	EXPECT_EQ(scs, cd.current().string());
 
-	// Test readable uris..
-	EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", cs.currentReadUri().authority.host);
-	cs.rotateReadUri();
-	EXPECT_EQ("YOURDBNAME-r2.documents.azure.com", cs.currentReadUri().authority.host);
-	cs.rotateReadUri();
-	EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", cs.currentReadUri().authority.host);
+	// Swap again.. which should end up at Primary
+	cd.rotate();
+	std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
 
-	// Test writable uris..
-	EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", cs.currentWriteUri().authority.host);
-	cs.rotateWriteUri();
-	EXPECT_EQ("YOURDBNAME-w2.documents.azure.com", cs.currentWriteUri().authority.host);
-	cs.rotateWriteUri();
-	EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", cs.currentWriteUri().authority.host);
+	// Force set at 2
+	cd.rotate(2);
+	std::cerr << "3. Should be Secondary." << cd.current() << std::endl;
+	EXPECT_EQ(2, cd.CurrentConnectionId);
+	EXPECT_EQ(scs, cd.current().string());
 
-	// If we exhaust the reads..
-	cs.ReadableUris.clear();
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentReadUri().authority.host);
+	// Force set at 1
+	cd.rotate(1);
+	std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
+}
 
-	cs.WritableUris.clear();
-	EXPECT_EQ("YOURDBNAME.documents.azure.com", cs.currentWriteUri().authority.host);
+TEST(CosmosConnection, rotateConnection_2)
+{
+	std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
+	                  ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+	siddiqsoft::CosmosConnection cd {pcs};
+
+	// We must start at Primary
+	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
+
+	// Swap to the secondary..
+	cd.rotate();
+	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
+
+	// Swap again.. which should end up at Primary
+	cd.rotate();
+	std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
+
+	// Force set at 2
+	cd.rotate(2);
+	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
+
+	// Force set at 1
+	cd.rotate(1);
+	std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
+	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(pcs, cd.current().string());
 }

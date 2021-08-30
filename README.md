@@ -33,8 +33,26 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 - The build and tests are for Visual Studio 2019 under x64.
 
 # API / Usage
+
 - Use the nuget [SiddiqSoft.CosmosClient](https://www.nuget.org/packages/SiddiqSoft.CosmosClient/)
 - Copy paste..whatever works.
+
+## Sample
+
+```cpp
+#include "nlohmann/json.hpp"
+#include "siddiqsoft/azure-cosmos-restcl.hpp"
+
+nlohmann::json myDoc {{"id", "uniqueId"},
+                      {"__pk", "partitionKey"},
+                      {"ttl", 3600}};
+
+CosmosClient cc;
+
+cc.configure( {{ "connectionStrings", { primaryConnectionString} }} );
+
+cc.create( "db", "collection", myDoc );
+```
 
 # Testing
 

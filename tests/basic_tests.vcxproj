@@ -46,9 +46,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="CosmosClient.cpp" />
-    <ClCompile Include="CosmosCollection.cpp" />
+    <ClCompile Include="CosmosEndpoint.cpp" />
     <ClCompile Include="CosmosConnection.cpp" />
-    <ClCompile Include="CosmosDatabase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

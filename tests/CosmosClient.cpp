@@ -36,7 +36,7 @@
 #include "gtest/gtest.h"
 
 #include "nlohmann/json.hpp"
-#include "../src/CosmosClient.hpp"
+#include "../src/azure-cosmos-restcl.hpp"
 
 /*
  * Required Environment Variables
@@ -72,10 +72,10 @@ TEST(CosmosClient, configure_1)
 
 	// Atleast one read location
 	EXPECT_LE(1, currentConfig["serviceSettings"]["readableLocations"].size());
-	EXPECT_LE(1, cc.Database.currentConnection().ReadableUris.size());
+	EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
 	// Atleast one write location
 	EXPECT_LE(1, currentConfig["serviceSettings"]["writableLocations"].size());
-	EXPECT_LE(1, cc.Database.currentConnection().WritableUris.size());
+	EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
 }
 
 
@@ -100,10 +100,10 @@ TEST(CosmosClient, discoverRegion)
 	// Check that we have read/write locations detected.
 	// Atleast one read location
 	EXPECT_LE(1, cc.configure()["serviceSettings"]["readableLocations"].size());
-	EXPECT_LE(1, cc.Database.currentConnection().ReadableUris.size());
+	EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
 	// Atleast one write location
 	EXPECT_LE(1, cc.configure()["serviceSettings"]["writableLocations"].size());
-	EXPECT_LE(1, cc.Database.currentConnection().WritableUris.size());
+	EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
 }
 
 
@@ -130,14 +130,93 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 	// Expect failure.
 	EXPECT_EQ(12007, rc);
 
-	cc.Database.rotateConnection();
+	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
 	// Expect success.
 	EXPECT_EQ(200, rc);
 
 	// Rotate..
-	cc.Database.rotateConnection();
+	cc.Cnxn.rotate();
 	// Try again.. we should fail again!
 	std::tie(rc, resp) = cc.discoverRegions();
 	EXPECT_EQ(12007, rc);
+}
+
+
+TEST(CosmosClient, listDatabases)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+	auto [rc, resp] = cc.listDatabases();
+	// Expect success.
+	EXPECT_EQ(200, rc);
+	std::cerr << "listDatabases():" << resp.dump(3) << std::endl;
+}
+
+
+TEST(CosmosClient, listCollections)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+	auto [rc, resp] = cc.listDatabases();
+	// Expect success.
+	EXPECT_EQ(200, rc);
+	std::cerr << "listDatabases():" << resp.dump(3) << std::endl;
+
+	auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
+	// Expect success.
+	EXPECT_EQ(200, rc2);
+	std::cerr << "listCollections():" << respCollections.dump(3) << std::endl;
+}
+
+
+TEST(CosmosClient, listDocuments)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+	auto [rc, resp] = cc.listDatabases();
+	EXPECT_EQ(200, rc);
+	// std::cerr << "listDatabases():" << resp.dump(3) << std::endl;
+
+	auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
+	EXPECT_EQ(200, rc2);
+	// std::cerr << "listCollections():" << respCollections.dump(3) << std::endl;
+
+	auto [rc3, respDocuments] = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
+	                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""));
+	EXPECT_EQ(200, rc3);
+	std::cerr << "listDocuments():" << respDocuments.dump(3) << std::endl;
 }

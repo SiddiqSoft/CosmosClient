@@ -1,5 +1,5 @@
 /*
-    CosmosClient
+    Azure Cosmos REST Client
     Azure Cosmos REST-API Client for Modern C++
 
     BSD 3-Clause License
@@ -52,9 +52,9 @@
 
 namespace siddiqsoft
 {
-#pragma region CosmosConnection
+#pragma region CosmosEndpoint
 	/// @brief Cosmos Connection String as available in the Azure Portal
-	struct CosmosConnection
+	struct CosmosEndpoint
 	{
 		/// @brief The "home" or base Uri points to the home location.
 		///	For globally partitioned/availability zones, we use this to build the readable/writable
@@ -66,8 +66,8 @@ namespace siddiqsoft
 		/// @brief The "binary" key decoded from the EncodedKey stored as std::string
 		std::string Key {};
 
-		/// @brief The DBName
-		std::basic_string<char> DBName {};
+		/// @brief The Name
+		std::basic_string<char> Name {};
 
 		/// @brief Read Locations for the region
 		std::vector<::siddiqsoft::Uri<char>> ReadableUris {};
@@ -83,11 +83,11 @@ namespace siddiqsoft
 
 
 		/// @brief Default constructor
-		CosmosConnection() = default;
+		CosmosEndpoint() = default;
 
 		/// @brief Construct the connection string object from the Connection String obtained from the Azure Portal
 		/// @param s Connection String obtained from the Azure Portal
-		CosmosConnection(const std::basic_string<char>& s)
+		CosmosEndpoint(const std::basic_string<char>& s)
 		{
 			this->operator=(s);
 		}
@@ -95,7 +95,7 @@ namespace siddiqsoft
 		/// @brief Operator assignment
 		/// @param s Source string obtained from the Azure portal
 		/// @return Self
-		CosmosConnection& operator=(const std::basic_string<char>& s)
+		CosmosEndpoint& operator=(const std::basic_string<char>& s)
 		{
 			std::basic_string<char> MatchAccountEndpoint = "AccountEndpoint=";
 			std::basic_string<char> MatchAccountKey      = ";AccountKey=";
@@ -115,8 +115,7 @@ namespace siddiqsoft
 					// Store the decoded key (only for std::string)
 					Key = Base64Utils::decode(EncodedKey);
 					// Extract the DBName
-					if (!BaseUri.authority.host.empty())
-						DBName = BaseUri.authority.host.substr(0, BaseUri.authority.host.find("."));
+					if (!BaseUri.authority.host.empty()) Name = BaseUri.authority.host.substr(0, BaseUri.authority.host.find("."));
 				}
 			}
 
@@ -164,7 +163,7 @@ namespace siddiqsoft
 
 		/// @brief Increment the read Uri to the next one in the list and if we reach the end, go back to start
 		/// @return Self
-		CosmosConnection& rotateReadUri()
+		CosmosEndpoint& rotateReadUri()
 		{
 			if (ReadableUris.empty()) // If empty; use the baseUri
 				CurrentReadUriId = 0;
@@ -181,7 +180,7 @@ namespace siddiqsoft
 
 		/// @brief Increment the write Uri to the next one in the list and if we reach the end, go back to start
 		/// @return Self
-		CosmosConnection& rotateWriteUri()
+		CosmosEndpoint& rotateWriteUri()
 		{
 			if (WritableUris.empty()) // If empty, use the baseUri
 				CurrentWriteUriId = 0;
@@ -202,7 +201,7 @@ namespace siddiqsoft
 	/// @tparam CharT We currently only support char (as the underlying json library does not support wchar_t)
 	/// @param dest Destination json object
 	/// @param src The source cosmos connection string
-	static void to_json(nlohmann::json& dest, const CosmosConnection& src)
+	static void to_json(nlohmann::json& dest, const CosmosEndpoint& src)
 	{
 		dest["baseUri"]           = src.BaseUri;
 		dest["readUris"]          = src.ReadableUris;
@@ -210,33 +209,33 @@ namespace siddiqsoft
 		dest["writeUris"]         = src.WritableUris;
 		dest["currentWriteUriId"] = src.CurrentWriteUriId;
 		dest["key"]               = src.EncodedKey;
-		dest["dbName"]            = src.DBName;
+		dest["name"]              = src.Name;
 	}
 #pragma endregion
 
 
-#pragma region CosmosDatabase
+#pragma region CosmosConnection
 	using CosmosResponseType = std::tuple<uint32_t, nlohmann::json>;
 
-	/// @brief Represents the Cosmos Database
-	struct CosmosDatabase
+	/// @brief Represents the Cosmos Cnxn
+	struct CosmosConnection
 	{
 		/// @brief Current Connection: 0=Not Set 1=Primary 2=Secondary
 		uint16_t CurrentConnectionId {0};
 
 		/// @brief The Primary connection string from the Azure Portal
-		CosmosConnection Primary {};
+		CosmosEndpoint Primary {};
 
 		/// @brief The Secondary connection string from the Azure Portal
-		CosmosConnection Secondary {};
+		CosmosEndpoint Secondary {};
 
 		/// @brief Default constructor
-		CosmosDatabase() = default;
+		CosmosConnection() = default;
 
 		/// @brief Constructor with Primary and optional Secondary.
 		/// @param p Primary Connection String from Azure portal
 		/// @param s Secondary Connection String from Azure portal
-		CosmosDatabase(const std::basic_string<char>& p, const std::basic_string<char>& s = {})
+		CosmosConnection(const std::basic_string<char>& p, const std::basic_string<char>& s = {})
 		{
 			configure({{"connectionStrings", {p, s}}});
 		}
@@ -245,7 +244,7 @@ namespace siddiqsoft
 		/// @param p Primary Connection String from Azure portal
 		/// @param s Secondary Connection String from Azure portal
 		/// @return Self
-		CosmosDatabase& configure(const nlohmann::json& config)
+		CosmosConnection& configure(const nlohmann::json& config)
 		{
 			Primary   = config.value("/connectionStrings/0"_json_pointer, "");
 			Secondary = config.value("/connectionStrings/1"_json_pointer, "");
@@ -254,28 +253,28 @@ namespace siddiqsoft
 
 			// If we have readLocations then load them up for the current connection
 			// If we "switch" we will repopulate the Primary or Secondary as current
-			if (currentConnection()) {
+			if (current()) {
 				if (config.contains("/serviceSettings/readableLocations"_json_pointer)) {
 					for (auto& item : config.at("/serviceSettings/readableLocations"_json_pointer)) {
-						currentConnection().ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
+						current().ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
 				if (config.contains("/serviceSettings/writableLocations"_json_pointer)) {
 					for (auto& item : config.at("/serviceSettings/writableLocations"_json_pointer)) {
-						currentConnection().WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
+						current().WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
 			}
 
 			// Reset at the "top"; start with Primary
-			rotateConnection(1);
+			rotate(1);
 			return *this;
 		}
 
 		/// @brief Get the current active connection string
 		/// @return Cosmos connection string
 		/// @return Reference to the current active Connection Primary/Secondary
-		CosmosConnection& currentConnection()
+		CosmosEndpoint& current()
 		{
 			// If the Secondary is selected and non-empty then return Secondary otherwise return Primary.
 			if (CurrentConnectionId == 2 && !Secondary.Key.empty()) {
@@ -289,7 +288,7 @@ namespace siddiqsoft
 		/// @brief Swaps the current connection by incrementing the current and if we hit past Secondary, we restart at Primary.
 		/// @param c Maybe 0=Swap 1=Use Primary 2=Use Secondary
 		/// @return Self
-		CosmosDatabase& rotateConnection(const uint16_t c = 0)
+		CosmosConnection& rotate(const uint16_t c = 0)
 		{
 			// If c==0 then we increment
 			// otherwise accept the given parameter
@@ -305,27 +304,13 @@ namespace siddiqsoft
 	};
 
 
-	static void to_json(nlohmann::json& dest, const CosmosDatabase& src)
+	static void to_json(nlohmann::json& dest, const CosmosConnection& src)
 	{
 		dest["currentConnectionId"] = src.CurrentConnectionId;
 		dest["primary"]             = src.Primary;
 		dest["secondary"]           = src.Secondary;
-		dest["currentConnection"]   = const_cast<CosmosDatabase&>(src).currentConnection();
-		dest["dBName"]              = const_cast<CosmosDatabase&>(src).currentConnection().DBName;
-	}
-#pragma endregion
-
-
-#pragma region CosmosCollection
-	struct CosmosCollection
-	{
-		std::basic_string<char> Name {};
-	};
-
-
-	static void to_json(nlohmann::json& dest, const CosmosCollection& src)
-	{
-		dest["name"] = src.Name;
+		dest["currentConnection"]   = const_cast<CosmosConnection&>(src).current();
+		dest["name"]                = const_cast<CosmosConnection&>(src).current().Name;
 	}
 #pragma endregion
 
@@ -333,7 +318,7 @@ namespace siddiqsoft
 #pragma region CosmosClient
 	static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.1.0"};
 
-
+	/// @brief Cosmos Client
 	class CosmosClient
 	{
 	protected:
@@ -351,9 +336,12 @@ namespace siddiqsoft
 
 	public:
 		WinHttpRESTClient RestClient {CosmosClientUserAgentString};
-		CosmosDatabase    Database {};
+		CosmosConnection  Cnxn {};
+
+		friend void       to_json(nlohmann::json& dest, const CosmosClient& src);
 
 	public:
+		/// @brief Default constructor
 		CosmosClient() = default;
 
 
@@ -380,7 +368,7 @@ namespace siddiqsoft
 					throw std::invalid_argument("connectionStrings array must contain atleast primary element");
 
 				// Update the database configuration
-				Database.configure(m_config);
+				Cnxn.configure(m_config);
 				// Mark as updated
 				m_isConfigured = true;
 
@@ -392,7 +380,7 @@ namespace siddiqsoft
 #endif //  _DEBUG
 					m_config["serviceSettings"] = regionInfo;
 					// Reconfigure/update the information such as the read location
-					Database.configure(m_config);
+					Cnxn.configure(m_config);
 				}
 			}
 
@@ -406,27 +394,116 @@ namespace siddiqsoft
 		{
 			CosmosResponseType ret {0xFA17, {}};
 			auto               ts   = DateUtils::RFC7231();
-			auto               auth = EncryptionUtils::CosmosToken<char>(Database.currentConnection().Key, "GET", "", "", ts);
+			auto               auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "", "", ts);
 
-			RestClient.send(ReqGet(Database.currentConnection().currentReadUri(),
+			RestClient.send(ReqGet(Cnxn.current().currentReadUri(),
 			                       {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", m_config["apiVersion"]}}),
 			                [&ret](const auto& req, const auto& resp) {
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
-			return ret;
+			return std::move(ret);
 		}
 
-		friend void to_json(nlohmann::json& dest, const CosmosClient& src);
+
+		//
+		// listDatabases
+		// Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
+		//
+
+
+		CosmosResponseType listDatabases()
+		{
+			CosmosResponseType ret {0xFA17, {}};
+
+			// We need to add the same value to the header in the field x-ms-date as well as the Authorization field
+			auto ts   = DateUtils::RFC7231();
+			auto auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "dbs", "", ts);
+			auto path = Cnxn.current().currentReadUri().string() + "dbs";
+
+			RestClient.send(ReqGet(path,                                        // the url
+			                       {{"Authorization", auth},                    // headers and for this op, no content
+			                        {"x-ms-date", ts},                          // timestamp
+			                        {"x-ms-version", m_config["apiVersion"]}}), // api version
+			                [&ret](const auto& req, const auto& resp) {
+				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			                });
+
+			return std::move(ret);
+		}
+
+
+		CosmosResponseType listCollections(const std::string& dbName)
+		{
+			CosmosResponseType ret {0xFA17, {}};
+
+			// We need to add the same value to the header in the field x-ms-date as well as the Authorization field
+			auto ts   = DateUtils::RFC7231();
+			auto path = std::format("{}dbs/{}/colls", Cnxn.current().currentReadUri().string(), dbName);
+			auto auth = EncryptionUtils::CosmosToken<char>(Cnxn.current().Key, "GET", "colls", {"dbs/" + dbName}, ts);
+
+			RestClient.send(ReqGet(path,                                        // the url
+			                       {{"Authorization", auth},                    // headers and for this op, no content
+			                        {"x-ms-date", ts},                          // timestamp
+			                        {"x-ms-version", m_config["apiVersion"]}}), // api version
+			                [&ret](const auto& req, const auto& resp) {
+				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			                });
+
+			return std::move(ret);
+		}
+
+
+		CosmosResponseType listDocuments(const std::string& dbName, const std::string& collName)
+		{
+			CosmosResponseType ret {0xFA17, {}};
+			auto               ts = DateUtils::RFC7231();
+			auto path = std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentReadUri().string(), dbName, collName);
+			auto auth = EncryptionUtils::CosmosToken<char>(
+			        Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts);
+
+			RestClient.send(ReqGet(path,                                        // the url
+			                       {{"Authorization", auth},                    // headers and for this op, no content
+			                        {"x-ms-date", ts},                          // timestamp
+			                        {"x-ms-version", m_config["apiVersion"]}}), // api version
+			                [&ret](const auto& req, const auto& resp) {
+				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			                });
+
+			return std::move(ret);
+		};
 	};
 
 
 	static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient& src)
 	{
-		dest["database"]      = src.Database;
+		dest["database"]      = src.Cnxn;
 		dest["configuration"] = src.m_config;
 	}
 #pragma endregion
 } // namespace siddiqsoft
+
+
+#pragma region Serializer CosmosEndpoint
+/// @brief Serializer for CosmosEndpoint for the char type
+/// @tparam CharT Either char or wchar_t
+template <>
+struct std::formatter<siddiqsoft::CosmosEndpoint> : std::formatter<std::basic_string<char>>
+{
+	template <class FC>
+	auto format(const siddiqsoft::CosmosEndpoint& s, FC& ctx)
+	{
+		auto str = std::format("AccountEndpoint={};AccountKey={};", s.BaseUri, s.EncodedKey);
+		return std::formatter<std::basic_string<char>>::format(str, ctx);
+	}
+};
+
+static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosEndpoint& s)
+{
+	os << std::basic_string<char>(s);
+	return os;
+}
+
+#pragma endregion
 
 
 #pragma region Serializer CosmosConnection
@@ -438,39 +515,16 @@ struct std::formatter<siddiqsoft::CosmosConnection> : std::formatter<std::basic_
 	template <class FC>
 	auto format(const siddiqsoft::CosmosConnection& s, FC& ctx)
 	{
-			auto str = std::format("AccountEndpoint={};AccountKey={};", s.BaseUri, s.EncodedKey);
-			return std::formatter<std::basic_string<char>>::format(str, ctx);
-	}
-};
-
-static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosConnection& s)
-{
-	os << std::basic_string<char>(s);
-	return os;
-}
-
-#pragma endregion
-
-
-#pragma region Serializer CosmosDatabase
-/// @brief Serializer for CosmosDatabase for the char type
-/// @tparam CharT Either char or wchar_t
-template <>
-struct std::formatter<siddiqsoft::CosmosDatabase> : std::formatter<std::basic_string<char>>
-{
-	template <class FC>
-	auto format(const siddiqsoft::CosmosDatabase& s, FC& ctx)
-	{
-			return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
+		return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
 	}
 };
 
 /// @brief Output stream write operator
 /// @tparam CharT char or wchar_t
 /// @param os The output stream
-/// @param s The CosmosDatabase object
+/// @param s The CosmosConnection object
 /// @return The output stream
-static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosDatabase& s)
+static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosConnection& s)
 {
 	os << std::format("{}", s);
 	return os;
