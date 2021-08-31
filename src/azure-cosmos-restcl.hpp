@@ -617,13 +617,18 @@ namespace siddiqsoft
 		}
 
 
-		/// @brief
+		/// @brief Performs a query and continues an existing query if the continuation token exists
+		/// CAUTION: If your query yields dozens or hundreds or thousands of documents, this method
+		/// currently does not offer "streaming" or callbacks.
+		/// It continues until the server reports no-more-continuation and returns the documents
+		/// in a single response json.
+		/// Memory and timing can be massive!
 		/// @param dbName
 		/// @param collName
 		/// @param pkId
 		/// @param queryStatement
 		/// @param params
-		/// @return
+		/// @return Combined json from the service
 		CosmosResponseType query(const std::string&   dbName,
 		                         const std::string&   collName,
 		                         const std::string&   pkId,
@@ -672,10 +677,6 @@ namespace siddiqsoft
 				                         ? nlohmann::json {{"query", queryStatement}, {"parameters", params}}
 				                         : nlohmann::json {{"query", queryStatement}}},
 				        [&ret, &newContinuationToken, &count, &combinedDocument](const auto& req, const auto& resp) {
-#ifdef _DEBUG
-					        std::cerr << "Request  : " << req << std::endl;
-					        std::cerr << "Response : " << resp << std::endl;
-#endif
 					        newContinuationToken = resp["headers"].value("x-ms-continuation", "");
 					        count += resp["content"].value("_count", 0);
 					        for (auto doc : resp["content"]["Documents"]) {
