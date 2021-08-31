@@ -33,6 +33,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "basic_tests", "tests\basic_tests.vcxproj", "{025C9280-6302-401E-949F-F82DF4D47204}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8350FE6A-EAB5-49C8-93FE-89CA15421088}"
+	ProjectSection(SolutionItems) = preProject
+		docs\Connection-Strings-Azure-Portal.png = docs\Connection-Strings-Azure-Portal.png
+		docs\mainpage.md = docs\mainpage.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

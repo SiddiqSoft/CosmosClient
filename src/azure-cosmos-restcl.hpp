@@ -1,16 +1,8 @@
-/** @file
-* @brief Azure Cosmos SQL-API over REST client for Modern C++
-* 
-* Uses [nlohmann.json](https://github.com/nlohmann.json)
-* See the [README](https://github.com/siddiqsoft/CosmosClient/README.md)
-*/
+/*
+    Azure Cosmos REST Client
+    Azure Cosmos REST-API Client for Modern C++
 
-/*! @mainpage Azure Cosmos REST Client
-    @brief    Azure Cosmos REST-API Client for Modern C++
-    @version  0.1.0
-    @authors  Siddiq Software LLC
-    @copyright Copyright (c) 2021, Siddiq Software LLC
-               All rights reserved.
+    Copyright (c) 2021, Siddiq Software LLC. All rights reserved.
 
     BSD 3-Clause License
 
@@ -251,8 +243,7 @@ namespace siddiqsoft
 		}
 
 		/// @brief Configure the Primary and Secondary. Also resets the current connection to the "Primary"
-		/// @param p Primary Connection String from Azure portal
-		/// @param s Secondary Connection String from Azure portal
+		/// @param config JSON object with the following elements: `connectionStrings` array and `partitionKeyNames` array
 		/// @return Self
 		CosmosConnection& configure(const nlohmann::json& config)
 		{
@@ -350,11 +341,9 @@ namespace siddiqsoft
 		/// @brief configuration object updated/merged with the client object
 		nlohmann::json m_config {
 		        {"_typever", CosmosClientUserAgentString},
-		        {"apiVersion", "2018-12-31"},  // The API version for Cosmos REST API
-		        {"connectionStrings", {}},     // The Connection String from the Azure portal
-		        {"uniqueKeys", {}},            // Array of unique keys (see your Azure Cosmos configuration)
-		        {"documentIdKeyName", "id"},   // This is the default
-		        {"partitionKeyNames", nullptr} // The partition key names is an array of partition key names
+		        {"apiVersion", "2018-12-31"}, // The API version for Cosmos REST API
+		        {"connectionStrings", {}},    // The Connection String from the Azure portal
+		        {"partitionKeyNames", {}}     // The partition key names is an array of partition key names
 		};
 
 		/// @brief Service Settings saved from discoverRegion
@@ -377,6 +366,7 @@ namespace siddiqsoft
 		/// @brief Default constructor
 		CosmosClient() { }
 
+
 		/// @brief Gets the current configuration object
 		/// @return Configuration json
 		const nlohmann::json& configuration()
@@ -388,10 +378,13 @@ namespace siddiqsoft
 		/// @brief Re-configure the client. This will invoke the discoverRegions to populate the available regions and sets the
 		/// primary write/read locations. If the source is empty (no arguments) then the current configuration is returned.
 		/// Avoid repeated invocations!
+		/// This method may throw if the underling call to `discoverRegions` fails.
 		/// @param src A valid json object must comply with the defaults. If empty, the current configuration is returned without
 		/// any changes.
+		/// Must have the following elements:
+		/// `{"connectionStrings": ["primary-connection-string"], "primaryKeyNames": ["field-name-of-partition-id"]}`
 		/// @return Self
-		CosmosClient& configure(const nlohmann::json& src = {})
+		CosmosClient& configure(const nlohmann::json& src = {}) noexcept(false)
 		{
 			if (!src.empty()) {
 				// The minimum is that the ConnectionStrings exist with at least one element; a string from the Azure portal with
@@ -413,8 +406,6 @@ namespace siddiqsoft
 
 				// Update the database configuration
 				Cnxn.configure(m_config);
-				// Mark as updated
-				m_isConfigured = true;
 
 				// Discover the regions..
 				auto [rc, regionInfo] = discoverRegions();
@@ -422,6 +413,8 @@ namespace siddiqsoft
 					serviceSettings = regionInfo;
 					// Reconfigure/update the information such as the read location
 					Cnxn.configure(serviceSettings);
+					// Mark as updated
+					m_isConfigured = true;
 				}
 			}
 
@@ -658,22 +651,28 @@ namespace siddiqsoft
 		/// It continues until the server reports no-more-continuation and returns the documents
 		/// in a single response json.
 		/// Memory and timing can be massive!
-		/// @param dbName
-		/// @param collName
-		/// @param pkId
-		/// @param queryStatement
-		/// @param params
+		/// @param dbName Database name
+		/// @param collName Collection name
+		/// @param pkId Primary key id: may be `*`, or the partition id value
+		/// @param queryStatement The SQL API query string.
+		/// @param params Optional json array with name-value objects.
+		/// @param continuationToken Optional continuation token. This is used with the value `x-ms-continuation`
+		/// to page through the query response.
 		/// @return Combined json from the service
-		CosmosResponseType query(const std::string&   dbName,
-		                         const std::string&   collName,
-		                         const std::string&   pkId,
-		                         const std::string&   queryStatement,
-		                         const nlohmann::json params            = {},
-		                         const std::string&   continuationToken = {})
+		/// @see https://docs.microsoft.com/en-us/rest/api/cosmos-db/q
+		/// @see https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-query-getting-started
+		CosmosResponseType query(const std::string&    dbName,
+		                         const std::string&    collName,
+		                         const std::string&    pkId,
+		                         const std::string&    queryStatement,
+		                         const nlohmann::json& params            = {},
+		                         const std::string&    continuationToken = {})
 		{
 			CosmosResponseType ret {0xFA17, {}};
-			auto               ts = DateUtils::RFC7231();
-			nlohmann::json     combinedDocument {};
+			auto               ts    = DateUtils::RFC7231();
+			auto               count = 0;
+			std::string        newContinuationToken {continuationToken};
+			nlohmann::json     combinedDocument;
 			nlohmann::json     headers {
                     {"Authorization",
                      EncryptionUtils::CosmosToken<char>(
@@ -683,8 +682,6 @@ namespace siddiqsoft
                     {"x-ms-documentdb-isquery", "true"},
                     {"x-ms-version", m_config["apiVersion"]},
                     {"Content-Type", "application/query+json"}};
-			auto        count = 0;
-			std::string newContinuationToken {continuationToken};
 
 			if (queryStatement.empty()) throw std::invalid_argument("Missing queryStatement");
 

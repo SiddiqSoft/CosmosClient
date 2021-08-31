@@ -50,7 +50,9 @@
  * CCTEST_SECONDARY_CS
  */
 
-
+/// @brief Example code
+/// Declare the instance, configure and create a document with only three lines!
+/// The code here is based on configuration and dynamic fetching for the database, collection and regions.
 TEST(CosmosClient, example1)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -58,7 +60,6 @@ TEST(CosmosClient, example1)
 	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
 	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-
 
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -96,6 +97,8 @@ TEST(CosmosClient, example1)
 }
 
 
+/// @brief Test the configuration defaults
+/// Checks that we match the changes to the configuration defaults in code against the documentation and client tests.
 TEST(CosmosClient, configure_Defaults)
 {
 	siddiqsoft::CosmosClient cc;
@@ -107,12 +110,30 @@ TEST(CosmosClient, configure_Defaults)
 	// This forces us to make sure we check side-effects whenever the version changes!
 	EXPECT_EQ("2018-12-31", currentConfig.value("apiVersion", ""));
 	EXPECT_TRUE(currentConfig.contains("connectionStrings"));
-	EXPECT_TRUE(currentConfig.contains("uniqueKeys"));
-	EXPECT_TRUE(currentConfig.contains("documentIdKeyName"));
-	EXPECT_EQ("id", currentConfig.value("documentIdKeyName", ""));
 	EXPECT_TRUE(currentConfig.contains("partitionKeyNames"));
 }
 
+
+/// @brief Checks the CosmosClient to_json has a consistent output
+TEST(CosmosClient, configure_check_json)
+{
+	siddiqsoft::CosmosClient cc;
+
+	// Check that the to_json has a consistent output
+	nlohmann::json info = cc;
+	EXPECT_TRUE(info.contains("serviceSettings"));
+	EXPECT_TRUE(info.contains("database"));
+	EXPECT_TRUE(info.contains("configuration"));
+	EXPECT_EQ(3, info.size());
+}
+
+
+/// @brief Test to check call to configure will pull in the serviceSettings.
+/// The `serviceSettings` contains information about the service as reported by call to discoverRegions
+/// Here we perform a configure and check the responses obtained from the Azure service.
+///
+/// NOTE: The `serviceSettings` is protected and this test declares the macro `COSMOSCLIENT_TESTING_MODE`
+/// to enable public access during testing stage only.
 TEST(CosmosClient, configure_1)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -127,12 +148,6 @@ TEST(CosmosClient, configure_1)
 	siddiqsoft::CosmosClient cc;
 
 	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-	nlohmann::json info = cc;
-	EXPECT_TRUE(info.contains("serviceSettings"));
-	EXPECT_TRUE(info.contains("database"));
-	EXPECT_TRUE(info.contains("configuration"));
-	EXPECT_EQ(3, info.size());
 
 	// Check that we have read/write locations detected.
 	auto currentConfig = cc.configuration();
@@ -227,12 +242,13 @@ TEST(CosmosClient, listDatabases)
 	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
+	// Fail fast if the primary conection string is not present in the build environment
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
 	siddiqsoft::CosmosClient cc;
 
-	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
 	auto [rc, resp] = cc.listDatabases();
 	// Expect success.
@@ -248,12 +264,13 @@ TEST(CosmosClient, listCollections)
 	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
+	// Fail fast if the primary conection string is not present in the build environment
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
 	siddiqsoft::CosmosClient cc;
 
-	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
 	auto [rc, resp] = cc.listDatabases();
 	// Expect success.
@@ -273,12 +290,13 @@ TEST(CosmosClient, listDocuments)
 	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
 	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
 
+	// Fail fast if the primary conection string is not present in the build environment
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
 	siddiqsoft::CosmosClient cc;
 
-	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
 	auto [rc, resp] = cc.listDatabases();
 	EXPECT_EQ(200, rc);
@@ -304,7 +322,7 @@ TEST(CosmosClient, createDocument)
 	std::string docId {};
 	std::string pkId {};
 
-
+	// Fail fast if the primary conection string is not present in the build environment
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
@@ -320,10 +338,10 @@ TEST(CosmosClient, createDocument)
 	EXPECT_EQ(200, rc2);
 	collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
 
-	// Now, let us create the document
-	docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-	pkId  = "siddiqsoft.com";
+	docId          = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+	pkId           = "siddiqsoft.com";
 
+	// Now, let us create the document
 	auto [rc3, createdDoc] =
 	        cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
 	EXPECT_EQ(201, rc3);
