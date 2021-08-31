@@ -492,13 +492,119 @@ TEST(CosmosClient, upsertDocument)
 	EXPECT_EQ("update", uDoc.value("upsert", ""));
 
 	// And to check if we call create on the same docId it should fail
-	auto rc6 =
-	        cc.create(dbName,
-	                  collectionName,
-	                  {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}});
+	auto rc6 = cc.create(dbName,
+	                     collectionName,
+	                     {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}});
 	EXPECT_EQ(409, std::get<0>(rc6));
 
 	// Remove the document
 	auto rc7 = cc.remove(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(204, std::get<0>(rc7));
+}
+
+
+TEST(CosmosClient, queryDocument)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string              priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string              secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+	std::string              dbName {};
+	std::string              collectionName {};
+	std::vector<std::string> docIds {};
+	std::string              pkId {"siddiqsoft.com"};
+	std::string              sourceId = std::format("{}-{}", getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
+	constexpr auto           DOCS {5};
+
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+
+	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+	auto [rc, resp] = cc.listDatabases();
+	EXPECT_EQ(200, rc);
+	dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+
+	auto [rc2, respCollections] = cc.listCollections(dbName);
+	EXPECT_EQ(200, rc2);
+	collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+
+	// We're going to create DOCS documents
+	for (auto i = 0; i < DOCS; i++) {
+		docIds.push_back(std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count()));
+	}
+
+	// The field "odd" will be used in our query statement
+	for (auto i = 0; i < docIds.size(); i++) {
+		auto [rc, _] = cc.create(dbName,
+		                         collectionName,
+		                         {{"id", docIds[i]},
+		                          {"ttl", 360},
+		                          {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+		                          {"i", i},
+		                          {"odd", !(i % 2 == 0)},
+		                          {"source", sourceId}});
+		EXPECT_EQ(201, rc);
+		std::cerr << "**** Created: " << docIds[i] << "--" << sourceId << std::endl;
+	}
+
+	EXPECT_EQ(DOCS, docIds.size()); // total
+
+	// Wait a little bit..
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+
+	// First, we query for all items that match our criteria (source=__func__)
+	auto [rq1, qDoc1] =
+	        cc.query(dbName,
+	                 collectionName,
+	                 "*",
+	                 "SELECT * FROM c WHERE contains(c.source, @v1)",
+	                 {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}}); // the params is an array of name-value items
+	// auto [rq1, qDoc1] = cc.query(dbName,
+	//                             collectionName,
+	//                             "*", // __pk = '*'
+	//                             std::format("SELECT * FROM c WHERE contains(c.source, '{}-')", getpid()));
+	EXPECT_EQ(200, rq1);
+	EXPECT_EQ(DOCS, qDoc1.value("_count", 0)); // total
+	std::cerr << qDoc1.dump(3) << std::endl;
+
+	auto matchCount = 0;
+	for (auto& doc : qDoc1["Documents"]) {
+		auto& docId = doc.at("id");
+		std::cerr << "Matched " << 1 + matchCount << " from query docId:" << doc.value("id", "") << std::endl;
+		std::for_each(docIds.begin(), docIds.end(), [&matchCount, &docId](auto& i) {
+			if (i == docId) matchCount++;
+		});
+	}
+	EXPECT_EQ(DOCS, matchCount);
+
+	// Query with partition key "odd"; out of five, 2 should be odd: 1, 3
+	auto [rq2, qDoc2] = cc.query(dbName,
+	                             collectionName,
+	                             "odd.siddiqsoft.com", // __pk
+	                             "SELECT * FROM c WHERE c.source=@v1",
+	                             {{{"name", "@v1"}, {"value", sourceId}}});
+	EXPECT_EQ(200, rq2);
+	EXPECT_EQ(2, qDoc2.value("_count", 0)); // odd
+
+	// Query with partition key "odd"; out of five, 3 should be even: 0, 2
+	auto [rq3, qDoc3] = cc.query(dbName,
+	                             collectionName,
+	                             "even.siddiqsoft.com", // __pk
+	                             "SELECT * FROM c WHERE c.source=@v1",
+	                             {{{"name", "@v1"}, {"value", sourceId}}});
+	EXPECT_EQ(200, rq3);
+	EXPECT_EQ(3, qDoc3.value("_count", 0)); // even
+
+	// Wait a little bit..
+	std::this_thread::sleep_for(std::chrono::seconds(2));
+
+	// Remove the documents
+	for (auto i = 0; i < docIds.size(); i++) {
+		auto [rc, _] = cc.remove(dbName, collectionName, docIds[i], (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com");
+		EXPECT_EQ(204, rc);
+	}
 }
