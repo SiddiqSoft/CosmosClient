@@ -24,12 +24,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		azure-pipelines.yml = azure-pipelines.yml
+		Doxyfile = Doxyfile
 		GitVersion.yml = GitVersion.yml
 		LICENSE = LICENSE
 		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "basic_tests", "tests\basic_tests.vcxproj", "{025C9280-6302-401E-949F-F82DF4D47204}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8350FE6A-EAB5-49C8-93FE-89CA15421088}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

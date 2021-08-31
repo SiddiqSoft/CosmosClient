@@ -35,7 +35,10 @@
 
 #include "gtest/gtest.h"
 
+#include <thread>
+#include <functional>
 #include <chrono>
+
 #include "nlohmann/json.hpp"
 #include "../src/azure-cosmos-restcl.hpp"
 
@@ -98,7 +101,7 @@ TEST(CosmosClient, configure_Defaults)
 	siddiqsoft::CosmosClient cc;
 
 	// Check that we have read/write locations detected.
-	auto currentConfig = cc.configure();
+	auto currentConfig = cc.configuration();
 
 	EXPECT_TRUE(currentConfig.contains("apiVersion"));
 	// This forces us to make sure we check side-effects whenever the version changes!
@@ -126,19 +129,22 @@ TEST(CosmosClient, configure_1)
 	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
 	nlohmann::json info = cc;
-	EXPECT_EQ(2, info.size());
+	EXPECT_TRUE(info.contains("serviceSettings"));
+	EXPECT_TRUE(info.contains("database"));
+	EXPECT_TRUE(info.contains("configuration"));
+	EXPECT_EQ(3, info.size());
 
 	// Check that we have read/write locations detected.
-	auto currentConfig = cc.configure();
+	auto currentConfig = cc.configuration();
 
-	EXPECT_TRUE(currentConfig["_serviceSettings"]["writableLocations"].is_array());
-	EXPECT_TRUE(currentConfig["_serviceSettings"]["readableLocations"].is_array());
+	EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
+	EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
 
 	// Atleast one read location
-	EXPECT_LE(1, currentConfig["_serviceSettings"]["readableLocations"].size());
+	EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
 	// Atleast one write location
-	EXPECT_LE(1, currentConfig["_serviceSettings"]["writableLocations"].size());
+	EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
 }
 
@@ -159,14 +165,17 @@ TEST(CosmosClient, discoverRegion)
 	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
 	nlohmann::json info = cc;
-	EXPECT_EQ(2, info.size());
+	EXPECT_TRUE(info.contains("serviceSettings"));
+	EXPECT_TRUE(info.contains("database"));
+	EXPECT_TRUE(info.contains("configuration"));
+	EXPECT_EQ(3, info.size());
 
 	// Check that we have read/write locations detected.
 	// Atleast one read location
-	EXPECT_LE(1, cc.configure()["_serviceSettings"]["readableLocations"].size());
+	EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
 	// Atleast one write location
-	EXPECT_LE(1, cc.configure()["_serviceSettings"]["writableLocations"].size());
+	EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
 	EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
 }
 
@@ -188,7 +197,10 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
 	nlohmann::json info = cc;
-	EXPECT_EQ(2, info.size());
+	EXPECT_TRUE(info.contains("serviceSettings"));
+	EXPECT_TRUE(info.contains("database"));
+	EXPECT_TRUE(info.contains("configuration"));
+	EXPECT_EQ(3, info.size());
 
 	auto [rc, resp] = cc.discoverRegions();
 	// Expect failure.

@@ -59,7 +59,7 @@ We use JSON object to configure the client.
 
 ```json
 { 
-    "_typever": UA,               // SemVer of the 
+    "_typever": "UA",             // SemVer of the UserAgent; ignored
     "apiVersion": "2018-12-31",   // The API version for Cosmos REST API
     "connectionStrings": [],      // The Connection String from the Azure portal
     "uniqueKeys": [],             // Array of unique keys (see your Azure Cosmos configuration)

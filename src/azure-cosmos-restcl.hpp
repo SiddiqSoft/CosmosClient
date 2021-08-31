@@ -1,11 +1,18 @@
-/*
-    Azure Cosmos REST Client
-    Azure Cosmos REST-API Client for Modern C++
+/** @file
+* @brief Azure Cosmos SQL-API over REST client for Modern C++
+* 
+* Uses [nlohmann.json](https://github.com/nlohmann.json)
+* See the [README](https://github.com/siddiqsoft/CosmosClient/README.md)
+*/
+
+/*! @mainpage Azure Cosmos REST Client
+    @brief    Azure Cosmos REST-API Client for Modern C++
+    @version  0.1.0
+    @authors  Siddiq Software LLC
+    @copyright Copyright (c) 2021, Siddiq Software LLC
+               All rights reserved.
 
     BSD 3-Clause License
-
-    Copyright (c) 2021, Siddiq Software LLC
-    All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
@@ -43,11 +50,15 @@
 #include <functional>
 #include <format>
 
+/// @brief The nlohmann.json provides for the primary interface for this class. While this may not be the most efficient, it is the
+/// cleanest to use as a client.
 #include "nlohmann/json.hpp"
-#include "siddiqsoft/SplitUri.hpp"
-#include "siddiqsoft/restcl_winhttp.hpp"
-#include "siddiqsoft/RWLEnvelope.hpp"
+
+/// @brief Provides for the Conversion utilities and the Cosmos token generation functionality
 #include "siddiqsoft/azure-cpp-utils.hpp"
+
+/// @brief Provides the all important Rest Client using WinHTTP
+#include "siddiqsoft/restcl_winhttp.hpp"
 
 
 namespace siddiqsoft
@@ -81,7 +92,6 @@ namespace siddiqsoft
 		/// @brief Current Write Location within the WritableUris
 		size_t CurrentWriteUriId {};
 
-
 		/// @brief Default constructor
 		CosmosEndpoint() = default;
 
@@ -101,8 +111,8 @@ namespace siddiqsoft
 			std::basic_string<char> MatchAccountKey      = ";AccountKey=";
 
 			// The Azure Cosmos Connection string has the following format
-			// AccountEndpoint=Uri;AccountKey=Key
-			// The Uri is fully qualified name with port
+			// AccountEndpoint=BaseUri;AccountKey=Key
+			// The BaseUri is fully qualified name with port
 			// The Key is the base64 encoded string representing the Cosmos key
 			if (s.starts_with(MatchAccountEndpoint)) {
 				if (auto posAccountKey = s.find(MatchAccountKey); posAccountKey != std::string::npos) {
@@ -145,23 +155,23 @@ namespace siddiqsoft
 		}
 
 
-		/// @brief Current read Uri
-		/// @return Current read Uri or the base Uri
+		/// @brief Current read endpoint
+		/// @return Current read endpoint or the base Uri
 		const auto& currentReadUri() const
 		{
 			if (!ReadableUris.empty() && CurrentReadUriId < ReadableUris.size()) return ReadableUris.at(CurrentReadUriId);
 			return BaseUri;
 		}
 
-		/// @brief Current write Uri
-		/// @return Current write Uri or the base Uri
+		/// @brief Current write endpoint
+		/// @return Current write endpoint or the base Uri
 		const auto& currentWriteUri() const
 		{
 			if (!WritableUris.empty() && CurrentWriteUriId < WritableUris.size()) return WritableUris.at(CurrentWriteUriId);
 			return BaseUri;
 		}
 
-		/// @brief Increment the read Uri to the next one in the list and if we reach the end, go back to start
+		/// @brief Increment the read endpoint to the next one in the list and if we reach the end, go back to start
 		/// @return Self
 		CosmosEndpoint& rotateReadUri()
 		{
@@ -178,7 +188,7 @@ namespace siddiqsoft
 			return *this;
 		}
 
-		/// @brief Increment the write Uri to the next one in the list and if we reach the end, go back to start
+		/// @brief Increment the write endpoint to the next one in the list and if we reach the end, go back to start
 		/// @return Self
 		CosmosEndpoint& rotateWriteUri()
 		{
@@ -246,21 +256,23 @@ namespace siddiqsoft
 		/// @return Self
 		CosmosConnection& configure(const nlohmann::json& config)
 		{
-			Primary   = config.value("/connectionStrings/0"_json_pointer, "");
-			Secondary = config.value("/connectionStrings/1"_json_pointer, "");
+			if (config.contains("connectionStrings") && config.at("connectionStrings").is_array()) {
+				Primary   = config.value("/connectionStrings/0"_json_pointer, "");
+				Secondary = config.value("/connectionStrings/1"_json_pointer, "");
 
-			if (!Primary) throw std::invalid_argument("Primary must be present");
+				if (!Primary) throw std::invalid_argument("Primary must be present");
+			}
 
 			// If we have readLocations then load them up for the current connection
 			// If we "switch" we will repopulate the Primary or Secondary as current
 			if (current()) {
-				if (config.contains("/_serviceSettings/readableLocations"_json_pointer)) {
-					for (auto& item : config.at("/_serviceSettings/readableLocations"_json_pointer)) {
+				if (config.contains("readableLocations")) {
+					for (auto& item : config.at("readableLocations")) {
 						current().ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
-				if (config.contains("/_serviceSettings/writableLocations"_json_pointer)) {
-					for (auto& item : config.at("/_serviceSettings/writableLocations"_json_pointer)) {
+				if (config.contains("writableLocations")) {
+					for (auto& item : config.at("writableLocations")) {
 						current().WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
@@ -303,7 +315,9 @@ namespace siddiqsoft
 		}
 	};
 
-
+	/// @brief JSON serializer for the CosmosConnection object
+	/// @param dest Output json object
+	/// @param src The source CosmosConnection
 	static void to_json(nlohmann::json& dest, const CosmosConnection& src)
 	{
 		dest["currentConnectionId"] = src.CurrentConnectionId;
@@ -317,9 +331,23 @@ namespace siddiqsoft
 #pragma region CosmosClient
 
 	/// @brief Cosmos Client
+	/// Implements a stateful Cosmos Client using Cosmos SQL-API via REST
+	/// Uses the REST API and SQL API model.
+	/// https://docs.microsoft.com/en-us/rest/api/cosmos-db/common-tasks-using-the-cosmosdb-rest-api
+	///
+	/// Samples are here
+	///	https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started
+	/// Documentation is here
+	/// https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
+	///
 	class CosmosClient
 	{
+#if defined(COSMOSCLIENT_TESTING_MODE)
+	public:
+#else
 	protected:
+#endif
+		/// @brief configuration object updated/merged with the client object
 		nlohmann::json m_config {
 		        {"_typever", CosmosClientUserAgentString},
 		        {"apiVersion", "2018-12-31"},  // The API version for Cosmos REST API
@@ -330,21 +358,31 @@ namespace siddiqsoft
 		};
 
 		/// @brief Service Settings saved from discoverRegion
-		nlohmann::json   serviceSettings;
+		nlohmann::json serviceSettings;
 
+		/// @brief Used to signal first-time configuration
 		std::atomic_bool m_isConfigured {false};
 
+		/// @brief The REST client.
+		WinHttpRESTClient RestClient {CosmosClientUserAgentString};
+
+		/// @brief The connection object stores the Primary, Secondary connection strings as well as the read/write locations for
+		/// the given Azure location.
+		CosmosConnection Cnxn {};
+
 	public:
+		/// @brief This is the string used in the User-Agent header
 		inline static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.1.0"};
 
-		WinHttpRESTClient               RestClient {CosmosClientUserAgentString};
-		CosmosConnection                Cnxn {};
-
-		friend void                     to_json(nlohmann::json& dest, const CosmosClient& src);
-
-	public:
 		/// @brief Default constructor
-		CosmosClient() = default;
+		CosmosClient() { }
+
+		/// @brief Gets the current configuration object
+		/// @return Configuration json
+		const nlohmann::json& configuration()
+		{
+			return m_config;
+		}
 
 
 		/// @brief Re-configure the client. This will invoke the discoverRegions to populate the available regions and sets the
@@ -352,8 +390,8 @@ namespace siddiqsoft
 		/// Avoid repeated invocations!
 		/// @param src A valid json object must comply with the defaults. If empty, the current configuration is returned without
 		/// any changes.
-		/// @return The current configuration
-		const nlohmann::json& configure(const nlohmann::json& src = {}) noexcept(false)
+		/// @return Self
+		CosmosClient& configure(const nlohmann::json& src = {})
 		{
 			if (!src.empty()) {
 				// The minimum is that the ConnectionStrings exist with at least one element; a string from the Azure portal with
@@ -381,16 +419,13 @@ namespace siddiqsoft
 				// Discover the regions..
 				auto [rc, regionInfo] = discoverRegions();
 				if (rc == 200 && !regionInfo.empty()) {
-#ifdef _DEBUG
-					std::cerr << "Response from discoverRegions()\n" << regionInfo.dump(3) << std::endl;
-#endif //  _DEBUG
-					m_config["_serviceSettings"] = regionInfo;
+					serviceSettings = regionInfo;
 					// Reconfigure/update the information such as the read location
-					Cnxn.configure(m_config);
+					Cnxn.configure(serviceSettings);
 				}
 			}
 
-			return m_config;
+			return *this;
 		}
 
 
@@ -724,15 +759,22 @@ namespace siddiqsoft
 
 			return std::move(ret);
 		}
+
+
+		/// @brief JSON serializer helper for CosmosClient
+		/// @param dest Output json object
+		/// @param src Reference to a CosmosClient instance
+		friend void to_json(nlohmann::json& dest, const CosmosClient& src);
 	};
 
-	/// @brief
-	/// @param dest
-	/// @param src
+	/// @brief JSON serializer helper for CosmosClient
+	/// @param dest Output json object
+	/// @param src Reference to a CosmosClient instance
 	static void to_json(nlohmann::json& dest, const siddiqsoft::CosmosClient& src)
 	{
-		dest["database"]      = src.Cnxn;
-		dest["configuration"] = src.m_config;
+		dest["serviceSettings"] = src.serviceSettings;
+		dest["database"]        = src.Cnxn;
+		dest["configuration"]   = src.m_config;
 	}
 #pragma endregion
 } // namespace siddiqsoft
@@ -752,6 +794,10 @@ struct std::formatter<siddiqsoft::CosmosEndpoint> : std::formatter<std::basic_st
 	}
 };
 
+/// @brief Ostream implementation for CosmosEndpoint object
+/// @param os Detination ostream object
+/// @param s Reference to CosmosEndpoint object
+/// @return ostream object
 static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosEndpoint& s)
 {
 	os << std::basic_string<char>(s);
@@ -801,7 +847,11 @@ struct std::formatter<siddiqsoft::CosmosClient> : std::formatter<std::basic_stri
 	}
 };
 
-
+/// @brief Ostream writer for CosmosClient
+/// Basically we dump the json object to the stream
+/// @param os The output stream
+/// @param s Reference to source CosmosClient instance
+/// @return The output stream
 static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosClient& s)
 {
 	os << nlohmann::json(s).dump();
