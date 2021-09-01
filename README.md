@@ -55,7 +55,7 @@ You can start saving your documents in Cosmos with just 3 lines of code!
 - Configure with json via `configure`
 - Make call to `create`
 
-[_Auto-generated Doxygen documentation_](docs/html/index.html)
+[API](https://siddiqsoft.github.io/CosmosClient/)
 
 ## Sample
 
