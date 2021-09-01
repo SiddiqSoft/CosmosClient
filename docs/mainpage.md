@@ -20,7 +20,6 @@
   - Low-overhead--just not optimized.
   - C++20 sugarcoating
 - JSON everywhere; configuration, I/O, results.
-- Simple interface -- this means we limit the options you can fiddle
 - Implement the SQL REST API
   - All of the responses are JSON documents as returned from Azure Cosmos. We do not abstract/encapsulate unless there is value.
   - Implement Azure REST API best practices.
@@ -33,8 +32,21 @@
   - Dependency on [restcl](https://github.com/siddiqsoft/restcl) our own library.
     - Again, we wrap a modern C++ sugar coat on the Win32 WinHTTP library. Nothing overly heavy or force you to use std::wstring or invent yet-another-string!
 - Simplicity and ease of use--focus on your problem set and let the libraries evolve.
+  - To this end, we do not worry about configuration/options
+  - Use NuGet and focus on your application.
+
 
 # API
+
+> **NOTICE**
+> This project is _alpha_ and as such, not all issues are resolved.
+> While the synchronous mode is certainly functional, it is not useful for servers
+> until async API is ready.
+> The API is therefore subject to change!
+> Please refer to the roadmap/github issues list.
+>
+> Motivation: This is part of an as yet unreleased daemon. It is being used in an enterprise where thousands of records are generated and performence tracked. You can be sure that any bugs are fixed right away!
+
 
 <table>
 <tr>
