@@ -24,7 +24,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		azure-pipelines.yml = azure-pipelines.yml
-		Doxyfile = Doxyfile
 		GitVersion.yml = GitVersion.yml
 		LICENSE = LICENSE
 		README.md = README.md
@@ -35,7 +34,15 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8350FE6A-EAB5-49C8-93FE-89CA15421088}"
 	ProjectSection(SolutionItems) = preProject
 		docs\Connection-Strings-Azure-Portal.png = docs\Connection-Strings-Azure-Portal.png
+		docs\Doxyfile = docs\Doxyfile
+		docs\doxygen-awesome-darkmode-toggle.js = docs\doxygen-awesome-darkmode-toggle.js
+		docs\doxygen-awesome-sidebar-only-darkmode-toggle.css = docs\doxygen-awesome-sidebar-only-darkmode-toggle.css
+		docs\doxygen-awesome-sidebar-only.css = docs\doxygen-awesome-sidebar-only.css
+		docs\doxygen-awesome.css = docs\doxygen-awesome.css
+		docs\footer.html = docs\footer.html
+		docs\header.html = docs\header.html
 		docs\mainpage.md = docs\mainpage.md
+		docs\rebuild-docs.ps1 = docs\rebuild-docs.ps1
 	EndProjectSection
 EndProject
 Global
