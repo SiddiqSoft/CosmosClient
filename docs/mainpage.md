@@ -1,7 +1,7 @@
 @mainpage CosmosClient : Azure Cosmos REST-API Client for Modern C++
 @copyright &copy;2021 Siddiq Software LLC.
 @author siddiqsoft
-@version 0.1.0
+@version $projectnumber  
 
 <!-- badges -->
 [![CodeQL](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml)
