@@ -10,7 +10,8 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 ![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)
 <!-- end badges -->
 
-<img src="docs/work-in-progress.jpeg" width="10%" align="right" />
+![](docs/work-in-progress.png)
+
 
 # Motivation
 

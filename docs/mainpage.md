@@ -14,7 +14,7 @@
 
 @tableofcontents
 
-<img src="work-in-progress.jpeg" width="10%" align="right" />
+<img src="work-in-progress.png" width="10%" align="right" />
 
 # Features
 - C++20 Azure Cosmos REST API client.

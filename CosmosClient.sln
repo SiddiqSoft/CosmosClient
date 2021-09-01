@@ -43,6 +43,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8350FE6A-E
 		docs\header.html = docs\header.html
 		docs\mainpage.md = docs\mainpage.md
 		docs\rebuild-docs.ps1 = docs\rebuild-docs.ps1
+		docs\work-in-progress.png = docs\work-in-progress.png
 	EndProjectSection
 EndProject
 Global

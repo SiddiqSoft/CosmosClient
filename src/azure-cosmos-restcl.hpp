@@ -302,31 +302,24 @@ namespace siddiqsoft
 		{
 			if (c == 0) {
 				// Swap between Primary and Secondary
-				if (CurrentConnectionId == CurrentConnectionIdType::PrimaryConnection) {
-					std::cerr << "rotate: Previous Primary; now Secondary.." << std::endl;
+				if (CurrentConnectionId == CurrentConnectionIdType::PrimaryConnection)
 					CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
-				}
-				else if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) {
-					std::cerr << "rotate: Previous Secondary; now Primary.." << std::endl;
+
+				else if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
 					CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
-				}
 			}
 			else if (c == 1) {
-				std::cerr << "rotate: Try reset Primary.." << std::endl;
 				CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
 			}
 			else if (c == 2) {
-				std::cerr << "rotate: Try reset Secondary.." << std::endl;
 				CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
 			}
 
 			// If Secondary is empty; limit to Primary
-			if ((CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty()) {
-				std::cerr << "rotate: Secondary empty; reset to Primary" << std::endl;
+			if ((CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty())
 				CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
-			}
 
-			return *this;
+ 			return *this;
 		}
 	};
 

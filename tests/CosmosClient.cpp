@@ -212,7 +212,6 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 
 	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-	std::cerr << "Configuration: " << cc.configuration().dump(2) << std::endl;
 
 	// First attempt should fail.
 	auto [rc, resp] = cc.discoverRegions();
@@ -220,13 +219,13 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 	EXPECT_NE(200, rc) << resp.dump(3);
 
 	// Try again.. we should succeed.
-	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
+	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
 	std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
 	EXPECT_EQ(200, rc) << resp.dump(3);
 
 	// Try again.. we should fail again!
-	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
+	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
 	std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
 	EXPECT_NE(200, rc) << resp.dump(3);
@@ -312,7 +311,6 @@ TEST(CosmosClient, listDocuments)
 		                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
 		                                             cToken);
 		EXPECT_EQ(200, rc3);
-		// std::cerr << respDocuments.dump(2) << std::endl;
 		// We check against a collection that has multiple
 		totalDocs += respDocuments.value<uint32_t>("_count", 0);
 		EXPECT_EQ(100, respDocuments.value("_count", 0));
@@ -357,7 +355,6 @@ TEST(CosmosClient, listDocuments_top100)
 	                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
 	                                             cToken);
 	EXPECT_EQ(200, rc3);
-	// std::cerr << respDocuments.dump(2) << std::endl;
 	// We check against a collection that has multiple
 	totalDocs += respDocuments.value<uint32_t>("_count", 0);
 	EXPECT_EQ(100, respDocuments.value("_count", 0));
@@ -527,7 +524,6 @@ TEST(CosmosClient, findDocument)
 	auto [rc4, findDoc] = cc.find(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(200, rc4);
 	EXPECT_EQ(docId, findDoc.value("id", ""));
-	std::cerr << findDoc.dump(3) << std::endl;
 
 	auto [rc5, delDoc] = cc.remove(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(204, rc5);
