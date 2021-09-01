@@ -39,6 +39,7 @@
 #include "../src/azure-cosmos-restcl.hpp"
 
 
+/// @brief Test the serializers and cast operators
 TEST(CosmosConnection, test1_n)
 {
 	std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
@@ -65,6 +66,8 @@ TEST(CosmosConnection, test1_n)
 	std::cerr << "Uri............." << cd.Primary.BaseUri << std::endl;
 }
 
+/// @brief Tests the serializers.
+/// Compiliation will fail for malformed/missing serializers
 TEST(CosmosConnection, test2_n)
 {
 	std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
@@ -79,6 +82,7 @@ TEST(CosmosConnection, test2_n)
 }
 
 
+/// @brief Test rotate between primary and secondary connection
 TEST(CosmosConnection, rotateConnection_1)
 {
 	std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
@@ -117,6 +121,8 @@ TEST(CosmosConnection, rotateConnection_1)
 	EXPECT_EQ(pcs, cd.current().string());
 }
 
+
+/// @brief Check the rotate method with single connection
 TEST(CosmosConnection, rotateConnection_2)
 {
 	std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"

@@ -38,7 +38,7 @@
 #include "nlohmann/json.hpp"
 #include "../src/azure-cosmos-restcl.hpp"
 
-
+/// @brief Test serializers and cast for the CosmosEndpoint object no extra read/write locations
 TEST(CosmosEndpoint, test1_n)
 {
 	siddiqsoft::CosmosEndpoint cs;
@@ -69,7 +69,7 @@ TEST(CosmosEndpoint, test1_n)
 }
 
 
-
+/// @brief Test serializers and cast operators for CosmosEndpoint object with additional read/write locations.
 TEST(CosmosEndpoint, test2_n)
 {
 	using namespace siddiqsoft::literals;

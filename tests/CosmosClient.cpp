@@ -282,6 +282,7 @@ TEST(CosmosClient, listCollections)
 }
 
 
+/// @brief Tests the listDocuments with a limit of 7 iterations
 TEST(CosmosClient, listDocuments)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -295,6 +296,55 @@ TEST(CosmosClient, listDocuments)
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
 	siddiqsoft::CosmosClient cc;
+	std::string              cToken {};
+	uint32_t                 totalDocs = 0;
+	auto                     iteration = 7; // max 7 times
+
+	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+
+	auto [rc, resp] = cc.listDatabases();
+	EXPECT_EQ(200, rc);
+
+	auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
+	EXPECT_EQ(200, rc2);
+
+	do {
+		auto [rc3, respDocuments] = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
+		                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
+		                                             cToken);
+		EXPECT_EQ(200, rc3);
+		// std::cerr << respDocuments.dump(2) << std::endl;
+		// We check against a collection that has multiple
+		totalDocs += respDocuments.value<uint32_t>("_count", 0);
+		EXPECT_EQ(100, respDocuments.value("_count", 0));
+		EXPECT_FALSE(cToken.empty());
+		std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
+		          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
+
+		// If we run out of the iterations the break out of the loop.
+		if (--iteration == 0) break;
+	} while (!cToken.empty());
+
+	std::cerr << "Total Documents found: " << totalDocs << std::endl;
+}
+
+
+/// @brief Invokes listDocuments without continuation
+TEST(CosmosClient, listDocuments_top100)
+{
+	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+	// WARNING!
+	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+	std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+
+	// Fail fast if the primary conection string is not present in the build environment
+	ASSERT_FALSE(priConnStr.empty())
+	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+	siddiqsoft::CosmosClient cc;
+	std::string              cToken {};
+	uint32_t                 totalDocs = 0;
 
 	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
@@ -305,11 +355,21 @@ TEST(CosmosClient, listDocuments)
 	EXPECT_EQ(200, rc2);
 
 	auto [rc3, respDocuments] = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
-	                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""));
+	                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
+	                                             cToken);
 	EXPECT_EQ(200, rc3);
+	// std::cerr << respDocuments.dump(2) << std::endl;
+	// We check against a collection that has multiple
+	totalDocs += respDocuments.value<uint32_t>("_count", 0);
+	EXPECT_EQ(100, respDocuments.value("_count", 0));
+	EXPECT_FALSE(cToken.empty());
+	std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
+	          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
 }
 
 
+/// @brief Test create document API. Removes the document after completion.
+/// Requires the environment variables
 TEST(CosmosClient, createDocument)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -351,6 +411,7 @@ TEST(CosmosClient, createDocument)
 }
 
 
+/// @brief Test create document with missing "id" field in the document
 TEST(CosmosClient, createDocument_MissingId)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -388,7 +449,7 @@ TEST(CosmosClient, createDocument_MissingId)
 	        , std::invalid_argument);
 }
 
-
+/// @brief Test create document with missing partition key field in the document
 TEST(CosmosClient, createDocument_MissingPkId)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -426,7 +487,7 @@ TEST(CosmosClient, createDocument_MissingPkId)
 	        , std::invalid_argument);
 }
 
-
+/// @brief Test find API
 TEST(CosmosClient, findDocument)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -467,12 +528,13 @@ TEST(CosmosClient, findDocument)
 	auto [rc4, findDoc] = cc.find(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(200, rc4);
 	EXPECT_EQ(docId, findDoc.value("id", ""));
+	std::cerr << findDoc.dump(3) << std::endl;
 
 	auto [rc5, delDoc] = cc.remove(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(204, rc5);
 }
 
-
+/// @brief Test upsert API
 TEST(CosmosClient, upsertDocument)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -532,7 +594,7 @@ TEST(CosmosClient, upsertDocument)
 	EXPECT_EQ(204, std::get<0>(rc7));
 }
 
-
+/// @brief Test query API
 TEST(CosmosClient, queryDocument)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -593,13 +655,8 @@ TEST(CosmosClient, queryDocument)
 	                 "*",
 	                 "SELECT * FROM c WHERE contains(c.source, @v1)",
 	                 {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}}); // the params is an array of name-value items
-	// auto [rq1, qDoc1] = cc.query(dbName,
-	//                             collectionName,
-	//                             "*", // __pk = '*'
-	//                             std::format("SELECT * FROM c WHERE contains(c.source, '{}-')", getpid()));
 	EXPECT_EQ(200, rq1);
 	EXPECT_EQ(DOCS, qDoc1.value("_count", 0)); // total
-	std::cerr << qDoc1.dump(3) << std::endl;
 
 	auto matchCount = 0;
 	for (auto& doc : qDoc1["Documents"]) {

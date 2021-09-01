@@ -423,6 +423,7 @@ namespace siddiqsoft
 
 
 		/// @brief Discover the Regions for the current base Uri
+		/// This method is invoked by the `configuration` method.
 		/// @return Tuple of the status code and the json response (or empty)
 		CosmosResponseType discoverRegions()
 		{
@@ -462,9 +463,9 @@ namespace siddiqsoft
 			return std::move(ret);
 		}
 
-		/// @brief
-		/// @param dbName
-		/// @return
+		/// @brief List the collections for the given database
+		/// @param dbName Database name
+		/// @return The json document from Cosmos contains the collections for the given
 		CosmosResponseType listCollections(const std::string& dbName)
 		{
 			CosmosResponseType ret {0xFA17, {}};
@@ -482,25 +483,46 @@ namespace siddiqsoft
 			return std::move(ret);
 		}
 
-		/// @brief
-		/// @param dbName
-		/// @param collName
-		/// @return
-		CosmosResponseType listDocuments(const std::string& dbName, const std::string& collName)
+		/// @brief List documents for the given database and collection
+		/// @param dbName The database name
+		/// @param collName The collectio nname
+		/// @param [in,out] continuationToken Optional continuation token. This is used with the value `x-ms-continuation`. This
+		/// variable is updated with the value from `x-ms-continuation` header value. The client must check and invoke the method
+		/// repeatedly until this variable is empty. to page through the query response.
+		/// @return Array of Documents from Cosmos.
+		/// @remarks The call returns 100 items and you must invoke the method again with the continuation token to fetch the next
+		/// 100 items. It is not wise to use this method as it is expensive. Use the [find](find) method or the more flexible
+		/// [query] method.
+		/// 
+		/// *Sample logic for continuation*
+		/// ```cpp
+		/// std::string cToken {};
+		/// nlohmann::json compilation;
+		/// do
+		/// {
+		///    auto [rc, docs] = cc.listDocuments(myDbName, myCollectionName, cToken);
+		///    totalDocs += docs.value<uint32_t>("_count", 0);
+		///	   compilation+= docs;
+		/// } while (!cToken.empty());
+		/// ```
+		CosmosResponseType listDocuments(const std::string& dbName, const std::string& collName, std::string& continuationToken)
 		{
 			CosmosResponseType ret {0xFA17, {}};
 			auto               ts   = DateUtils::RFC7231();
 			auto               path = std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentReadUri(), dbName, collName);
-			auto               auth = EncryptionUtils::CosmosToken<char>(
-                    Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts);
+			nlohmann::json     headers {
+                    {"Authorization",
+                     EncryptionUtils::CosmosToken<char>(
+                             Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+                    {"x-ms-date", ts},
+                    {"x-ms-version", m_config["apiVersion"]}};
 
-			RestClient.send(ReqGet(path,                                        // the url
-			                       {{"Authorization", auth},                    // headers and for this op, no content
-			                        {"x-ms-date", ts},                          // timestamp
-			                        {"x-ms-version", m_config["apiVersion"]}}), // api version
-			                [&ret](const auto& req, const auto& resp) {
-				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-			                });
+			if (!continuationToken.empty()) headers["x-ms-continuation"] = continuationToken;
+
+			RestClient.send(ReqGet(path, headers), [&ret, &continuationToken](const auto& req, const auto& resp) {
+				continuationToken = resp["headers"].value("x-ms-continuation", "");
+				ret               = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+			});
 
 			return std::move(ret);
 		}
@@ -614,7 +636,8 @@ namespace siddiqsoft
 		/// @param collName Cosmos Collection Name
 		/// @param docId Unique document Id
 		/// @param pkId The partition Id
-		/// @return Status code
+		/// @return Status code with empty json
+		/// @remarks The remove operation returns no data beyond the status code.
 		CosmosResponseType
 		remove(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
 		{
@@ -661,6 +684,34 @@ namespace siddiqsoft
 		/// @return Combined json from the service
 		/// @see https://docs.microsoft.com/en-us/rest/api/cosmos-db/q
 		/// @see https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-query-getting-started
+		///
+		/// @remarks
+		/// The output/response is combined response of multiple requests to the query REST API
+		/// delivering to the user a single json with array of `Documents` object and `_count`.
+		///
+		/// *Output Sample*
+		/// ```json
+		/// {
+		///    "Documents": [
+		///       {
+		///          "__pk": "odd.siddiqsoft.com",
+		///          "_attachments": "attachments/",
+		///          "_etag": "\"7e0141d3-0000-0400-0000-612ec6f10000\"",
+		///          "_rid": "RP0wAM6H+R7-8VEAAAAAAQ==",
+		///          "_self": "dbs/RP0wAA==/colls/RP0wAM6H+R4=/docs/RP0wAM6H+R7-8VEAAAAAAQ==/",
+		///          "_ts": 1630455537,
+		///          "i": 1,
+		///          "id": "azure-cosmos-restcl.16304555368341392",
+		///          "odd": true,
+		///          "source": "23676-SiddiqSoft.CosmosClient/0.1.0",
+		///          "ttl": 360
+		///       },
+		/// 	  ...
+		/// 	  ...
+		///    ],
+		///    "_count": 5
+		/// }
+		/// ```
 		CosmosResponseType query(const std::string&    dbName,
 		                         const std::string&    collName,
 		                         const std::string&    pkId,
@@ -723,11 +774,26 @@ namespace siddiqsoft
 
 
 		/// @brief Find a given document by id
-		/// @param dbName
-		/// @param collName
-		/// @param docId
-		/// @param pkId
-		/// @return
+		/// @param dbName The database name
+		/// @param collName The collection name
+		/// @param docId The unique id
+		/// @param pkId Partition id
+		/// @return JSON document
+		/// ```json
+		/// {
+		///   "__pk": "siddiqsoft.com",
+		///   "_attachments": "attachments/",
+		///   "_etag": "\"0c0124ff-0000-0400-0000-612ecb520000\"",
+		///   "_rid": "RP0wAM6H+R6g1FIAAAAADQ==",
+		///   "_self": "dbs/RP0wAA==/colls/RP0wAM6H+R4=/docs/RP0wAM6H+R6g1FIAAAAADQ==/",
+		///   "_ts": 1630456658,
+		///   "id": "azure-cosmos-restcl.16304566579088218",
+		///   "source": "basic_tests.exe",
+		///   "ttl": 360
+		/// }
+		/// ```
+		/// @remarks
+		/// We do not modify or abstract the contents.
 		CosmosResponseType
 		find(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
 		{
