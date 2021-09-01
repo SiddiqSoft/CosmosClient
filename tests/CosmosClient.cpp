@@ -203,7 +203,7 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
 	std::string priConnStr = "AccountEndpoint=https://localhost:4043/"
 	                         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_PRIMARY_CS");
 
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
