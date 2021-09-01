@@ -164,7 +164,7 @@ TEST(CosmosClient, configure_1)
 }
 
 
-TEST(CosmosClient, discoverRegion)
+TEST(CosmosClient, discoverRegions)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
 	// WARNING!
@@ -177,8 +177,9 @@ TEST(CosmosClient, discoverRegion)
 
 	siddiqsoft::CosmosClient cc;
 
-	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
+	// The configure calls the method discoverRegions
+	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+	
 	nlohmann::json info = cc;
 	EXPECT_TRUE(info.contains("serviceSettings"));
 	EXPECT_TRUE(info.contains("database"));
@@ -195,42 +196,39 @@ TEST(CosmosClient, discoverRegion)
 }
 
 
-TEST(CosmosClient, discoverRegion_BadPrimary)
+TEST(CosmosClient, discoverRegions_BadPrimary)
 {
 	// These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
 	// WARNING!
 	// DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
 	std::string priConnStr = "AccountEndpoint=https://localhost:4043/"
 	                         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-	std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+	std::string secConnStr = std::getenv("CCTEST_PRIMARY_CS");
 
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
 	siddiqsoft::CosmosClient cc;
 
-	EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-	nlohmann::json info = cc;
-	EXPECT_TRUE(info.contains("serviceSettings"));
-	EXPECT_TRUE(info.contains("database"));
-	EXPECT_TRUE(info.contains("configuration"));
-	EXPECT_EQ(3, info.size());
+	std::cerr << "Configuration: " << cc.configuration().dump(2) << std::endl;
 
+	// First attempt should fail.
 	auto [rc, resp] = cc.discoverRegions();
-	// Expect failure.
-	std::cerr << "1/3....rc:" << rc << " Expect failure: " << resp.dump() << std::endl;
+	std::cerr << "1/3....rc:" << rc << " Expect failure." << std::endl;
 	EXPECT_NE(200, rc) << resp.dump(3);
 
+	// Try again.. we should succeed.
 	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
 	std::tie(rc, resp) = cc.discoverRegions();
-	std::cerr << "2/3....rc:" << rc << " Expect success: " << resp.dump() << std::endl;
+	std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
 	EXPECT_EQ(200, rc) << resp.dump(3);
 
-	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
 	// Try again.. we should fail again!
+	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
 	std::tie(rc, resp) = cc.discoverRegions();
-	std::cerr << "3/3....rc:" << rc << " Expect failure: " << resp.dump() << std::endl;
+	std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
 	EXPECT_NE(200, rc) << resp.dump(3);
 }
 

@@ -10,6 +10,8 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 ![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)
 <!-- end badges -->
 
+<img src="docs/work-in-progress.jpeg" width="10%" align="right" />
+
 # Motivation
 
 There is a need for a light-weight Azure Cosmos client that is crafted for C++ instead of "C" wrapper.
@@ -55,7 +57,7 @@ You can start saving your documents in Cosmos with just 3 lines of code!
 - Configure with json via `configure`
 - Make call to `create`
 
-[_Auto-generated Doxygen documentation_](docs/html/index.html)
+[API](https://siddiqsoft.github.io/CosmosClient/)
 
 ## Sample
 

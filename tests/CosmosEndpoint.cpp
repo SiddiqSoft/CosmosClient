@@ -64,7 +64,7 @@ TEST(CosmosEndpoint, test1_n)
 	EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
 
 	auto info = nlohmann::json(cs);
-	EXPECT_EQ(7, info.size());
+	EXPECT_EQ(6, info.size());
 	std::cerr << "json............" << info.dump(3) << std::endl;
 }
 
