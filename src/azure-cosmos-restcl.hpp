@@ -226,10 +226,11 @@ namespace siddiqsoft
 
 		/// @brief Serializer for the internal CurrentConnectionIdType
 		NLOHMANN_JSON_SERIALIZE_ENUM(CurrentConnectionIdType,
-		                             {{PrimaryConnection, "PrimaryConnection"}, {SecondaryConnection, "SecondaryConnection"}});
+		                             {{CurrentConnectionIdType::PrimaryConnection, "PrimaryConnection"},
+		                              {CurrentConnectionIdType::SecondaryConnection, "SecondaryConnection"}});
 
 		/// @brief Current Connection: 0=Not Set 1=Primary 2=Secondary
-		CurrentConnectionIdType CurrentConnectionId {PrimaryConnection};
+		CurrentConnectionIdType CurrentConnectionId {CurrentConnectionIdType::PrimaryConnection};
 
 		/// @brief The Primary connection string from the Azure Portal
 		CosmosEndpoint Primary {};
