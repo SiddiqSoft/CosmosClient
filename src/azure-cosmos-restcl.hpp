@@ -126,7 +126,7 @@ namespace siddiqsoft
 
 
 		/// @brief Checks if the BaseUri and the EncodedKey is non-empty
-		operator bool()
+		operator bool() const
 		{
 			return !BaseUri.empty() && !EncodedKey.empty();
 		}
@@ -259,12 +259,18 @@ namespace siddiqsoft
 			if (current()) {
 				if (config.contains("readableLocations")) {
 					for (auto& item : config.at("readableLocations")) {
-						current().ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
+						if (CurrentConnectionId == 2)
+							Secondary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
+						else
+							Primary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
 				if (config.contains("writableLocations")) {
 					for (auto& item : config.at("writableLocations")) {
-						current().WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
+						if (CurrentConnectionId == 2)
+							Secondary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
+						else
+							Primary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					}
 				}
 			}
@@ -277,10 +283,10 @@ namespace siddiqsoft
 		/// @brief Get the current active connection string
 		/// @return Cosmos connection string
 		/// @return Reference to the current active Connection Primary/Secondary
-		CosmosEndpoint& current()
+		const CosmosEndpoint& current() const
 		{
 			// If the Secondary is selected and non-empty then return Secondary otherwise return Primary.
-			if (CurrentConnectionId == 2 && !Secondary.Key.empty()) {
+			if (CurrentConnectionId == 2 && !Secondary.EncodedKey.empty()) {
 				return std::ref(Secondary);
 			}
 
@@ -300,7 +306,7 @@ namespace siddiqsoft
 			// This will "rotate" between Primary and Secondary.
 			CurrentConnectionId = CurrentConnectionId > 2 ? 1 : CurrentConnectionId;
 			// If the Secondary is empty, then reset back to primary
-			if (Secondary.Key.empty()) CurrentConnectionId = 1;
+			if (CurrentConnectionId == 2 && Secondary.EncodedKey.empty()) CurrentConnectionId = 1;
 
 			return *this;
 		}
@@ -493,7 +499,7 @@ namespace siddiqsoft
 		/// @remarks The call returns 100 items and you must invoke the method again with the continuation token to fetch the next
 		/// 100 items. It is not wise to use this method as it is expensive. Use the [find](find) method or the more flexible
 		/// [query] method.
-		/// 
+		///
 		/// *Sample logic for continuation*
 		/// ```cpp
 		/// std::string cToken {};
