@@ -73,7 +73,7 @@ TEST(CosmosConnection, test2_n)
 
 	nlohmann::json               info = cd;
 	EXPECT_EQ(4, info.size());
-	std::cerr << "json............" << info.dump(3) << std::endl;
+	std::cerr << "json............" << info.dump() << std::endl;
 	std::cerr << "operator<<......" << cd << std::endl;
 	std::cerr << "std:format......" << std::format("{}", cd) << std::endl;
 }
@@ -89,31 +89,31 @@ TEST(CosmosConnection, rotateConnection_1)
 	siddiqsoft::CosmosConnection cd {pcs, scs};
 
 	// We must start at Primary
-	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Swap to the secondary..
 	cd.rotate();
-	std::cerr << "1. Should be Secondary." << cd.current() << std::endl;
+	//std::cerr << "1. Should be Secondary." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(scs, cd.current().string());
 
 	// Swap again.. which should end up at Primary
 	cd.rotate();
-	std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Force set at 2
 	cd.rotate(2);
-	std::cerr << "3. Should be Secondary." << cd.current() << std::endl;
+	//std::cerr << "3. Should be Secondary." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(scs, cd.current().string());
 
 	// Force set at 1
 	cd.rotate(1);
-	std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 }
@@ -127,31 +127,31 @@ TEST(CosmosConnection, rotateConnection_2)
 	siddiqsoft::CosmosConnection cd {pcs};
 
 	// We must start at Primary
-	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Swap to the secondary..
 	cd.rotate();
-	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Swap again.. which should end up at Primary
 	cd.rotate();
-	std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Force set at 2
 	cd.rotate(2);
-	std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Force set at 1
 	cd.rotate(1);
-	std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
+	//std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
 	EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 }

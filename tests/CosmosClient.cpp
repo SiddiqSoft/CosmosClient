@@ -215,19 +215,19 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 
 	// First attempt should fail.
 	auto [rc, resp] = cc.discoverRegions();
-	std::cerr << "1/3....rc:" << rc << " Expect failure." << std::endl;
+	//std::cerr << "1/3....rc:" << rc << " Expect failure." << std::endl;
 	EXPECT_NE(200, rc) << resp.dump(3);
 
 	// Try again.. we should succeed.
 	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
-	std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
+	//std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
 	EXPECT_EQ(200, rc) << resp.dump(3);
 
 	// Try again.. we should fail again!
 	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
-	std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
+	//std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
 	EXPECT_NE(200, rc) << resp.dump(3);
 }
 
@@ -315,14 +315,14 @@ TEST(CosmosClient, listDocuments)
 		totalDocs += respDocuments.value<uint32_t>("_count", 0);
 		EXPECT_EQ(100, respDocuments.value("_count", 0));
 		EXPECT_FALSE(cToken.empty());
-		std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
-		          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
+		//std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
+		//          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
 
 		// If we run out of the iterations the break out of the loop.
 		if (--iteration == 0) break;
 	} while (!cToken.empty());
 
-	std::cerr << "Total Documents found: " << totalDocs << std::endl;
+	//std::cerr << "Total Documents found: " << totalDocs << std::endl;
 }
 
 
@@ -359,8 +359,8 @@ TEST(CosmosClient, listDocuments_top100)
 	totalDocs += respDocuments.value<uint32_t>("_count", 0);
 	EXPECT_EQ(100, respDocuments.value("_count", 0));
 	EXPECT_FALSE(cToken.empty());
-	std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
-	          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
+	//std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
+	//          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
 }
 
 
@@ -635,7 +635,7 @@ TEST(CosmosClient, queryDocument)
 		                          {"odd", !(i % 2 == 0)},
 		                          {"source", sourceId}});
 		EXPECT_EQ(201, rc);
-		std::cerr << "**** Created: " << docIds[i] << "--" << sourceId << std::endl;
+		//std::cerr << "**** Created: " << docIds[i] << "--" << sourceId << std::endl;
 	}
 
 	EXPECT_EQ(DOCS, docIds.size()); // total
@@ -656,7 +656,7 @@ TEST(CosmosClient, queryDocument)
 	auto matchCount = 0;
 	for (auto& doc : qDoc1["Documents"]) {
 		auto& docId = doc.at("id");
-		std::cerr << "Matched " << 1 + matchCount << " from query docId:" << doc.value("id", "") << std::endl;
+		//std::cerr << "Matched " << 1 + matchCount << " from query docId:" << doc.value("id", "") << std::endl;
 		std::for_each(docIds.begin(), docIds.end(), [&matchCount, &docId](auto& i) {
 			if (i == docId) matchCount++;
 		});
