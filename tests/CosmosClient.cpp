@@ -219,21 +219,19 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 
 	auto [rc, resp] = cc.discoverRegions();
 	// Expect failure.
-	EXPECT_NE(200, rc);
-	std::cerr << "1/3....Expect failure: " << nlohmann::json(cc).dump() << std::endl;
+	std::cerr << "1/3....rc:" << rc << " Expect failure: " << resp.dump() << std::endl;
+	EXPECT_NE(200, rc) << resp.dump(3);
 
-	cc.Cnxn.rotate();
+	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
 	std::tie(rc, resp) = cc.discoverRegions();
-	// Expect success.
-	EXPECT_EQ(200, rc);
-	std::cerr << "2/3....Expect success: " << nlohmann::json(cc).dump() << std::endl;
+	std::cerr << "2/3....rc:" << rc << " Expect success: " << resp.dump() << std::endl;
+	EXPECT_EQ(200, rc) << resp.dump(3);
 
-	// Rotate..
-	cc.Cnxn.rotate();
+	std::cerr << "......................rotated: " << cc.Cnxn.rotate() << std::endl;
 	// Try again.. we should fail again!
 	std::tie(rc, resp) = cc.discoverRegions();
-	EXPECT_NE(200, rc);
-	std::cerr << "3/3....Expect failure: " << nlohmann::json(cc).dump() << std::endl;
+	std::cerr << "3/3....rc:" << rc << " Expect failure: " << resp.dump() << std::endl;
+	EXPECT_NE(200, rc) << resp.dump(3);
 }
 
 
