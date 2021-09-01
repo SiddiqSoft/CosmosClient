@@ -1,5 +1,7 @@
-CosmosClient : Azure Cosmos REST-API Client for Modern C++
--------------------------------------------
+@mainpage CosmosClient : Azure Cosmos REST-API Client for Modern C++
+@copyright &copy;2021 Siddiq Software LLC.
+@author siddiqsoft
+@version 0.1.0
 
 <!-- badges -->
 [![CodeQL](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml)
@@ -10,11 +12,9 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 ![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)
 <!-- end badges -->
 
-# Motivation
+@tableofcontents
 
-There is a need for a light-weight Azure Cosmos client that is crafted for C++ instead of "C" wrapper.
-
-## Features
+# Features
 - C++20 Azure Cosmos REST API client.
   - Be instructive *and* functional.
   - Low-overhead--just not optimized.
@@ -34,28 +34,93 @@ There is a need for a light-weight Azure Cosmos client that is crafted for C++ i
     - Again, we wrap a modern C++ sugar coat on the Win32 WinHTTP library. Nothing overly heavy or force you to use std::wstring or invent yet-another-string!
 - Simplicity and ease of use--focus on your problem set and let the libraries evolve.
 
-## Development Style
+# API
 
-- Continuous improvement
-  - During early stages, development is going to be private until a first release candidate source.
-  - We break ABI often.
-- Focus on end-use and ease-of-use over performance
-- Build what is needed and add features subject to the above criteria
+<table>
+<tr>
+<th align=left colspan=2>siddiqsoft::CosmosClient</th>
+</tr>
+<tr><th>Function</th><th>Description</th></tr>
 
-## Requirements
-- While the code is pretty much C++20 the IO uses WinHTTP underneath. This 
-- The build and tests are for Visual Studio 2019 under x64 using googletest.
-- We switched to googletest from VSTest for the insane reason that enabiling ASAN was not compatible with VSTest.
+<tr>
+<td>siddiqsoft::CosmosClient::configure</td>
+<td>Configure the client</td>
+</tr>
 
+<tr>
+<td>siddiqsoft::CosmosClient::configuration</td>
+<td>Returns the current configuration object</td>
+</tr>
 
-# API / Usage
+<tr>
+<td>siddiqsoft::CosmosClient::listDatabases</td>
+<td>Lists databases for the given Connection String</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::listCollections</td>
+<td>Lists collections for the given database</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::listDocuments</td>
+<td>Lists all documents within given collection</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::discoverRegions</td>
+<td>Fetch the service settings for the given connection string</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::create</td>
+<td>Synchronous. Create a json document in the collection</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::upsert</td>
+<td>Synchronous. Create a json document in the collection</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::update</td>
+<td>Synchronous. Create a json document in the collection</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::find</td>
+<td>Synchronous. Create a json document in the collection</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::query</td>
+<td>Synchronous. Create a json document in the collection</td>
+</tr>
+<tr><td>siddiqsoft::CosmosClient::remove</td>
+<td>Synchronous. Remove json document given doc id from the collection</td>
+</tr>
+</table>
+
+# Getting Started
+
+- Get yourself Visual Studio 2019 v16.11 (we require C++20) with C++ workload
+- Clone this repository
+- Open the solution CosmosClient.sln
+- The environment variables must be set a the system-level (VS may need to be restarted)
+- Builds in x64 mode.
 
 You can start saving your documents in Cosmos with just 3 lines of code!
-- Declare the instance
-- Configure with json via `configure`
-- Make call to `create`
+1. Declare the instance
+2. Configure with json via `configure`.
+3. Make call to `create`
 
-[_Auto-generated Doxygen documentation_](docs/html/index.html)
+## Configuration
+
+
+We use JSON object to configure the client.
+
+Field      | Type  | Description
+-----------|-------|-----------------
+`apiVersion` | string | Do not alter as this is "global". Fixed internally by the library `2018-12-31`.
+`connectionStrings` | array of strings | Each entry must be the Connection String entry for the Cosmos db obtained from the Azure Cosmos Portal.<br/>WARNING: Only the first two elements are suppported.<br/>0 - Primary Connection String<br/>1 - Secondary Connection String
+`partitionKeyNames` | array of strings | Each entry is the element within your document corresponding to your configured partitionkey in the Azure Cosmos Portal.
+
+```json
+{
+    "apiVersion": "2018-12-31",
+    "connectionStrings": [],
+    "partitionKeyNames": []
+}
+```
+
+> When you invoke `cosmosClient.configure( myConfig );` the contents of your `myConfig` json object are merged/replace the defaults. 
+As a user, you need only provide: `connectionStrings` and the `partitionKeyName`.
+
+![](Connection-Strings-Azure-Portal.png)
 
 ## Sample
 
@@ -103,14 +168,14 @@ void example1(const std::string& p, const std::string& s)
 }
 ```
 
-# Roadmap
+## Testing Notes
 
-0. Documentation
-1. Async operations
-2. Support C++20 modules
-3. Co-routines
-4. OpenSSL for non-Windows platforms (current implementation is Windows only)
+@see The files `CosmosClient.cpp`, `CosmosConnection.cpp` and `CosmosEndpoint.cpp` contain the googletest files.
 
-<p align="right">
-&copy; 2021 Siddiq Software LLC. All rights reserved.
-</p>
+Testing requires that we declare the following environment variables (either from your local terminal or during the CI step.)
+
+Environment Variable      | Purpose
+--------------------------|:----------------
+`CCTEST_PRIMARY_CS`   | The Primary Account Connection String from the Azure Portal for Cosmos.
+`CCTEST_SECONDARY_CS` | The Secondary Account Connection String from the Azure Portal for Cosmos.
+

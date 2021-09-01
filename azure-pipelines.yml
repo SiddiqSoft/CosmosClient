@@ -55,12 +55,17 @@ steps:
     maximumCpuCount: true
     msbuildArchitecture: 'x64'
 
-- task: CmdLine@2
+- task: PowerShell@2
   inputs:
+    targetType: 'inline'
     script: |
-      echo Running googletest
+      Write-Host "Run GoogleTest: basic_tests.exe..."
       cd output\Release
-      basic_tests.exe --gtest_output=xml:..\..\TestResults\
+      dir .
+      .\basic_tests.exe --gtest_output=xml:..\..\TestResults\
+  env:
+    CCTEST_PRIMARY_CS: $(CCTEST_PRIMARY_CS)
+    CCTEST_SECONDARY_CS: $(CCTEST_SECONDARY_CS)
 
 - task: PublishTestResults@2
   displayName: 'Publish Release Test Results **/TEST-*.xml'
@@ -79,7 +84,6 @@ steps:
     packagesToPack: 'nuget/*.nuspec'
     versioningScheme: 'off'
     buildProperties: 'VERSION=$(build.buildNumber)'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
 
 - task: NuGetCommand@2
   displayName: 'NuGet push'
@@ -88,4 +92,19 @@ steps:
     packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg;build/*.nupkg;!build/*symbols.nupkg'
     nuGetFeedType: 'external'
     publishFeedCredentials: 'sqs-nuget'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+
+- task: GitHubRelease@1
+  inputs:
+    gitHubConnection: 'github-packages-sqs'
+    repositoryName: 'SiddiqSoft/CosmosClient'
+    action: 'create'
+    target: '$(Build.SourceVersion)'
+    tagSource: 'userSpecifiedTag'
+    tag: '$(build.buildNumber)'
+    title: 'v$(build.buildNumber)'
+    releaseNotesSource: 'inline'
+    isPreRelease: true
+    changeLogCompareToRelease: 'lastFullRelease'
+    changeLogType: 'commitBased'
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
