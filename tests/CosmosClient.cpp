@@ -220,17 +220,20 @@ TEST(CosmosClient, discoverRegion_BadPrimary)
 	auto [rc, resp] = cc.discoverRegions();
 	// Expect failure.
 	EXPECT_NE(200, rc);
+	std::cerr << "1/3....Expect failure: " << nlohmann::json(cc).dump() << std::endl;
 
 	cc.Cnxn.rotate();
 	std::tie(rc, resp) = cc.discoverRegions();
 	// Expect success.
 	EXPECT_EQ(200, rc);
+	std::cerr << "2/3....Expect success: " << nlohmann::json(cc).dump() << std::endl;
 
 	// Rotate..
 	cc.Cnxn.rotate();
 	// Try again.. we should fail again!
 	std::tie(rc, resp) = cc.discoverRegions();
 	EXPECT_NE(200, rc);
+	std::cerr << "3/3....Expect failure: " << nlohmann::json(cc).dump() << std::endl;
 }
 
 
