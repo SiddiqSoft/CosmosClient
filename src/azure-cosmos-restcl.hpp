@@ -256,22 +256,20 @@ namespace siddiqsoft
 
 			// If we have readLocations then load them up for the current connection
 			// If we "switch" we will repopulate the Primary or Secondary as current
-			if (current()) {
-				if (config.contains("readableLocations")) {
-					for (auto& item : config.at("readableLocations")) {
-						if (CurrentConnectionId == 2)
-							Secondary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
-						else
-							Primary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
-					}
+			if (config.contains("readableLocations")) {
+				for (auto& item : config.at("readableLocations")) {
+					if (CurrentConnectionId == 2)
+						Secondary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
+					else
+						Primary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 				}
-				if (config.contains("writableLocations")) {
-					for (auto& item : config.at("writableLocations")) {
-						if (CurrentConnectionId == 2)
-							Secondary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
-						else
-							Primary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
-					}
+			}
+			if (config.contains("writableLocations")) {
+				for (auto& item : config.at("writableLocations")) {
+					if (CurrentConnectionId == 2)
+						Secondary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
+					else
+						Primary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 				}
 			}
 
