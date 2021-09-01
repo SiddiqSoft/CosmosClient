@@ -528,14 +528,12 @@ namespace siddiqsoft
 		}
 
 
-		/// @brief
-		/// opCreate an entity in documentdb using the doc nlohmann::json object as the payload.
-		/// See example
-		/// https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
-		/// @param dbName
-		/// @param collName
-		/// @param doc
-		/// @return
+		/// @brief Create an entity in documentdb using the json object as the payload.
+		/// @param dbName Database name
+		/// @param collName Collection name
+		/// @param doc The document must include the `id` and the partition key.
+		/// @return status code and the created document as returned by Cosmos
+		/// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
 		CosmosResponseType create(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
 		{
 			if (doc.value("id", "").empty()) throw std::invalid_argument("remove - I need the uniqueid of the document");
@@ -566,10 +564,12 @@ namespace siddiqsoft
 
 
 		/// @brief Insert or Update existing document for the given id
-		/// @param dbName
-		/// @param collName
-		/// @param doc
-		/// @return
+		/// @param dbName Database name
+		/// @param collName Collection name
+		/// @param doc The document must include the `id` and the partition key.
+		/// @return status code and the created document as returned by Cosmos
+		/// The status code is `201` when the document has been created
+		/// The status code `200` represents a document that has been updated.
 		CosmosResponseType upsert(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
 		{
 			if (doc.value("id", "").empty()) throw std::invalid_argument("remove - I need the uniqueid of the document");
@@ -599,7 +599,12 @@ namespace siddiqsoft
 			return std::move(ret);
 		}
 
-
+		/// @brief Update existing document
+		/// @param dbName Database name
+		/// @param collName Collection name
+		/// @param docId Unique document id
+		/// @param pkId Partition key
+		/// @return Status code and Json document for the docId
 		CosmosResponseType
 		update(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
 		{
