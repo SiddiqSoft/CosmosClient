@@ -278,19 +278,15 @@ namespace siddiqsoft
 			return *this;
 		}
 
+
 		/// @brief Get the current active connection string
 		/// @return Cosmos connection string
 		/// @return Reference to the current active Connection Primary/Secondary
 		const CosmosEndpoint& current() const
 		{
-			// If the Secondary is selected and non-empty then return Secondary otherwise return Primary.
-			if (CurrentConnectionId == 2 && !Secondary.EncodedKey.empty()) {
-				return std::ref(Secondary);
-			}
-
-			// The secondary is empty; force back to primary!
-			return std::ref(Primary);
+			return (CurrentConnectionId == 2) ? std::ref(Secondary) : std::ref(Primary);
 		}
+
 
 		/// @brief Swaps the current connection by incrementing the current and if we hit past Secondary, we restart at Primary.
 		/// @param c Maybe 0=Swap 1=Use Primary 2=Use Secondary
@@ -300,11 +296,14 @@ namespace siddiqsoft
 			// If c==0 then we increment
 			// otherwise accept the given parameter
 			CurrentConnectionId = (c == 0) ? ++CurrentConnectionId : c;
+			std::cerr << "rotate_a: c:" << c << " CurrentConnectionId:" << CurrentConnectionId << std::endl;
 			// If CurrentConnectionId exceeds "2" then we roll back to "1".
 			// This will "rotate" between Primary and Secondary.
 			CurrentConnectionId = CurrentConnectionId > 2 ? 1 : CurrentConnectionId;
+			std::cerr << "rotate_b: c:" << c << " CurrentConnectionId:" << CurrentConnectionId << std::endl;
 			// If the Secondary is empty, then reset back to primary
 			if (CurrentConnectionId == 2 && Secondary.EncodedKey.empty()) CurrentConnectionId = 1;
+			std::cerr << "rotate_c: c:" << c << " CurrentConnectionId:" << CurrentConnectionId << std::endl;
 
 			return *this;
 		}
