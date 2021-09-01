@@ -219,11 +219,23 @@ namespace siddiqsoft
 #pragma region CosmosConnection
 	using CosmosResponseType = std::tuple<uint32_t, nlohmann::json>;
 
+
 	/// @brief Represents the Cosmos Cnxn
 	struct CosmosConnection
 	{
+		/// @brief CurrentConnectionIdType
+		enum CurrentConnectionIdType : uint16_t
+		{
+			PrimaryConnection   = 1,
+			SecondaryConnection = 2
+		};
+
+		/// @brief Serializer for the internal CurrentConnectionIdType
+		NLOHMANN_JSON_SERIALIZE_ENUM(CurrentConnectionIdType,
+		                             {{PrimaryConnection, "PrimaryConnection"}, {SecondaryConnection, "SecondaryConnection"}});
+
 		/// @brief Current Connection: 0=Not Set 1=Primary 2=Secondary
-		uint16_t CurrentConnectionId {0};
+		CurrentConnectionIdType CurrentConnectionId {PrimaryConnection};
 
 		/// @brief The Primary connection string from the Azure Portal
 		CosmosEndpoint Primary {};
@@ -245,6 +257,7 @@ namespace siddiqsoft
 		/// @brief Configure the Primary and Secondary. Also resets the current connection to the "Primary"
 		/// @param config JSON object with the following elements: `connectionStrings` array and `partitionKeyNames` array
 		/// @return Self
+		/// @remarks Resets the CurrentConnectionId to the Primary(1).
 		CosmosConnection& configure(const nlohmann::json& config)
 		{
 			if (config.contains("connectionStrings") && config.at("connectionStrings").is_array()) {
@@ -255,26 +268,25 @@ namespace siddiqsoft
 			}
 
 			// If we have readLocations then load them up for the current connection
-			// If we "switch" we will repopulate the Primary or Secondary as current
 			if (config.contains("readableLocations")) {
 				for (auto& item : config.at("readableLocations")) {
-					if (CurrentConnectionId == 2)
+					if (CurrentConnectionId == SecondaryConnection)
 						Secondary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					else
 						Primary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 				}
 			}
+
+			// If we have writeLocations then load them up for the current connection
 			if (config.contains("writableLocations")) {
 				for (auto& item : config.at("writableLocations")) {
-					if (CurrentConnectionId == 2)
+					if (CurrentConnectionId == SecondaryConnection)
 						Secondary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					else
 						Primary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 				}
 			}
 
-			// Reset at the "top"; start with Primary
-			rotate(1);
 			return *this;
 		}
 
@@ -284,7 +296,7 @@ namespace siddiqsoft
 		/// @return Reference to the current active Connection Primary/Secondary
 		const CosmosEndpoint& current() const
 		{
-			return (CurrentConnectionId == 2) ? std::ref(Secondary) : std::ref(Primary);
+			return (CurrentConnectionId == SecondaryConnection) ? std::ref(Secondary) : std::ref(Primary);
 		}
 
 
@@ -293,17 +305,24 @@ namespace siddiqsoft
 		/// @return Self
 		CosmosConnection& rotate(const uint16_t c = 0)
 		{
-			// If c==0 then we increment
-			// otherwise accept the given parameter
-			CurrentConnectionId = (c == 0) ? ++CurrentConnectionId : c;
-			std::cerr << "rotate_a: c:" << c << " CurrentConnectionId:" << CurrentConnectionId << std::endl;
-			// If CurrentConnectionId exceeds "2" then we roll back to "1".
-			// This will "rotate" between Primary and Secondary.
-			CurrentConnectionId = CurrentConnectionId > 2 ? 1 : CurrentConnectionId;
-			std::cerr << "rotate_b: c:" << c << " CurrentConnectionId:" << CurrentConnectionId << std::endl;
-			// If the Secondary is empty, then reset back to primary
-			if (CurrentConnectionId == 2 && Secondary.EncodedKey.empty()) CurrentConnectionId = 1;
-			std::cerr << "rotate_c: c:" << c << " CurrentConnectionId:" << CurrentConnectionId << std::endl;
+			if (c == 0) {
+				// Swap between Primary and Secondary
+				if (CurrentConnectionId == PrimaryConnection)
+					CurrentConnectionId = SecondaryConnection;
+				else if (CurrentConnectionId == SecondaryConnection)
+					CurrentConnectionId = PrimaryConnection;
+			}
+			else if (c == 1) {
+				CurrentConnectionId = PrimaryConnection;
+			}
+			else if (c == 2) {
+				CurrentConnectionId = SecondaryConnection;
+			}
+
+			// If Secondary is empty; limit to Primary
+			if ((CurrentConnectionId == SecondaryConnection) && Secondary.EncodedKey.empty()) {
+				CurrentConnectionId = PrimaryConnection;
+			}
 
 			return *this;
 		}
@@ -326,14 +345,12 @@ namespace siddiqsoft
 
 	/// @brief Cosmos Client
 	/// Implements a stateful Cosmos Client using Cosmos SQL-API via REST
+	///
 	/// Uses the REST API and SQL API model.
 	/// https://docs.microsoft.com/en-us/rest/api/cosmos-db/common-tasks-using-the-cosmosdb-rest-api
 	///
-	/// Samples are here
-	///	https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started
-	/// Documentation is here
-	/// https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
-	///
+	/// @see Samples are here: https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started
+	/// @see Documentation is here: https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
 	class CosmosClient
 	{
 #if defined(COSMOSCLIENT_TESTING_MODE)

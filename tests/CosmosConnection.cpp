@@ -105,19 +105,19 @@ TEST(CosmosConnection, rotateConnection_1)
 	// Swap again.. which should end up at Primary
 	cd.rotate();
 	std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
-	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(siddiqsoft::CosmosConnection::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 
 	// Force set at 2
 	cd.rotate(2);
 	std::cerr << "3. Should be Secondary." << cd.current() << std::endl;
-	EXPECT_EQ(2, cd.CurrentConnectionId);
+	EXPECT_EQ(siddiqsoft::CosmosConnection::SecondaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(scs, cd.current().string());
 
 	// Force set at 1
 	cd.rotate(1);
 	std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
-	EXPECT_EQ(1, cd.CurrentConnectionId);
+	EXPECT_EQ(siddiqsoft::CosmosConnection::PrimaryConnection, cd.CurrentConnectionId);
 	EXPECT_EQ(pcs, cd.current().string());
 }
 
