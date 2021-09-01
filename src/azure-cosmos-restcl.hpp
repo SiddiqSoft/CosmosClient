@@ -69,9 +69,6 @@ namespace siddiqsoft
 		/// @brief The "binary" key decoded from the EncodedKey stored as std::string
 		std::string Key {};
 
-		/// @brief The Name
-		std::basic_string<char> Name {};
-
 		/// @brief Read Locations for the region
 		std::vector<std::basic_string<char>> ReadableUris {};
 
@@ -116,8 +113,6 @@ namespace siddiqsoft
 					if (EncodedKey.ends_with(";")) EncodedKey.resize(EncodedKey.length() - 1);
 					// Store the decoded key (only for std::string)
 					Key = Base64Utils::decode(EncodedKey);
-					// Extract the DBName (skip over the https:// which is 8 chars.
-					if (!BaseUri.empty()) Name = BaseUri.substr(8, BaseUri.find(".") - 8);
 				}
 			}
 
@@ -211,7 +206,6 @@ namespace siddiqsoft
 		dest["writeUris"]         = src.WritableUris;
 		dest["currentWriteUriId"] = src.CurrentWriteUriId;
 		dest["key"]               = src.EncodedKey;
-		dest["name"]              = src.Name;
 	}
 #pragma endregion
 
@@ -224,7 +218,7 @@ namespace siddiqsoft
 	struct CosmosConnection
 	{
 		/// @brief CurrentConnectionIdType
-		enum CurrentConnectionIdType : uint16_t
+		enum class CurrentConnectionIdType : uint16_t
 		{
 			PrimaryConnection   = 1,
 			SecondaryConnection = 2
@@ -270,7 +264,7 @@ namespace siddiqsoft
 			// If we have readLocations then load them up for the current connection
 			if (config.contains("readableLocations")) {
 				for (auto& item : config.at("readableLocations")) {
-					if (CurrentConnectionId == SecondaryConnection)
+					if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
 						Secondary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					else
 						Primary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
@@ -280,7 +274,7 @@ namespace siddiqsoft
 			// If we have writeLocations then load them up for the current connection
 			if (config.contains("writableLocations")) {
 				for (auto& item : config.at("writableLocations")) {
-					if (CurrentConnectionId == SecondaryConnection)
+					if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
 						Secondary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
 					else
 						Primary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
@@ -296,7 +290,7 @@ namespace siddiqsoft
 		/// @return Reference to the current active Connection Primary/Secondary
 		const CosmosEndpoint& current() const
 		{
-			return (CurrentConnectionId == SecondaryConnection) ? std::ref(Secondary) : std::ref(Primary);
+			return (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) ? std::ref(Secondary) : std::ref(Primary);
 		}
 
 
@@ -307,21 +301,28 @@ namespace siddiqsoft
 		{
 			if (c == 0) {
 				// Swap between Primary and Secondary
-				if (CurrentConnectionId == PrimaryConnection)
-					CurrentConnectionId = SecondaryConnection;
-				else if (CurrentConnectionId == SecondaryConnection)
-					CurrentConnectionId = PrimaryConnection;
+				if (CurrentConnectionId == CurrentConnectionIdType::PrimaryConnection) {
+					std::cerr << "rotate: Previous Primary; now Secondary.." << std::endl;
+					CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
+				}
+				else if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) {
+					std::cerr << "rotate: Previous Secondary; now Primary.." << std::endl;
+					CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
+				}
 			}
 			else if (c == 1) {
-				CurrentConnectionId = PrimaryConnection;
+				std::cerr << "rotate: Try reset Primary.." << std::endl;
+				CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
 			}
 			else if (c == 2) {
-				CurrentConnectionId = SecondaryConnection;
+				std::cerr << "rotate: Try reset Secondary.." << std::endl;
+				CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
 			}
 
 			// If Secondary is empty; limit to Primary
-			if ((CurrentConnectionId == SecondaryConnection) && Secondary.EncodedKey.empty()) {
-				CurrentConnectionId = PrimaryConnection;
+			if ((CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty()) {
+				std::cerr << "rotate: Secondary empty; reset to Primary" << std::endl;
+				CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
 			}
 
 			return *this;
