@@ -211,9 +211,6 @@ namespace siddiqsoft
 
 
 #pragma region CosmosConnection
-	using CosmosResponseType = std::tuple<uint32_t, nlohmann::json>;
-
-
 	/// @brief Represents the Cosmos Cnxn
 	struct CosmosConnection
 	{
@@ -302,29 +299,22 @@ namespace siddiqsoft
 		{
 			if (c == 0) {
 				// Swap between Primary and Secondary
-				if (CurrentConnectionId == CurrentConnectionIdType::PrimaryConnection) {
-					std::cerr << "rotate: Previous Primary; now Secondary.." << std::endl;
+				if (CurrentConnectionId == CurrentConnectionIdType::PrimaryConnection)
 					CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
-				}
-				else if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) {
-					std::cerr << "rotate: Previous Secondary; now Primary.." << std::endl;
+
+				else if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
 					CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
-				}
 			}
 			else if (c == 1) {
-				std::cerr << "rotate: Try reset Primary.." << std::endl;
 				CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
 			}
 			else if (c == 2) {
-				std::cerr << "rotate: Try reset Secondary.." << std::endl;
 				CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
 			}
 
 			// If Secondary is empty; limit to Primary
-			if ((CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty()) {
-				std::cerr << "rotate: Secondary empty; reset to Primary" << std::endl;
+			if ((CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty())
 				CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
-			}
 
 			return *this;
 		}
@@ -344,6 +334,63 @@ namespace siddiqsoft
 
 
 #pragma region CosmosClient
+	/// @brief The CosmosResponseType contains status code and the json content returned by the server.
+	/// - `uint32_t` - Status Code from the server
+	/// - `nlohmann::json` - Json contents from the server
+	struct CosmosResponseType
+	{
+		/// @brief Status Code from the server
+		uint32_t statusCode;
+
+		/// @brief Document from the server
+		nlohmann::json document;
+
+		/// @brief Serializer to/from json
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosResponseType, statusCode, document);
+	};
+
+
+	/// @brief The CosmosIterableResponseType inherits from the CosmosResponseType and includes the continuation token
+	/// - `std::string` - Continuation Token.
+	///
+	/// @remarks The functions `CosmosClient::find`, `CosmosClient::query` and `CosmosClient::listDocuments` use this return type
+	/// allowing the client to iterate through all of the entries.
+	///
+	/// *Sample logic for continuation*
+	/// ```cpp
+	/// siddiqsoft::CosmosIterableResponseType irt {};
+	/// // This is your destination container; note that the first element is null in this example
+	/// nlohmann::json                         allDocs = nlohmann::json::array();
+	/// // This is the running count of the total
+	/// uint32_t                               allDocsCount {};
+	/// // First, we query for all items that match our criteria (source=__func__)
+	/// do {
+	///     irt = cc.query(dbName,
+	///                    collectionName,
+	///                    "*",
+	///                    "SELECT * FROM c WHERE contains(c.source, @v1)",
+	///                    {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+	///                    irt.continuationToken);
+	///     if (200 == irt.statusCode &&
+	///         irt.document.contains("Documents") &&
+	///         !irt.document.at("Documents").is_null())
+	///     {
+	///         // Append to the current container
+	///         allDocs.insert(allDocs.end(),                     // dest
+	///                        irt.document["Documents"].begin(), // from
+	///                        irt.document["Documents"].end());
+	///         allDocsCount += irt.document.value("_count", 0);
+	///     }
+	/// } while (!irt.continuationToken.empty());
+	/// ```
+	struct CosmosIterableResponseType : CosmosResponseType
+	{
+		/// @brief Continuation token from the server
+		std::string continuationToken;
+
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosIterableResponseType, statusCode, document, continuationToken);
+	};
+
 
 	/// @brief Cosmos Client
 	/// Implements a stateful Cosmos Client using Cosmos SQL-API via REST
@@ -374,7 +421,7 @@ namespace siddiqsoft
 		/// @brief Used to signal first-time configuration
 		std::atomic_bool m_isConfigured {false};
 
-		/// @brief The REST client.
+		/// @brief The REST client is initialized with the user agent
 		WinHttpRESTClient RestClient {CosmosClientUserAgentString};
 
 		/// @brief The connection object stores the Primary, Secondary connection strings as well as the read/write locations for
@@ -459,7 +506,7 @@ namespace siddiqsoft
 			                [&ret](const auto& req, const auto& resp) {
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
-			return std::move(ret);
+			return ret;
 		}
 
 
@@ -482,7 +529,7 @@ namespace siddiqsoft
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
 
-			return std::move(ret);
+			return ret;
 		}
 
 		/// @brief List the collections for the given database
@@ -502,7 +549,7 @@ namespace siddiqsoft
 				                ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			                });
 
-			return std::move(ret);
+			return ret;
 		}
 
 		/// @brief List documents for the given database and collection
@@ -511,42 +558,61 @@ namespace siddiqsoft
 		/// @param [in,out] continuationToken Optional continuation token. This is used with the value `x-ms-continuation`. This
 		/// variable is updated with the value from `x-ms-continuation` header value. The client must check and invoke the method
 		/// repeatedly until this variable is empty. to page through the query response.
-		/// @return Array of Documents from Cosmos.
+		/// @return CosmosIterableResponseType contains the status code and if succesfull the contents and optionally the
+		/// continuation token.
 		/// @remarks The call returns 100 items and you must invoke the method again with the continuation token to fetch the next
 		/// 100 items. It is not wise to use this method as it is expensive. Use the [find](find) method or the more flexible
 		/// [query] method.
 		///
 		/// *Sample logic for continuation*
 		/// ```cpp
-		/// std::string cToken {};
-		/// nlohmann::json compilation;
-		/// do
-		/// {
-		///    auto [rc, docs] = cc.listDocuments(myDbName, myCollectionName, cToken);
-		///    totalDocs += docs.value<uint32_t>("_count", 0);
-		///	   compilation+= docs;
-		/// } while (!cToken.empty());
+		/// siddiqsoft::CosmosIterableResponseType irt {};
+		/// // This is your destination container; note that the first element is null in this example
+		/// nlohmann::json                         allDocs = nlohmann::json::array();
+		/// // This is the running count of the total
+		/// uint32_t                               allDocsCount {};
+		/// // First, we query for all items that match our criteria (source=__func__)
+		/// do {
+		///     irt = cc.query(dbName,
+		///                    collectionName,
+		///                    "*",
+		///                    "SELECT * FROM c WHERE contains(c.source, @v1)",
+		///                    {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+		///                    irt.continuationToken);
+		///     if (200 == irt.statusCode &&
+		///         irt.document.contains("Documents") &&
+		///         !irt.document.at("Documents").is_null())
+		///     {
+		///         // Append to the current container
+		///         allDocs.insert(allDocs.end(),                     // dest
+		///                        irt.document["Documents"].begin(), // from
+		///                        irt.document["Documents"].end());
+		///         allDocsCount += irt.document.value("_count", 0);
+		///     }
+		/// } while (!irt.continuationToken.empty());
 		/// ```
-		CosmosResponseType listDocuments(const std::string& dbName, const std::string& collName, std::string& continuationToken)
+		CosmosIterableResponseType
+		listDocuments(const std::string& dbName, const std::string& collName, const std::string& continuationToken)
 		{
-			CosmosResponseType ret {0xFA17, {}};
-			auto               ts   = DateUtils::RFC7231();
-			auto               path = std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentReadUri(), dbName, collName);
-			nlohmann::json     headers {
-                    {"Authorization",
-                     EncryptionUtils::CosmosToken<char>(
-                             Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
-                    {"x-ms-date", ts},
-                    {"x-ms-version", m_config["apiVersion"]}};
+			CosmosIterableResponseType ret {0xFA17, {}, {}};
+			auto                       ts = DateUtils::RFC7231();
+			auto           path = std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentReadUri(), dbName, collName);
+			nlohmann::json headers {
+			        {"Authorization",
+			         EncryptionUtils::CosmosToken<char>(
+			                 Cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+			        {"x-ms-date", ts},
+			        {"x-ms-version", m_config["apiVersion"]}};
 
 			if (!continuationToken.empty()) headers["x-ms-continuation"] = continuationToken;
 
 			RestClient.send(ReqGet(path, headers), [&ret, &continuationToken](const auto& req, const auto& resp) {
-				continuationToken = resp["headers"].value("x-ms-continuation", "");
-				ret               = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+				ret = {std::get<0>(resp.status()),
+				       resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+				       resp["headers"].value("x-ms-continuation", "")};
 			});
 
-			return std::move(ret);
+			return ret;
 		}
 
 
@@ -581,7 +647,7 @@ namespace siddiqsoft
 				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			        });
 
-			return std::move(ret);
+			return ret;
 		}
 
 
@@ -618,7 +684,7 @@ namespace siddiqsoft
 				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			        });
 
-			return std::move(ret);
+			return ret;
 		}
 
 		/// @brief Update existing document
@@ -653,7 +719,7 @@ namespace siddiqsoft
 				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			        });
 
-			return std::move(ret);
+			return ret;
 		}
 
 
@@ -665,11 +731,10 @@ namespace siddiqsoft
 		/// @param pkId The partition Id
 		/// @return Status code with empty json
 		/// @remarks The remove operation returns no data beyond the status code.
-		CosmosResponseType
-		remove(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
+		uint32_t remove(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
 		{
-			CosmosResponseType ret {0xFA17, {}};
-			auto               ts = DateUtils::RFC7231();
+			uint32_t ret {0xFA17};
+			auto     ts = DateUtils::RFC7231();
 
 			if (docId.empty()) throw std::invalid_argument("remove - I need the docId of the document");
 			if (pkId.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
@@ -687,11 +752,9 @@ namespace siddiqsoft
 			                 {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
 			                 {"x-ms-version", m_config["apiVersion"]},
 			                 {"x-ms-cosmos-allow-tentative-writes", "true"}}},
-			        [&ret](const auto& req, const auto& resp) {
-				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-			        });
+			        [&ret](const auto& req, const auto& resp) { ret = std::get<0>(resp.status()); });
 
-			return std::move(ret);
+			return ret;
 		}
 
 
@@ -708,12 +771,12 @@ namespace siddiqsoft
 		/// @param params Optional json array with name-value objects.
 		/// @param continuationToken Optional continuation token. This is used with the value `x-ms-continuation`
 		/// to page through the query response.
-		/// @return Combined json from the service
+		/// @return CosmosIterableResponseType @see CosmosIterableResponseType for details on the sample multi-query.
 		/// @see https://docs.microsoft.com/en-us/rest/api/cosmos-db/q
 		/// @see https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-query-getting-started
 		///
 		/// @remarks
-		/// The output/response is combined response of multiple requests to the query REST API
+		/// The response is paged so you will need to combine the results into
 		/// delivering to the user a single json with array of `Documents` object and `_count`.
 		///
 		/// *Output Sample*
@@ -736,22 +799,20 @@ namespace siddiqsoft
 		/// 	  ...
 		/// 	  ...
 		///    ],
-		///    "_count": 5
+		///    "_count": 2
 		/// }
 		/// ```
-		CosmosResponseType query(const std::string&    dbName,
-		                         const std::string&    collName,
-		                         const std::string&    pkId,
-		                         const std::string&    queryStatement,
-		                         const nlohmann::json& params            = {},
-		                         const std::string&    continuationToken = {})
+		CosmosIterableResponseType query(const std::string&    dbName,
+		                                 const std::string&    collName,
+		                                 const std::string&    pkId,
+		                                 const std::string&    queryStatement,
+		                                 const nlohmann::json& params            = {},
+		                                 const std::string&    continuationToken = {})
 		{
-			CosmosResponseType ret {0xFA17, {}};
-			auto               ts    = DateUtils::RFC7231();
-			auto               count = 0;
-			std::string        newContinuationToken {continuationToken};
-			nlohmann::json     combinedDocument;
-			nlohmann::json     headers {
+			CosmosIterableResponseType ret {0xFA17, {}, {}};
+			auto                       ts    = DateUtils::RFC7231();
+			auto                       count = 0;
+			nlohmann::json             headers {
                     {"Authorization",
                      EncryptionUtils::CosmosToken<char>(
                              Cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
@@ -774,29 +835,21 @@ namespace siddiqsoft
 				headers["x-ms-documentdb-partitionkey"] = nlohmann::json {pkId};
 			}
 
-			// Loop until we collect all items before we return to client
-			do {
-				if (!newContinuationToken.empty()) {
-					headers["x-ms-continuation"] = newContinuationToken;
-				}
+			if (!continuationToken.empty()) {
+				headers["x-ms-continuation"] = continuationToken;
+			}
 
-				RestClient.send(
-				        ReqPost {std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentWriteUri(), dbName, collName),
-				                 headers,
-				                 !params.is_null() && params.is_array()
-				                         ? nlohmann::json {{"query", queryStatement}, {"parameters", params}}
-				                         : nlohmann::json {{"query", queryStatement}}},
-				        [&ret, &newContinuationToken, &count, &combinedDocument](const auto& req, const auto& resp) {
-					        newContinuationToken = resp["headers"].value("x-ms-continuation", "");
-					        count += resp["content"].value("_count", 0);
-					        for (auto doc : resp["content"]["Documents"]) {
-						        combinedDocument["Documents"].push_back(doc);
-					        }
-					        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-				        });
-			} while (!newContinuationToken.empty());
-			combinedDocument["_count"] = count;
-			return {std::get<0>(ret), combinedDocument};
+			RestClient.send(ReqPost {std::format("{}dbs/{}/colls/{}/docs", Cnxn.current().currentWriteUri(), dbName, collName),
+			                         headers,
+			                         !params.is_null() && params.is_array()
+			                                 ? nlohmann::json {{"query", queryStatement}, {"parameters", params}}
+			                                 : nlohmann::json {{"query", queryStatement}}},
+			                [&ret](const auto& req, const auto& resp) {
+				                ret = {std::get<0>(resp.status()),                                      // status code
+				                       resp.success() ? std::move(resp["content"]) : nlohmann::json {}, // document or empty json
+				                       resp["headers"].value("x-ms-continuation", "")}; //  continuation token or empty
+			                });
+			return ret;
 		}
 
 
@@ -805,7 +858,9 @@ namespace siddiqsoft
 		/// @param collName The collection name
 		/// @param docId The unique id
 		/// @param pkId Partition id
-		/// @return JSON document
+		/// @return CosmosResponseType - StatusCode and a single JSON document corresponding to the docId
+		///
+		/// *sample document*
 		/// ```json
 		/// {
 		///   "__pk": "siddiqsoft.com",
@@ -847,7 +902,7 @@ namespace siddiqsoft
 				        ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
 			        });
 
-			return std::move(ret);
+			return ret;
 		}
 
 

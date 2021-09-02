@@ -65,7 +65,7 @@ TEST(CosmosEndpoint, test1_n)
 
 	auto info = nlohmann::json(cs);
 	EXPECT_EQ(6, info.size());
-	std::cerr << "json............" << info.dump(3) << std::endl;
+	//std::cerr << "json............" << info.dump(3) << std::endl;
 }
 
 
