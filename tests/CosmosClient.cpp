@@ -89,7 +89,7 @@ TEST(CosmosClient, example1)
 				// ...useful with cDoc..
 
 				// Remove the just created document..
-				auto [rc4, delDoc] = cc.remove(dbName, collectionName, cDoc.value("id", docId), pkId);
+				auto rc4 = cc.remove(dbName, collectionName, cDoc.value("id", docId), pkId);
 				EXPECT_EQ(204, rc4);
 			}
 		}
@@ -179,7 +179,7 @@ TEST(CosmosClient, discoverRegions)
 
 	// The configure calls the method discoverRegions
 	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-	
+
 	nlohmann::json info = cc;
 	EXPECT_TRUE(info.contains("serviceSettings"));
 	EXPECT_TRUE(info.contains("database"));
@@ -214,21 +214,21 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 
 
 	// First attempt should fail.
-	auto [rc, resp] = cc.discoverRegions();
-	//std::cerr << "1/3....rc:" << rc << " Expect failure." << std::endl;
-	EXPECT_NE(200, rc) << resp.dump(3);
+	auto rc = cc.discoverRegions();
+	// std::cerr << "1/3....rc:" << rc << " Expect failure." << std::endl;
+	EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 
 	// Try again.. we should succeed.
 	cc.Cnxn.rotate();
-	std::tie(rc, resp) = cc.discoverRegions();
-	//std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
-	EXPECT_EQ(200, rc) << resp.dump(3);
+	rc = cc.discoverRegions();
+	// std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
+	EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
 
 	// Try again.. we should fail again!
 	cc.Cnxn.rotate();
-	std::tie(rc, resp) = cc.discoverRegions();
-	//std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
-	EXPECT_NE(200, rc) << resp.dump(3);
+	rc = cc.discoverRegions();
+	// std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
+	EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 }
 
 
@@ -293,10 +293,10 @@ TEST(CosmosClient, listDocuments)
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
-	siddiqsoft::CosmosClient cc;
-	std::string              cToken {};
-	uint32_t                 totalDocs = 0;
-	auto                     iteration = 7; // max 7 times
+	siddiqsoft::CosmosClient               cc;
+	siddiqsoft::CosmosIterableResponseType irt {};
+	uint32_t                               totalDocs = 0;
+	auto                                   iteration = 7; // max 7 times
 
 	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
@@ -307,22 +307,18 @@ TEST(CosmosClient, listDocuments)
 	EXPECT_EQ(200, rc2);
 
 	do {
-		auto [rc3, respDocuments] = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
-		                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
-		                                             cToken);
-		EXPECT_EQ(200, rc3);
+		irt = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
+		                       respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
+		                       irt.continuationToken);
+		EXPECT_EQ(200, irt.statusCode);
 		// We check against a collection that has multiple
-		totalDocs += respDocuments.value<uint32_t>("_count", 0);
-		EXPECT_EQ(100, respDocuments.value("_count", 0));
-		EXPECT_FALSE(cToken.empty());
-		//std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
-		//          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
+		totalDocs += irt.document.value<uint32_t>("_count", 0);
+		EXPECT_EQ(100, irt.document.value("_count", 0));
+		EXPECT_FALSE(irt.continuationToken.empty());
 
 		// If we run out of the iterations the break out of the loop.
 		if (--iteration == 0) break;
-	} while (!cToken.empty());
-
-	//std::cerr << "Total Documents found: " << totalDocs << std::endl;
+	} while (!irt.continuationToken.empty());
 }
 
 
@@ -339,9 +335,9 @@ TEST(CosmosClient, listDocuments_top100)
 	ASSERT_FALSE(priConnStr.empty())
 	        << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
-	siddiqsoft::CosmosClient cc;
-	std::string              cToken {};
-	uint32_t                 totalDocs = 0;
+	siddiqsoft::CosmosClient               cc;
+	siddiqsoft::CosmosIterableResponseType irt {};
+	uint32_t                               totalDocs = 0;
 
 	cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
@@ -351,16 +347,14 @@ TEST(CosmosClient, listDocuments_top100)
 	auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
 	EXPECT_EQ(200, rc2);
 
-	auto [rc3, respDocuments] = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
-	                                             respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
-	                                             cToken);
-	EXPECT_EQ(200, rc3);
+	irt = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
+	                       respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
+	                       irt.continuationToken);
+	EXPECT_EQ(200, irt.statusCode);
 	// We check against a collection that has multiple
-	totalDocs += respDocuments.value<uint32_t>("_count", 0);
-	EXPECT_EQ(100, respDocuments.value("_count", 0));
-	EXPECT_FALSE(cToken.empty());
-	//std::cerr << "Read: " << respDocuments.value("_count", 0) << " Culumative: " << totalDocs
-	//          << " -- first:" << respDocuments.value("/Documents/0/id"_json_pointer, "") << std::endl;
+	totalDocs += irt.document.value<uint32_t>("_count", 0);
+	EXPECT_EQ(100, irt.document.value("_count", 0));
+	EXPECT_FALSE(irt.continuationToken.empty());
 }
 
 
@@ -402,7 +396,7 @@ TEST(CosmosClient, createDocument)
 	        cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
 	EXPECT_EQ(201, rc3);
 
-	auto [rc4, delDoc] = cc.remove(dbName, collectionName, docId, pkId);
+	auto rc4 = cc.remove(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(204, rc4);
 }
 
@@ -525,7 +519,7 @@ TEST(CosmosClient, findDocument)
 	EXPECT_EQ(200, rc4);
 	EXPECT_EQ(docId, findDoc.value("id", ""));
 
-	auto [rc5, delDoc] = cc.remove(dbName, collectionName, docId, pkId);
+	auto rc5 = cc.remove(dbName, collectionName, docId, pkId);
 	EXPECT_EQ(204, rc5);
 }
 
@@ -582,12 +576,13 @@ TEST(CosmosClient, upsertDocument)
 	auto rc6 = cc.create(dbName,
 	                     collectionName,
 	                     {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}});
-	EXPECT_EQ(409, std::get<0>(rc6));
+	EXPECT_EQ(409, rc6.statusCode);
 
 	// Remove the document
 	auto rc7 = cc.remove(dbName, collectionName, docId, pkId);
-	EXPECT_EQ(204, std::get<0>(rc7));
+	EXPECT_EQ(204, rc7);
 }
+
 
 /// @brief Test query API
 TEST(CosmosClient, queryDocument)
@@ -635,7 +630,7 @@ TEST(CosmosClient, queryDocument)
 		                          {"odd", !(i % 2 == 0)},
 		                          {"source", sourceId}});
 		EXPECT_EQ(201, rc);
-		//std::cerr << "**** Created: " << docIds[i] << "--" << sourceId << std::endl;
+		// std::cerr << "**** Created: " << docIds[i] << "--" << sourceId << std::endl;
 	}
 
 	EXPECT_EQ(DOCS, docIds.size()); // total
@@ -643,50 +638,85 @@ TEST(CosmosClient, queryDocument)
 	// Wait a little bit..
 	std::this_thread::sleep_for(std::chrono::seconds(1));
 
+	siddiqsoft::CosmosIterableResponseType irt {};
+	nlohmann::json                         allDocs = nlohmann::json::array();
+	uint32_t                               allDocsCount {};
+
 	// First, we query for all items that match our criteria (source=__func__)
-	auto [rq1, qDoc1] =
-	        cc.query(dbName,
-	                 collectionName,
-	                 "*",
-	                 "SELECT * FROM c WHERE contains(c.source, @v1)",
-	                 {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}}); // the params is an array of name-value items
-	EXPECT_EQ(200, rq1);
-	EXPECT_EQ(DOCS, qDoc1.value("_count", 0)); // total
+	do {
+		irt = cc.query(dbName,
+		               collectionName,
+		               "*",
+		               "SELECT * FROM c WHERE contains(c.source, @v1)",
+		               {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+		               irt.continuationToken); // the params is an array of name-value items
+		EXPECT_EQ(200, irt.statusCode);
+		if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
+			// Append to the current container
+			allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
+			allDocsCount += irt.document.value("_count", 0);
+		}
+	} while (!irt.continuationToken.empty());
+	EXPECT_EQ(DOCS, allDocsCount); // total
+
+#ifdef _DEBUG
+	std::cerr << allDocs.dump(4) << std::endl;
+#endif
 
 	auto matchCount = 0;
-	for (auto& doc : qDoc1["Documents"]) {
-		auto& docId = doc.at("id");
-		//std::cerr << "Matched " << 1 + matchCount << " from query docId:" << doc.value("id", "") << std::endl;
-		std::for_each(docIds.begin(), docIds.end(), [&matchCount, &docId](auto& i) {
-			if (i == docId) matchCount++;
-		});
+	for (auto& doc : allDocs) {
+		if (!doc.is_null()) {
+			auto& docId = doc.at("id");
+			std::for_each(docIds.begin(), docIds.end(), [&matchCount, &docId](auto& i) {
+				if (i == docId) matchCount++;
+			});
+		}
 	}
 	EXPECT_EQ(DOCS, matchCount);
 
+	// Clear stuff..
+	irt.continuationToken.clear();
+	allDocs      = nlohmann::json::array();
+	allDocsCount = 0;
 	// Query with partition key "odd"; out of five, 2 should be odd: 1, 3
-	auto [rq2, qDoc2] = cc.query(dbName,
-	                             collectionName,
-	                             "odd.siddiqsoft.com", // __pk
-	                             "SELECT * FROM c WHERE c.source=@v1",
-	                             {{{"name", "@v1"}, {"value", sourceId}}});
-	EXPECT_EQ(200, rq2);
-	EXPECT_EQ(2, qDoc2.value("_count", 0)); // odd
+	do {
+		irt = cc.query(dbName,
+		               collectionName,
+		               "odd.siddiqsoft.com", // __pk
+		               "SELECT * FROM c WHERE c.source=@v1",
+		               {{{"name", "@v1"}, {"value", sourceId}}});
+		EXPECT_EQ(200, irt.statusCode);
+		if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
+			allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
+		allDocsCount += irt.document.value("_count", 0);
+	} while (!irt.continuationToken.empty());
+	EXPECT_EQ(2, allDocsCount); // odd
 
 	// Query with partition key "odd"; out of five, 3 should be even: 0, 2
-	auto [rq3, qDoc3] = cc.query(dbName,
-	                             collectionName,
-	                             "even.siddiqsoft.com", // __pk
-	                             "SELECT * FROM c WHERE c.source=@v1",
-	                             {{{"name", "@v1"}, {"value", sourceId}}});
-	EXPECT_EQ(200, rq3);
-	EXPECT_EQ(3, qDoc3.value("_count", 0)); // even
+	// Clear stuff..
+	irt.continuationToken.clear();
+	allDocs      = nlohmann::json::array();
+	allDocsCount = 0;
+	// Query with partition key "odd"; out of five, 2 should be odd: 1, 3
+	do {
+		irt = cc.query(dbName,
+		               collectionName,
+		               "even.siddiqsoft.com", // __pk
+		               "SELECT * FROM c WHERE c.source=@v1",
+		               {{{"name", "@v1"}, {"value", sourceId}}});
+		EXPECT_EQ(200, irt.statusCode);
+		if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
+			allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
+		allDocsCount += irt.document.value("_count", 0);
+	} while (!irt.continuationToken.empty());
+	EXPECT_EQ(3, allDocsCount); // even
 
 	// Wait a little bit..
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 
 	// Remove the documents
 	for (auto i = 0; i < docIds.size(); i++) {
-		auto [rc, _] = cc.remove(dbName, collectionName, docIds[i], (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com");
+		auto rc = cc.remove(dbName, collectionName, docIds[i], (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com");
 		EXPECT_EQ(204, rc);
 	}
 }
