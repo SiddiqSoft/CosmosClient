@@ -58,7 +58,7 @@ You can start saving your documents in Cosmos with just 3 lines of code!
 - Configure with json via `configure`
 - Make call to `create`
 
-[API](https://siddiqsoft.github.io/CosmosClient/)
+The detailed [API](https://siddiqsoft.github.io/CosmosClient/) is over at Github pages.
 
 ## Sample
 
