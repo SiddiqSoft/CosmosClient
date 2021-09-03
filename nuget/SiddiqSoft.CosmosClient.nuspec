@@ -19,7 +19,7 @@
     <license type="expression">BSD-3-Clause</license>
     <icon>docs\Siddiq-Software-Avatar.png</icon>
     <readme>docs\README.md</readme>
-    <releaseNotes></releaseNotes>
+    <releaseNotes>Documentation is over at https://siddiqsoft.github.io/CosmosClient/html/index.html</releaseNotes>
     <copyright>Copyright (c) 2021 Siddiq Software LLC</copyright>
     <!-- Dependencies -->
     <dependencies>
