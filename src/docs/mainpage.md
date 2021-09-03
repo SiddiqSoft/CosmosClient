@@ -1,20 +1,20 @@
 @mainpage CosmosClient : Azure Cosmos REST-API Client for Modern C++
 @copyright &copy;2021 Siddiq Software LLC.
 @author siddiqsoft
-@version $projectnumber  
 
 <!-- badges -->
 [![CodeQL](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml)
 [![Build Status](https://dev.azure.com/siddiqsoft/siddiqsoft/_apis/build/status/SiddiqSoft.CosmosClient?branchName=main)](https://dev.azure.com/siddiqsoft/siddiqsoft/_build/latest?definitionid=15&branchName=main)
-![](https://img.shields.io/nuget/v/SiddiqSoft.CosmosClient)
 ![](https://img.shields.io/github/v/tag/SiddiqSoft/CosmosClient)
+![](https://img.shields.io/nuget/v/SiddiqSoft.CosmosClient)
+![](https://img.shields.io/nuget/dt/SiddiqSoft.CosmosClient)
 ![](https://img.shields.io/azure-devops/tests/siddiqsoft/siddiqsoft/15)
-![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)
+<!--![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)-->
+![](https://img.shields.io/github/license/siddiqsoft/CosmosClient)
 <!-- end badges -->
 
 @tableofcontents
 
-<img src="work-in-progress.png" width="10%" align="right" />
 
 # Features
 - C++20 Azure Cosmos REST API client.
@@ -22,7 +22,7 @@
   - Low-overhead--just not optimized.
   - C++20 sugarcoating
 - JSON everywhere; configuration, I/O, results.
-- Implement the SQL REST API
+- Implement the Cosmos SQL REST API
   - All of the responses are JSON documents as returned from Azure Cosmos. We do not abstract/encapsulate unless there is value.
   - Implement Azure REST API best practices.
 - Single header

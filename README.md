@@ -4,13 +4,14 @@ CosmosClient : Azure Cosmos REST-API Client for Modern C++
 <!-- badges -->
 [![CodeQL](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml)
 [![Build Status](https://dev.azure.com/siddiqsoft/siddiqsoft/_apis/build/status/SiddiqSoft.CosmosClient?branchName=main)](https://dev.azure.com/siddiqsoft/siddiqsoft/_build/latest?definitionid=15&branchName=main)
-![](https://img.shields.io/nuget/v/SiddiqSoft.CosmosClient)
 ![](https://img.shields.io/github/v/tag/SiddiqSoft/CosmosClient)
+![](https://img.shields.io/nuget/v/SiddiqSoft.CosmosClient)
+![](https://img.shields.io/nuget/dt/SiddiqSoft.CosmosClient)
 ![](https://img.shields.io/azure-devops/tests/siddiqsoft/siddiqsoft/15)
-![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)
+<!--![](https://img.shields.io/azure-devops/coverage/siddiqsoft/siddiqsoft/15)-->
+![](https://img.shields.io/github/license/siddiqsoft/CosmosClient)
 <!-- end badges -->
 
-![](docs/work-in-progress.png)
 
 
 # Motivation
@@ -24,7 +25,7 @@ There is a need for a light-weight Azure Cosmos client that is crafted for C++ i
   - C++20 sugarcoating
 - JSON everywhere; configuration, I/O, results.
 - Simple interface -- this means we limit the options you can fiddle
-- Implement the SQL REST API
+- Implement the Cosmos SQL REST API
   - All of the responses are JSON documents as returned from Azure Cosmos. We do not abstract/encapsulate unless there is value.
   - Implement Azure REST API best practices.
 - Single header
@@ -46,10 +47,10 @@ There is a need for a light-weight Azure Cosmos client that is crafted for C++ i
 - Build what is needed and add features subject to the above criteria
 
 ## Requirements
-- While the code is pretty much C++20 the IO uses WinHTTP underneath. This 
+- While the code is pretty much C++20 the IO uses WinHTTP underneath.
 - The build and tests are for Visual Studio 2019 under x64 using googletest.
 - We switched to googletest from VSTest for the insane reason that enabiling ASAN was not compatible with VSTest.
-
+- As of Visual Studio v16.11.2 the tag `/c++20` no longer includes `format` and our code is stuck at `/c++latest`.
 
 # API / Usage
 
@@ -58,7 +59,7 @@ You can start saving your documents in Cosmos with just 3 lines of code!
 - Configure with json via `configure`
 - Make call to `create`
 
-The detailed [API](https://siddiqsoft.github.io/CosmosClient/) is over at Github pages.
+The detailed [API](https://siddiqsoft.github.io/CosmosClient/html/index.html) is over at Github pages.
 
 ## Sample
 

@@ -45,12 +45,10 @@
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
   </PropertyGroup>
   <ItemGroup>
-    <ClCompile Include="CosmosClient.cpp" />
-    <ClCompile Include="CosmosEndpoint.cpp" />
-    <ClCompile Include="CosmosConnection.cpp" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemDefinitionGroup />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
