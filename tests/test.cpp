@@ -1129,8 +1129,10 @@ TEST(CosmosClient, queryDocument_threads)
                                          {"i", i},
                                          {"tid", tid},
                                          {"source", sourceId}});
-                                createdDocCount += rc.statusCode == 201 ? 1 : 0;
-                                docIds.push_back(rc.document.value("id", ""));
+                                if (rc.statusCode == 201) {
+                                    createdDocCount++;
+                                    docIds.push_back(rc.document.value("id", ""));
+                                }
                             }
                         }
                         catch (const std::exception& e) {
@@ -1194,8 +1196,10 @@ TEST(CosmosClient, queryDocument_threads)
                                          {"i", i},
                                          {"tid", tid},
                                          {"source", sourceId}});
-                                createdDocCount += rc.statusCode == 201 ? 1 : 0;
-                                docIds.push_back(rc.document.value("id", ""));
+                                if (rc.statusCode == 201) {
+                                    createdDocCount++;
+                                    docIds.push_back(rc.document.value("id", ""));
+                                }
                             }
                             catch (const std::exception& e) {
                                 std::cerr << std::format("EVEN:{:02}: create() exception:{}\n", i, e.what());

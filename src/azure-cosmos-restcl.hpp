@@ -639,9 +639,9 @@ namespace siddiqsoft
         /// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
         CosmosResponseType create(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
         {
-            if (doc.value("id", "").empty()) throw std::invalid_argument("remove - I need the uniqueid of the document");
+            if (doc.value("id", "").empty()) throw std::invalid_argument("create - I need the uniqueid of the document");
             if (doc.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
-                throw std::invalid_argument("remove - I need the partitionId of the document");
+                throw std::invalid_argument("create - I need the partitionId of the document");
 
             CosmosResponseType ret {0xFA17, {}};
             auto               ts   = DateUtils::RFC7231();
@@ -675,9 +675,9 @@ namespace siddiqsoft
         /// The status code `200` represents a document that has been updated.
         CosmosResponseType upsert(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
         {
-            if (doc.value("id", "").empty()) throw std::invalid_argument("remove - I need the uniqueid of the document");
+            if (doc.value("id", "").empty()) throw std::invalid_argument("upsert - I need the uniqueid of the document");
             if (doc.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
-                throw std::invalid_argument("remove - I need the partitionId of the document");
+                throw std::invalid_argument("upsert - I need the partitionId of the document");
 
             CosmosResponseType ret {0xFA17, {}};
             auto               ts   = DateUtils::RFC7231();
@@ -708,14 +708,18 @@ namespace siddiqsoft
         /// @param docId Unique document id
         /// @param pkId Partition key
         /// @return Status code and Json document for the docId
-        CosmosResponseType
-        update(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
+        CosmosResponseType update(const std::string&    dbName,
+                                  const std::string&    collName,
+                                  const std::string&    docId,
+                                  const std::string&    pkId,
+                                  const nlohmann::json& doc)
         {
             CosmosResponseType ret {0xFA17, {}};
             auto               ts = DateUtils::RFC7231();
 
-            if (docId.empty()) throw std::invalid_argument("remove - I need the docId of the document");
-            if (pkId.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
+            if (docId.empty()) throw std::invalid_argument("update - I need the docId of the document");
+            if (pkId.empty()) throw std::invalid_argument("update - I need the pkId of the document");
+            if (doc.is_null() || doc.size() == 0) throw std::invalid_argument("update - Need the document");
 
             restClient.send(
                     siddiqsoft::ReqPut {
@@ -729,7 +733,8 @@ namespace siddiqsoft
                              {"x-ms-date", ts},
                              {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
                              {"x-ms-version", config["apiVersion"]},
-                             {"x-ms-cosmos-allow-tentative-writes", "true"}}},
+                             {"x-ms-cosmos-allow-tentative-writes", "true"}},
+                            doc},
                     [&ret](const auto& req, const auto& resp) {
                         ret = {std::get<0>(resp.status()), resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
                     });

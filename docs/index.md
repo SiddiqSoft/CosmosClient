@@ -24,15 +24,17 @@ We use [NuGet](https://nuget.org) for dependencies. Why? Simply put, it is the *
 
 Package     | Comments
 -----------:|:----------
-[nlohmann.json](https://github.com/nlohmann/json)<br/>![](https://img.shields.io/nuget/v/nlohmann.json)| Cosmos deals with JSON objects and this is one of the simplest, closest to `stdlib` structure libraries for C++.<br/>We have to make choices and this is our choice.<br/>The library is quite conformant and lends itself to general purpose use since it uses `<vector>` underneath it all.<br/>We leave time and experience (plus manpower) to optimize this library for us. So long as it works and we do not have to worry about some ugly JAVA-esque or C-style interface!
+[nlohmann.json](https://github.com/nlohmann/json)<br/>![](https://img.shields.io/nuget/v/nlohmann.json)| This is one of the simplest JSON libraries for C++.<br/>We have to make choices and this is our choice: clean, simple and elegant over efficiency. Our use-case <br/>The library is quite conformant and lends itself to general purpose use since it uses `<vector>` underneath it all.<br/>We leave time and experience (plus manpower) to optimize this library for us. So long as it works and we do not have to worry about some ugly JAVA-esque or C-style interface!
 [restcl](https://github.com/SiddiqSoft/restcl)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.restcl)| This is our REST client.<br/>There are *many*, *many*, *many* clients out there and I'm not quite happy with their design.<br/>This implementation focuses on the "interface" as a thin wrapper  atop <a href="https://docs.microsoft.com/en-us/windows/win32/winhttp/about-winhttp">WinHTTP library</a>.
 [AzureCppUtils](https://github.com/SiddiqSoft/azure-cpp-utils)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.AzureCppUtils) | This is library with helpers for encryption, base64 encode/decode and token generation for Cosmos.
 
 _Unless otherwise noted, use the latest. We're quite aggressive updating dependencies._
 
+<hr/>
+
 # API
 
-Namespace `siddiqsoft`
+## namespace `siddiqsoft`
 
 A single class [CosmosClient](#class-cosmosclient) implements the functionality.
 
@@ -49,6 +51,57 @@ CosmosResponseType | Type  | Description
 -------------------|----|---
 `statusCode` | `uint32_t` | Holds the HTTP response Status Code or the system-error code (WinHTTP error code)
 `document`   | `nlohmann::json` | Holds the response from the Cosmos response.
+
+statusCode | Comment
+----------:|:--------------
+ `200`    | Success. [`listDatabases`](#cosmosclient-listdatabases), [`listCollections`](#cosmosclient-listcollections), [`listDocuments`](#cosmosclient-listdocuments), [`find`](#cosmosclient-find), [`query`](#cosmosclient-query), [`upsert`](#cosmosclient-upsert)
+ `201`    | Document created. [`create`](#cosmosclient-create), [`upsert`](#cosmosclient-upsert)
+ `204`    | Document removed. [`remove`](#cosmosclient-remove)
+ `401`    | Authorization failure.
+ `404`    | Document Not found.
+ `409`    | Document already exists. [`create`](#cosmosclient-create)
+
+*Output Sample*
+
+The json document typically contains two elements: `_count` and `Documents` which is an array of documents from the functions listDocuments(), listCollections(), listDocuments(), query().
+
+```json
+{
+  "Documents": [
+     {
+        "__pk": "PARTITION-KEY-VALUE",
+        "_attachments": "attachments/",
+        "_etag": "\"7e0141d3-0000-0400-0000-612ec6f10000\"",
+        "_rid": "RP0wAM6H+R7-8VEAAAAAAQ==",
+        "_self": "dbs/RP0wAA==/colls/RP0wAM6H+R4=/docs/RP0wAM6H+R7-8VEAAAAAAQ==/",
+        "_ts": 1630455537,
+        "i": 1,
+        "id": "UNIQUE-DOCUMENT-ID",
+     },
+    ...
+    ...
+  ],
+  "_count": 2
+}
+```
+
+*Output Sample*
+
+For operations on single documents `create()`, `find()`, `update()` return the document as stored (with Cosmos injected housekeeping data).
+
+```json
+{
+    "__pk": "PARTITION-KEY-VALUE",
+    "_attachments": "attachments/",
+    "_etag": "\"7e0141d3-0000-0400-0000-612ec6f10000\"",
+    "_rid": "RP0wAM6H+R7-8VEAAAAAAQ==",
+    "_self": "dbs/RP0wAA==/colls/RP0wAM6H+R4=/docs/RP0wAM6H+R7-8VEAAAAAAQ==/",
+    "_ts": 1630455537,
+    "i": 1,
+    "id": "UNIQUE-DOCUMENT-ID",
+}
+```
+
 
 ## struct `CosmosIterableResponseType`
 
@@ -92,28 +145,63 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 
 ### `CosmosClient::config`
 
+`nlohmann::json` - Object stores the various configuration elements for this client instance.
+
+The following elements are required:
+- `apiVersion` - Defaults to `2018-12-31`; you should not provide this value as the library is mated to the specific version.
+- `connectionStrings` - An array of one or two connection strings you'd get from the Azure Cosmos Keys portal. These may be "read-write" or "Read-only" values depending on your application use.<br/>If you use read-only keys then you will get errors invoking `create`, `upsert`, `update`.
+- `partitionKeyNames` - An array of one or more partition key fields that must be present in each document. This is also configured in the Azure Portal.
+
+**Sample/default**
+```cpp
+nlohmann::json config {
+        {"_typever", CosmosClientUserAgentString},
+        {"apiVersion", "2018-12-31"},
+        {"connectionStrings", {}},
+        {"partitionKeyNames", {}}
+};
+```
+
 ### `CosmosClient::serviceSettings`
+
+Service Settings saved from [`discoverRegions()`](#cosmosclientdiscoverregions)
+
+This data is used within the method `configure` and used thereafter for informative purposes.
+
+> Guard against writers.
 
 ### `CosmosClient::isConfigured`
 
+`atomic_bool` - Indicates that the client has been configured.
+
 ### `CosmosClient::restClient`
+
+The I/O utility class from [restcl](https://github.com/siddiqsoft/restcl).
 
 ### `CosmosClient::cnxn`
 
+This is the core data-structure and holds the read, write endpoints, primary and secondary connections and the encryption key.
+
+It is not intended to be used by the client and its implementation is subject to change.
+
+
 ### `CosmosClient::CosmosClient()`
 
-Default constructor.
+Empty default constructor. All of the 
 
 Move constructor and assignment operators and move operators have been deleted.
 
 
-### `CosmosClient::configuration`
+### `CosmosClient::configuration()`
+
+Returns the current config json object as `const`.
 
 #### return
 
 Const reference to the `config` object.
 
-### `CosmosClient::configure`
+
+### `CosmosClient::configure()`
 
 ```cpp
 CosmosClient& configure(const nlohmann::json& src = {});
@@ -143,31 +231,84 @@ Must have the following elements:
 Reference to the CosmosClient object.
 
 
-### `CosmosClient::discoverRegions`
+### `CosmosClient::discoverRegions()`
 
 ```cpp
 CosmosResponseType discoverRegions();
 ```
 
-### `CosmosClient::listDatabases`
+Discover the Regions for the current base Uri
+
+This method is invoked by the `configuration` method.
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::listDatabases()`
 
 ```cpp
 CosmosResponseType listDatabases();
 ```
 
-### `CosmosClient::listCollections`
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+&nbsp; | &nbsp; | &nbsp;
+
+List all databases for the given service
+
+Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::listCollections()`
 
 ```cpp
 CosmosResponseType listCollections(const std::string& dbName);
 ```
 
-### `CosmosClient::listDocuments`
+List all collections for the given database.
+
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::listDocuments()`
 
 ```cpp
 CosmosIterableResponseType listDocuments(const std::string& dbName,
                                          const std::string& collName,
                                          const std::string& continuationToken);
 ```
+
+Returns all of the documents for the given collection.
+
+This can be very slow and you must use the continuationToken to repeatedly call the method to complete your fetch. See example below.
+
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`continuationToken` | `std::string` | Optional. The first invocation would not have this value. However, subsequent invocations will include this value from the response to iterate through the documents.
+
+#### return
+
+[`CosmosIterableResponseType`](#struct-cosmositerableresponsetype)
 
 #### Iterate Example
 
@@ -202,7 +343,7 @@ do {
 } while (!irt.continuationToken.empty());
 ```
 
-### `CosmosClient::create`
+### `CosmosClient::create()`
 
 ```cpp
 CosmosResponseType create(const std::string& dbName,
@@ -210,7 +351,24 @@ CosmosResponseType create(const std::string& dbName,
                           const nlohmann::json& doc);
 ```
 
-### `CosmosClient::upsert`
+Create document in the given collection.
+
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`doc` | `nlohmann::json` | The document to insert in the collection
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::upsert()`
+
+Update or Insert document in the given collection.
 
 ```cpp
 CosmosResponseType upsert(const std::string& dbName,
@@ -218,16 +376,47 @@ CosmosResponseType upsert(const std::string& dbName,
                           const nlohmann::json& doc);
 ```
 
-### `CosmosClient::update`
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`doc` | `nlohmann::json` | The document to insert or update
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::update()`
 
 ```cpp
 CosmosResponseType update(const std::string& dbName,
                           const std::string& collName,
                           const std::string& docId,
-                          const std::string& pkId);
+                          const std::string& pkId,
+                          const nlohmann::json& doc);
 ```
 
-### `CosmosClient::remove`
+Update an existing document
+
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`docId` | `std::string` | The document id.
+`pkId` | `std::string` | Partition key.
+`doc` | `nlohmann::json` | The document to update
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::remove()`
 
 ```cpp
 uint32_t remove(const std::string& dbName,
@@ -236,7 +425,22 @@ uint32_t remove(const std::string& dbName,
                 const std::string& pkId);
 ```
 
-### `CosmosClient::query`
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`docId` | `std::string` | The document id.
+`pkId` | `std::string` | Partition key.
+
+
+#### return
+
+[`CosmosResponseType`](#struct-cosmosresponsetype)
+
+
+### `CosmosClient::query()`
 
 ```cpp
 CosmosIterableResponseType query(const std::string&    dbName,
@@ -247,7 +451,40 @@ CosmosIterableResponseType query(const std::string&    dbName,
                                  const std::string&    continuationToken = {});
 ```
 
-### `CosmosClient::find`
+Performs a query and continues an existing query if the continuation token exists
+
+CAUTION: If your query yields dozens or hundreds or thousands of documents, this method
+currently does not offer "streaming" or callbacks.
+It continues until the server reports no-more-continuation and returns the documents
+in a single response json.
+Memory and timing can be massive!
+
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`pkId` | `std::string` | Partition key. You can use `*` to indicate query across partitions.
+`queryStatement` | `std::string` | The SQL API query string.<br/>`"SELECT * FROM c WHERE contains(c.source, @v1)"`
+`params` | `nlohmann::json` | Optional json array with name-value objects.<br/>`[{"name": "@v1", "value": "hello.world"}]`
+`continuationToken` | `std::string` | Optional continuation token. This is used with the value `x-ms-continuation` to page through the query response.
+
+**remarks**
+
+The response is paged so you will need to combine the results into
+delivering to the user a single json with array of `Documents` object and `_count`.
+
+See [Iterate example](#iterate-example) on the contents and how to fetch all documents by iterating over the results.
+
+[Queries in Cosmos](https://docs.microsoft.com/en-us/rest/api/cosmos-db/q)
+
+#### return
+
+[`CosmosIterableResponseType`](#struct-cosmositerableresponsetype)
+
+
+### `CosmosClient::find()`
 
 ```cpp
 CosmosResponseType find(const std::string& dbName,
@@ -255,6 +492,26 @@ CosmosResponseType find(const std::string& dbName,
                         const std::string& docId,
                         const std::string& pkId);
 ```
+
+Removes the document given the docId and pkId
+
+See https://docs.microsoft.com/en-us/rest/api/documentdb/delete-a-document
+
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`dbName` | `std::string` | Database name.
+`collName` | `std::string` | Collection name.
+`docId` | `std::string` | The document id.
+`pkId` | `std::string` | Partition key. You can use `*` to indicate query across partitions.
+
+
+#### return
+
+Returns `uint32_t` with `204` on successful removal or `404` if document does not exist.
+
+<hr/>
 
 # Tests
 
