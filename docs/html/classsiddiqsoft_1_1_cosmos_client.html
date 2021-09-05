@@ -30,7 +30,7 @@
  <tr style="height: 56px;">
   <td id="projectlogo"><img alt="Logo" src="Siddiq-Software-Avatar.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
-   <div id="projectname">CosmosClient<span id="projectnumber">&#160;0.5.2+1</span>
+   <div id="projectname">CosmosClient<span id="projectnumber">&#160;0.5.4+1</span>
    </div>
    <div id="projectbrief">Azure Cosmos REST Client for Modern C++</div>
   </td>
@@ -98,7 +98,7 @@ $(document).ready(function(){initNavTree('classsiddiqsoft_1_1_cosmos_client.html
 </div><!--header-->
 <div class="contents">
 
-<p>Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST.  
+<p>Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API.  
  <a href="classsiddiqsoft_1_1_cosmos_client.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="azure-cosmos-restcl_8hpp_source.html">azure-cosmos-restcl.hpp</a>&gt;</code></p>
@@ -154,10 +154,10 @@ Static Public Attributes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:a5580eca6510e5d7eecdeb9810e6a2210"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a5580eca6510e5d7eecdeb9810e6a2210">m_config</a></td></tr>
-<tr class="memdesc:a5580eca6510e5d7eecdeb9810e6a2210"><td class="mdescLeft">&#160;</td><td class="mdescRight">configuration object updated/merged with the client object  <a href="classsiddiqsoft_1_1_cosmos_client.html#a5580eca6510e5d7eecdeb9810e6a2210">More...</a><br /></td></tr>
+<tr class="memdesc:a5580eca6510e5d7eecdeb9810e6a2210"><td class="mdescLeft">&#160;</td><td class="mdescRight">configuration object updated/merged with the client object This information is set by the call to <code>configure</code> and const accessed via <code>configuration</code>.  <a href="classsiddiqsoft_1_1_cosmos_client.html#a5580eca6510e5d7eecdeb9810e6a2210">More...</a><br /></td></tr>
 <tr class="separator:a5580eca6510e5d7eecdeb9810e6a2210"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aacd5e0120ad8adee3b5c9f86d8a28980"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#aacd5e0120ad8adee3b5c9f86d8a28980">serviceSettings</a></td></tr>
-<tr class="memdesc:aacd5e0120ad8adee3b5c9f86d8a28980"><td class="mdescLeft">&#160;</td><td class="mdescRight">Service Settings saved from discoverRegion.  <a href="classsiddiqsoft_1_1_cosmos_client.html#aacd5e0120ad8adee3b5c9f86d8a28980">More...</a><br /></td></tr>
+<tr class="memdesc:aacd5e0120ad8adee3b5c9f86d8a28980"><td class="mdescLeft">&#160;</td><td class="mdescRight">Service Settings saved from discoverRegion This data is used within the method <code>configure</code> and used thereafter for informative purposes.  <a href="classsiddiqsoft_1_1_cosmos_client.html#aacd5e0120ad8adee3b5c9f86d8a28980">More...</a><br /></td></tr>
 <tr class="separator:aacd5e0120ad8adee3b5c9f86d8a28980"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7cf46482f8b569965fa75b40cd2d1d95"><td class="memItemLeft" align="right" valign="top">std::atomic_bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a7cf46482f8b569965fa75b40cd2d1d95">m_isConfigured</a> {false}</td></tr>
 <tr class="memdesc:a7cf46482f8b569965fa75b40cd2d1d95"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to signal first-time configuration.  <a href="classsiddiqsoft_1_1_cosmos_client.html#a7cf46482f8b569965fa75b40cd2d1d95">More...</a><br /></td></tr>
@@ -172,13 +172,15 @@ Protected Attributes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
 <tr class="memitem:ab52014c79856a3b2f4f5aa17449d482f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ab52014c79856a3b2f4f5aa17449d482f">to_json</a> (nlohmann::json &amp;dest, const <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html">CosmosClient</a> &amp;src)</td></tr>
-<tr class="memdesc:ab52014c79856a3b2f4f5aa17449d482f"><td class="mdescLeft">&#160;</td><td class="mdescRight">JSON serializer helper for <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST.">CosmosClient</a>.  <a href="classsiddiqsoft_1_1_cosmos_client.html#ab52014c79856a3b2f4f5aa17449d482f">More...</a><br /></td></tr>
+<tr class="memdesc:ab52014c79856a3b2f4f5aa17449d482f"><td class="mdescLeft">&#160;</td><td class="mdescRight">JSON serializer helper for <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API.">CosmosClient</a>.  <a href="classsiddiqsoft_1_1_cosmos_client.html#ab52014c79856a3b2f4f5aa17449d482f">More...</a><br /></td></tr>
 <tr class="separator:ab52014c79856a3b2f4f5aa17449d482f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST. </p>
-<p >Uses the REST API and SQL API model. <a href="https://docs.microsoft.com/en-us/rest/api/cosmos-db/common-tasks-using-the-cosmosdb-rest-api">https://docs.microsoft.com/en-us/rest/api/cosmos-db/common-tasks-using-the-cosmosdb-rest-api</a></p>
-<dl class="section see"><dt>See also</dt><dd>Samples are here: <a href="https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started">https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started</a> </dd>
+<div class="textblock"><p >Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API. </p>
+<p >The client is thread-safe in the operations <code>create</code>, <code>find</code>, <code>upsert</code>, <code>query</code> and <code>remove</code>. The client should maintain a single instance as the underlying restcl uses connection pooling so you do not end up with needless sockets connecting to Azure. However, care must be taken if you wish to handle <code>401</code> and <code>rotate</code> the connection as the underlying re-discovery is currently not thread-safe.</p>
+<dl class="section see"><dt>See also</dt><dd>Documentation on the REST API from MS <a href="https://docs.microsoft.com/en-us/rest/api/cosmos-db/common-tasks-using-the-cosmosdb-rest-api">https://docs.microsoft.com/en-us/rest/api/cosmos-db/common-tasks-using-the-cosmosdb-rest-api</a> </dd>
+<dd>
+Samples are here: <a href="https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started">https://docs.microsoft.com/en-us/azure/cosmos-db/sql-api-cpp-get-started</a> </dd>
 <dd>
 Documentation is here: <a href="https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest">https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest</a> </dd></dl>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
@@ -914,11 +916,11 @@ Documentation is here: <a href="https://docs.microsoft.com/en-us/rest/api/docume
 </table>
 </div><div class="memdoc">
 
-<p>JSON serializer helper for <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST.">CosmosClient</a>. </p>
+<p>JSON serializer helper for <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API.">CosmosClient</a>. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">dest</td><td>Output json object </td></tr>
-    <tr><td class="paramname">src</td><td>Reference to a <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST.">CosmosClient</a> instance </td></tr>
+    <tr><td class="paramname">src</td><td>Reference to a <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API.">CosmosClient</a> instance </td></tr>
   </table>
   </dd>
 </dl>
@@ -1003,9 +1005,10 @@ Documentation is here: <a href="https://docs.microsoft.com/en-us/rest/api/docume
 <div class="line">                {<span class="stringliteral">&quot;connectionStrings&quot;</span>, {}},    </div>
 <div class="line">                {<span class="stringliteral">&quot;partitionKeyNames&quot;</span>, {}}     </div>
 <div class="line">        }</div>
-<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_aecb99bdd285b3f858aa5ae2253ce91f5"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#aecb99bdd285b3f858aa5ae2253ce91f5">siddiqsoft::CosmosClient::CosmosClientUserAgentString</a></div><div class="ttdeci">static const std::string CosmosClientUserAgentString</div><div class="ttdoc">This is the string used in the User-Agent header.</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:433</div></div>
+<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_aecb99bdd285b3f858aa5ae2253ce91f5"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#aecb99bdd285b3f858aa5ae2253ce91f5">siddiqsoft::CosmosClient::CosmosClientUserAgentString</a></div><div class="ttdeci">static const std::string CosmosClientUserAgentString</div><div class="ttdoc">This is the string used in the User-Agent header.</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:443</div></div>
 </div><!-- fragment -->
-<p>configuration object updated/merged with the client object </p>
+<p>configuration object updated/merged with the client object This information is set by the call to <code>configure</code> and const accessed via <code>configuration</code>. </p>
+<dl class="section warning"><dt>Warning</dt><dd>Guard against writers. </dd></dl>
 
 <p class="reference">Referenced by <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#af069699d9c77079e1676fe3434787657">CosmosClient::configuration()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a80b46c3db8b63be977aaa3aad53437d9">CosmosClient::create()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a1ea5f734c81b29119ff20e0260948652">CosmosClient::find()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ad19f8704a7616a2a070b0c1b2e54f465">CosmosClient::listCollections()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ac7b2ee16879b8038a93bc03558b48a60">CosmosClient::listDatabases()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a93a87a70d8b753bce97b377ba6e7f39a">CosmosClient::listDocuments()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a9da24ecf8ea9b442d36a3319b0cd270a">CosmosClient::remove()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a027164237de010648f0ac20c7fd5e366">CosmosClient::update()</a>, and <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ae4b0d10c595115bfaa6b9d3a768fcefb">CosmosClient::upsert()</a>.</p>
 
@@ -1056,6 +1059,7 @@ Documentation is here: <a href="https://docs.microsoft.com/en-us/rest/api/docume
 </div><div class="memdoc">
 
 <p>The REST client is initialized with the user agent. </p>
+<p >This can be shared across multiple threads as the only method is <code>send</code> and they share minimal state information across threads. </p>
 
 <p class="reference">Referenced by <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a80b46c3db8b63be977aaa3aad53437d9">CosmosClient::create()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ae6c4a58edb15bce7cac0a9fe607edafa">CosmosClient::discoverRegions()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a1ea5f734c81b29119ff20e0260948652">CosmosClient::find()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ad19f8704a7616a2a070b0c1b2e54f465">CosmosClient::listCollections()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ac7b2ee16879b8038a93bc03558b48a60">CosmosClient::listDatabases()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a93a87a70d8b753bce97b377ba6e7f39a">CosmosClient::listDocuments()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a9da24ecf8ea9b442d36a3319b0cd270a">CosmosClient::remove()</a>, <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#a027164237de010648f0ac20c7fd5e366">CosmosClient::update()</a>, and <a class="el" href="classsiddiqsoft_1_1_cosmos_client.html#ae4b0d10c595115bfaa6b9d3a768fcefb">CosmosClient::upsert()</a>.</p>
 
@@ -1081,7 +1085,8 @@ Documentation is here: <a href="https://docs.microsoft.com/en-us/rest/api/docume
 </table>
 </div><div class="memdoc">
 
-<p>Service Settings saved from discoverRegion. </p>
+<p>Service Settings saved from discoverRegion This data is used within the method <code>configure</code> and used thereafter for informative purposes. </p>
+<dl class="section warning"><dt>Warning</dt><dd>Guard against writers. </dd></dl>
 
 <p class="reference">Referenced by <a class="el" href="test_8cpp.html#abe2b55208966188440a6862cc6d3efcb">TEST()</a>.</p>
 

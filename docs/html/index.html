@@ -30,7 +30,7 @@
  <tr style="height: 56px;">
   <td id="projectlogo"><img alt="Logo" src="Siddiq-Software-Avatar.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
-   <div id="projectname">CosmosClient<span id="projectnumber">&#160;0.5.2+1</span>
+   <div id="projectname">CosmosClient<span id="projectnumber">&#160;0.5.4+1</span>
    </div>
    <div id="projectbrief">Azure Cosmos REST Client for Modern C++</div>
   </td>
@@ -150,7 +150,7 @@ API</h1>
 </blockquote>
 <table class="doxtable">
 <tr>
-<th align="left" colspan="2"><a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST.">siddiqsoft::CosmosClient</a>  </th></tr>
+<th align="left" colspan="2"><a class="el" href="classsiddiqsoft_1_1_cosmos_client.html" title="Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API.">siddiqsoft::CosmosClient</a>  </th></tr>
 <tr>
 <th>Function</th><th><p class="starttd">Description</p>
 <p class="endtd"></p>
@@ -267,10 +267,10 @@ Sample</h2>
 <div class="line">        <span class="keyword">auto</span> [rcd, _] = cc.<a class="code hl_function" href="classsiddiqsoft_1_1_cosmos_client.html#a9da24ecf8ea9b442d36a3319b0cd270a">remove</a>(dbName, collectionName, doc.value(<span class="stringliteral">&quot;id&quot;</span>, docId), pkId);</div>
 <div class="line">    }</div>
 <div class="line">}</div>
-<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html">siddiqsoft::CosmosClient</a></div><div class="ttdoc">Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST.</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:404</div></div>
-<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_a0b1736e49ba7bfac52b822b1b3db7c7b"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#a0b1736e49ba7bfac52b822b1b3db7c7b">siddiqsoft::CosmosClient::configure</a></div><div class="ttdeci">CosmosClient &amp; configure(const nlohmann::json &amp;src={}) noexcept(false)</div><div class="ttdoc">Re-configure the client. This will invoke the discoverRegions to populate the available regions and s...</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:456</div></div>
-<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_a80b46c3db8b63be977aaa3aad53437d9"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#a80b46c3db8b63be977aaa3aad53437d9">siddiqsoft::CosmosClient::create</a></div><div class="ttdeci">CosmosResponseType create(const std::string &amp;dbName, const std::string &amp;collName, const nlohmann::json &amp;doc)</div><div class="ttdoc">Create an entity in documentdb using the json object as the payload.</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:625</div></div>
-<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_a9da24ecf8ea9b442d36a3319b0cd270a"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#a9da24ecf8ea9b442d36a3319b0cd270a">siddiqsoft::CosmosClient::remove</a></div><div class="ttdeci">uint32_t remove(const std::string &amp;dbName, const std::string &amp;collName, const std::string &amp;docId, const std::string &amp;pkId)</div><div class="ttdoc">Removes the document given the docId and pkId https://docs.microsoft.com/en-us/rest/api/documentdb/de...</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:734</div></div>
+<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html">siddiqsoft::CosmosClient</a></div><div class="ttdoc">Cosmos Client Implements a stateful Cosmos Client using Cosmos SQL-API via REST API.</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:409</div></div>
+<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_a0b1736e49ba7bfac52b822b1b3db7c7b"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#a0b1736e49ba7bfac52b822b1b3db7c7b">siddiqsoft::CosmosClient::configure</a></div><div class="ttdeci">CosmosClient &amp; configure(const nlohmann::json &amp;src={}) noexcept(false)</div><div class="ttdoc">Re-configure the client. This will invoke the discoverRegions to populate the available regions and s...</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:466</div></div>
+<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_a80b46c3db8b63be977aaa3aad53437d9"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#a80b46c3db8b63be977aaa3aad53437d9">siddiqsoft::CosmosClient::create</a></div><div class="ttdeci">CosmosResponseType create(const std::string &amp;dbName, const std::string &amp;collName, const nlohmann::json &amp;doc)</div><div class="ttdoc">Create an entity in documentdb using the json object as the payload.</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:635</div></div>
+<div class="ttc" id="aclasssiddiqsoft_1_1_cosmos_client_html_a9da24ecf8ea9b442d36a3319b0cd270a"><div class="ttname"><a href="classsiddiqsoft_1_1_cosmos_client.html#a9da24ecf8ea9b442d36a3319b0cd270a">siddiqsoft::CosmosClient::remove</a></div><div class="ttdeci">uint32_t remove(const std::string &amp;dbName, const std::string &amp;collName, const std::string &amp;docId, const std::string &amp;pkId)</div><div class="ttdoc">Removes the document given the docId and pkId https://docs.microsoft.com/en-us/rest/api/documentdb/de...</div><div class="ttdef"><b>Definition:</b> azure-cosmos-restcl.hpp:744</div></div>
 </div><!-- fragment --><h2><a class="anchor" id="autotoc_md5"></a>
 Testing Notes</h2>
 <dl class="section see"><dt>See also</dt><dd>The files <code>CosmosClient.cpp</code>, <code>CosmosConnection.cpp</code> and <code>CosmosEndpoint.cpp</code> contain the googletest files.</dd></dl>
