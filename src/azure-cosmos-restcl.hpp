@@ -1024,4 +1024,29 @@ static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const 
 }
 #pragma endregion
 
+
+
+/// @brief Serializer for the CosmosIterableResponseType
+template <>
+struct std::formatter<siddiqsoft::CosmosIterableResponseType> : std::formatter<std::basic_string<char>>
+{
+    template <class FC>
+    auto format(const siddiqsoft::CosmosIterableResponseType& s, FC& ctx)
+    {
+        return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
+    }
+};
+
+
+/// @brief Serializer for the CosmosResponseType
+template <>
+struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::basic_string<char>>
+{
+    template <class FC>
+    auto format(const siddiqsoft::CosmosResponseType& s, FC& ctx)
+    {
+        return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
+    }
+};
+
 #endif // !AZURE_COSMOS_RESTCL_HPP
