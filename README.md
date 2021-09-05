@@ -59,7 +59,7 @@ You can start saving your documents in Cosmos with just 3 lines of code!
 - Configure with json via `configure`
 - Make call to `create`
 
-The detailed [API](https://siddiqsoft.github.io/CosmosClient/html/index.html) is over at Github pages.
+The detailed [API](https://siddiqsoft.github.io/CosmosClient/) is over at Github pages.
 
 ## Sample
 
@@ -109,11 +109,11 @@ void example1(const std::string& p, const std::string& s)
 
 # Roadmap
 
-0. Documentation
-1. Async operations
-2. Support C++20 modules
-3. Co-routines
-4. OpenSSL for non-Windows platforms (current implementation is Windows only)
+0. [ ] [Documentation](https://siddiqsoft.github.io/CosmosClient/)
+1. [ ] Async operations
+2. [ ] Support C++20 modules
+3. [ ] Co-routines
+4. [ ] OpenSSL for non-Windows platforms (current implementation is Windows only)
 
 <p align="right">
 &copy; 2021 Siddiq Software LLC. All rights reserved.
