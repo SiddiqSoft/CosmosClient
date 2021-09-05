@@ -185,7 +185,9 @@ do {
                    collectionName,
                    "*", // across all partitions
                    "SELECT * FROM c WHERE contains(c.source, @v1)",
-                   {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+                   { { {"name", "@v1"},
+                       {"value", std::format("{}-", getpid())}
+                     } },
                    irt.continuationToken);
     if (200 == irt.statusCode &&
         irt.document.contains("Documents") &&
