@@ -363,10 +363,10 @@ TEST(CosmosClient, configure_1)
 
     // Atleast one read location
     EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
-    EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
+    EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
     // Atleast one write location
     EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
-    EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
+    EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
 }
 
 
@@ -395,10 +395,10 @@ TEST(CosmosClient, discoverRegions)
     // Check that we have read/write locations detected.
     // Atleast one read location
     EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
-    EXPECT_LE(1, cc.Cnxn.current().ReadableUris.size());
+    EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
     // Atleast one write location
     EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
-    EXPECT_LE(1, cc.Cnxn.current().WritableUris.size());
+    EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
 }
 
 
@@ -425,13 +425,13 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
     EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 
     // Try again.. we should succeed.
-    cc.Cnxn.rotate();
+    cc.cnxn.rotate();
     rc = cc.discoverRegions();
     // //std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
     EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
 
     // Try again.. we should fail again!
-    cc.Cnxn.rotate();
+    cc.cnxn.rotate();
     rc = cc.discoverRegions();
     // //std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
     EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
@@ -1134,7 +1134,7 @@ TEST(CosmosClient, queryDocument_threads)
                             }
                         }
                         catch (const std::exception& e) {
-                            // std::cerr << std::format("ODD:{:02}: create() exception:{}\n", i, e.what());
+                            std::cerr << std::format("ODD:{:02}: create() exception:{}\n", i, e.what());
                         }
                     }
                     oddAddDocsCount += docIds.size();
@@ -1182,18 +1182,24 @@ TEST(CosmosClient, queryDocument_threads)
                     // Create even documents.. this will "flood"
                     for (auto i = 0; i < DOCS; i++) {
                         if ((i % 2 == 0)) {
-                            auto rc = cc.create(
-                                    dbName,
-                                    collectionName,
-                                    {{"id",
-                                      std::format("{}.{}.{}", t, i, std::chrono::system_clock::now().time_since_epoch().count())},
-                                     {"ttl", 360},
-                                     {"__pk", "even.siddiqsoft.com"},
-                                     {"i", i},
-                                     {"tid", tid},
-                                     {"source", sourceId}});
-                            createdDocCount += rc.statusCode == 201 ? 1 : 0;
-                            docIds.push_back(rc.document.value("id", ""));
+                            try {
+                                auto rc = cc.create(
+                                        dbName,
+                                        collectionName,
+                                        {{"id",
+                                          std::format(
+                                                  "{}.{}.{}", t, i, std::chrono::system_clock::now().time_since_epoch().count())},
+                                         {"ttl", 360},
+                                         {"__pk", "even.siddiqsoft.com"},
+                                         {"i", i},
+                                         {"tid", tid},
+                                         {"source", sourceId}});
+                                createdDocCount += rc.statusCode == 201 ? 1 : 0;
+                                docIds.push_back(rc.document.value("id", ""));
+                            }
+                            catch (const std::exception& e) {
+                                std::cerr << std::format("EVEN:{:02}: create() exception:{}\n", i, e.what());
+                            }
                         }
                     }
                     evenAddDocsCount += docIds.size();

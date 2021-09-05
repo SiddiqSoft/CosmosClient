@@ -7,7 +7,7 @@ trigger:
     - release/*
   paths:
     exclude:
-    - docs/html
+    - docs
     - README.md
 
 pool:
