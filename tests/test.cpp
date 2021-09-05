@@ -1133,6 +1133,9 @@ TEST(CosmosClient, queryDocument_threads)
                                     createdDocCount++;
                                     docIds.push_back(rc.document.value("id", ""));
                                 }
+                                else {
+                                    std::cerr << std::format("ODD:{:02}: create() failed:{}\n", i, rc);
+                                }
                             }
                         }
                         catch (const std::exception& e) {
@@ -1199,6 +1202,9 @@ TEST(CosmosClient, queryDocument_threads)
                                 if (rc.statusCode == 201) {
                                     createdDocCount++;
                                     docIds.push_back(rc.document.value("id", ""));
+                                }
+                                else {
+                                    std::cerr << std::format("EVEN:{:02}: create() failed:{}\n", i, rc);
                                 }
                             }
                             catch (const std::exception& e) {

@@ -125,18 +125,18 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 `restClient` 🔒 | `WinHttpRESTClient` | The Rest Client is used for all operations against Cosmos.<br/>Multiple threads may use this class without issue as the underlying `send()` only uses the lone `HINTERNET` and the underlying WinHTTP library performs the connection-pooling.
 `cnxn` 🔒 | `CosmosConnection` | Represents the Primary and optionally Secondary connection string.<br/>Holds the information on the current read/write enpoints and the encryption keys.<br/>This is un-important to the client and its implementation may change without affecting the user-facing API.
 `CosmosClientUserAgentString` | `std::string` | The connection string used by the client against the Azure Cosmos Server.
-`CosmosClient` ⎔ | | Default constructor.<br/>_Move constructors, assignment operators are not relevant and have been deleted._
-`configuration` ⎔ | `const nlohmann::json&` | Return the as const the `config` object.
-`configure` ⎔ | `CosmosClient&` | Configures the client by setting up the `cnxn` object, invokes `discoverRegions` to build the readable/writable locations for the region and prepares the current read/write locations.<br/>Do not invoke this method as it causes the underlying objects to be reset and will likely break any operations.
-`discoverRegions` ⎔ | [`CosmosResponseType`](#struct-cosmosresponsetype) | Returns service configuration such as settings, regions, read and write locations.
-`listDatabases` ⎔   | [`CosmosResponseType`](#struct-cosmosresponsetype) | Returns `Documents[]` containing the ids of the databases for this cosmos service endpoint.
-`listCollections` ⎔ | [`CosmosResponseType`](#struct-cosmosresponsetype) | Returns `Documents[]` containing the ids of the collections in the given database.
-`listDocuments` ⎔ |  [`CosmosIterableResponseType`](#struct-cosmositerableresponsetype) | Returns zero-or-more documents in the given collection.<br/>The client is responsible for repeatedly invoking this method to pull all items.
-`create` ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Creates (add) single document to given collection in the database.
-`upsert` ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Create of update a document in the given collection in the database.
-`update` ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Update a document in the given collection in the database.
-`remove` ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Remove a document matching the document id in the given collection.
-`query` ⎔ |  [`CosmosIterableResponseType`](#struct-cosmositerableresponsetype) | Returns zero-or-more items matching the given search query and parameters.<br/>The client is responsible for repeatedly invoking this method to pull all items.
+[`CosmosClient`](#cosmosclientcosmosclient) ⎔ | | Default constructor.<br/>_Move constructors, assignment operators are not relevant and have been deleted._
+[`configuration`](#cosmosclientconfiguration) ⎔ | `const nlohmann::json&` | Return the as const the `config` object.
+[`configure`](#cosmosclientconfigure) ⎔ | `CosmosClient&` | Configures the client by setting up the `cnxn` object, invokes `discoverRegions` to build the readable/writable locations for the region and prepares the current read/write locations.<br/>Do not invoke this method as it causes the underlying objects to be reset and will likely break any operations.
+[`discoverRegions`](#cosmosclientdiscoverregions) ⎔ | [`CosmosResponseType`](#struct-cosmosresponsetype) | Returns service configuration such as settings, regions, read and write locations.
+[`listDatabases`](#cosmosclientlistdatabases) ⎔   | [`CosmosResponseType`](#struct-cosmosresponsetype) | Returns `Documents[]` containing the ids of the databases for this cosmos service endpoint.
+[`listCollections`](#cosmosclientlistcollections) ⎔ | [`CosmosResponseType`](#struct-cosmosresponsetype) | Returns `Documents[]` containing the ids of the collections in the given database.
+[`listDocuments`](#cosmosclientlistdocuments) ⎔ |  [`CosmosIterableResponseType`](#struct-cosmositerableresponsetype) | Returns zero-or-more documents in the given collection.<br/>The client is responsible for repeatedly invoking this method to pull all items.
+[`create`](#cosmosclientcreate) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Creates (add) single document to given collection in the database.
+[`upsert`](#cosmosclientupsert) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Create of update a document in the given collection in the database.
+[`update`](#cosmosclientupdate) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Update a document in the given collection in the database.
+[`remove`](#cosmosclientremove) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Remove a document matching the document id in the given collection.
+[`query`](#cosmosclientquery) ⎔ |  [`CosmosIterableResponseType`](#struct-cosmositerableresponsetype) | Returns zero-or-more items matching the given search query and parameters.<br/>The client is responsible for repeatedly invoking this method to pull all items.
 [`find`](#cosmosclientfind) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Finds and returns a *single* document matching the given document id.
 `to_json` ⎔ |  | Serializer for CosmosClient to a json object.
 
@@ -187,9 +187,7 @@ It is not intended to be used by the client and its implementation is subject to
 
 ### `CosmosClient::CosmosClient()`
 
-Empty default constructor. All of the 
-
-Move constructor and assignment operators and move operators have been deleted.
+Empty default constructor. All of the move constructor and assignment operators and move operators have been deleted.
 
 
 ### `CosmosClient::configuration()`
