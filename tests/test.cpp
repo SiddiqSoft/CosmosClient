@@ -1240,13 +1240,45 @@ TEST(CosmosClient, queryDocument_threads)
                 t));
     }
 
+    // This code will wait until the barrier has been released by all of the threads!
     // Wait until the latch is set to 0 from threadCount indicating that all threads have successfully completed
     // processing.
     endLatch.wait();
 
-    // This code will wait until the barrier has been released by all of the threads!
-    EXPECT_EQ(56, oddAddDocsCount.load());  // total odd
-    EXPECT_EQ(64, evenAddDocsCount.load()); // total even
+    /// @brief Helper to count even/odd elements in range
+    /// @param  Ending item
+    /// @param  Starting item (defaults to 0)
+    auto evenOddCount = [](uint16_t fc, uint16_t sc = 0) -> auto
+    {
+        struct rvt
+        {
+            uint16_t even {}, odd {};
+        };
+
+        rvt rt {};
+        // Count up all even items
+        for (uint16_t i = sc; i < fc; i++) {
+            rt.even += (i % 2 == 0);
+        }
+        // Remainder are odd items
+        rt.odd = fc - rt.even;
+        return rt;
+    };
+
+    // Each thread creates up to DOCS documents even/odd
+    auto eo = evenOddCount(DOCS);
+
+#ifdef _DEBUG
+    std::cerr << std::format("DOCS:{}  threadCount:{}  total:{}  threadCount x even:{}  threadCount x odd:{}\n",
+                             DOCS,
+                             threadCount,
+                             (DOCS * threadCount),
+                             threadCount * eo.even,
+                             threadCount * eo.odd);
+#endif
+
+    EXPECT_EQ(threadCount * eo.odd, oddAddDocsCount.load());   // total odd
+    EXPECT_EQ(threadCount * eo.even, evenAddDocsCount.load()); // total even
     EXPECT_EQ(DOCS * threadCount, oddAddDocsCount.load() + evenAddDocsCount.load());
     EXPECT_EQ(DOCS * threadCount, oddQueryDocsCount.load() + evenQueryDocsCount.load());
     EXPECT_EQ(DOCS * threadCount, oddRemoveDocsCount.load() + evenRemoveDocsCount.load());
