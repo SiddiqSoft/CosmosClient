@@ -54,208 +54,6 @@
  */
 
 
-/// @brief Test the serializers and cast operators
-TEST(CosmosConnection, test1_n)
-{
-    std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    siddiqsoft::CosmosConnection cd {cs};
-
-    EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-              ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-              std::string(cd.Primary));
-    // std::cerr << "Primary........." << std::string(cd.Primary) << std::endl;
-
-    EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cd.Primary.BaseUri));
-    // std::cerr << "Primary Uri....." << std::string(cd.Primary.BaseUri) << std::endl;
-
-    EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cd.Primary.EncodedKey);
-    // std::cerr << "Primary Key....." << cd.Primary.EncodedKey << std::endl;
-
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host);
-    // std::cerr << "Primary.host...." << ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host << std::endl;
-
-    // std::cerr << "Uri............." << cd.Primary.BaseUri << std::endl;
-}
-
-/// @brief Tests the serializers.
-/// Compiliation will fail for malformed/missing serializers
-TEST(CosmosConnection, test2_n)
-{
-    std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    siddiqsoft::CosmosConnection cd {cs};
-
-    nlohmann::json               info = cd;
-    EXPECT_EQ(4, info.size());
-    // std::cerr << "json............" << info.dump() << std::endl;
-    // std::cerr << "operator<<......" << cd << std::endl;
-    // std::cerr << "std:format......" << std::format("{}", cd) << std::endl;
-}
-
-
-/// @brief Test rotate between primary and secondary connection
-TEST(CosmosConnection, rotateConnection_1)
-{
-    std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
-                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    std::string scs = "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/"
-                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    siddiqsoft::CosmosConnection cd {pcs, scs};
-
-    // We must start at Primary
-    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-
-    // Swap to the secondary..
-    cd.rotate();
-    // //std::cerr << "1. Should be Secondary." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(scs, cd.current().string());
-
-    // Swap again.. which should end up at Primary
-    cd.rotate();
-    // //std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-
-    // Force set at 2
-    cd.rotate(2);
-    // //std::cerr << "3. Should be Secondary." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(scs, cd.current().string());
-
-    // Force set at 1
-    cd.rotate(1);
-    // //std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-}
-
-
-/// @brief Check the rotate method with single connection
-TEST(CosmosConnection, rotateConnection_2)
-{
-    std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
-                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    siddiqsoft::CosmosConnection cd {pcs};
-
-    // We must start at Primary
-    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-
-    // Swap to the secondary..
-    cd.rotate();
-    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-
-    // Swap again.. which should end up at Primary
-    cd.rotate();
-    // //std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-
-    // Force set at 2
-    cd.rotate(2);
-    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-
-    // Force set at 1
-    cd.rotate(1);
-    // //std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
-    EXPECT_EQ(pcs, cd.current().string());
-}
-
-
-/// @brief Test serializers and cast for the CosmosEndpoint object no extra read/write locations
-TEST(CosmosEndpoint, test1_n)
-{
-    siddiqsoft::CosmosEndpoint cs;
-
-    cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.BaseUri));
-    EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
-    EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-              ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-              std::string(cs));
-    // std::cerr << "operator<<......" << cs << std::endl;
-    // std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
-    // std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
-    // std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
-
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-    cs.rotateReadUri();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-    cs.rotateWriteUri();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-
-    auto info = nlohmann::json(cs);
-    EXPECT_EQ(6, info.size());
-    // //std::cerr << "json............" << info.dump(3) << std::endl;
-}
-
-
-/// @brief Test serializers and cast operators for CosmosEndpoint object with additional read/write locations.
-TEST(CosmosEndpoint, test2_n)
-{
-    using namespace siddiqsoft::literals;
-
-    siddiqsoft::CosmosEndpoint cs;
-
-    cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.BaseUri));
-    EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
-    EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-              ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
-              std::string(cs));
-
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-
-    // Feed some readlocations and writelocations
-    cs.ReadableUris.push_back("https://YOURDBNAME-r1.documents.azure.com:10/"_Uri);
-    cs.ReadableUris.push_back("https://YOURDBNAME-r2.documents.azure.com:11/"_Uri);
-    // Note that writable uris have ports 90 and 91 so we can test the parser
-    cs.WritableUris.push_back("https://YOURDBNAME-w1.documents.azure.com:90/"_Uri);
-    cs.WritableUris.push_back("https://YOURDBNAME-w2.documents.azure.com:91/"_Uri);
-
-    // std::cerr << "operator<<......" << cs << std::endl;
-    // std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
-    // std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
-    // std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
-
-    // Test readable uris..
-    EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-    cs.rotateReadUri();
-    EXPECT_EQ("YOURDBNAME-r2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-    cs.rotateReadUri();
-    EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-
-    // Test writable uris..
-    EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-    cs.rotateWriteUri();
-    EXPECT_EQ("YOURDBNAME-w2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-    cs.rotateWriteUri();
-    EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-
-    // If we exhaust the reads..
-    cs.ReadableUris.clear();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-
-    cs.WritableUris.clear();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
-}
-
-
 /// @brief Example code
 /// Declare the instance, configure and create a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
@@ -790,6 +588,64 @@ TEST(CosmosClient, upsertDocument)
 }
 
 
+TEST(CosmosClient, updateDocument)
+{
+    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+    // WARNING!
+    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    std::string dbName {};
+    std::string collectionName {};
+    std::string docId {};
+    std::string pkId {};
+
+
+    ASSERT_FALSE(priConnStr.empty())
+            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+    siddiqsoft::CosmosClient cc;
+
+    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
+
+    auto [rc, resp] = cc.listDatabases();
+    EXPECT_EQ(200, rc);
+    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+
+    auto [rc2, respCollections] = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2);
+    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+
+    // Now, let us create the document
+    docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId  = "siddiqsoft.com";
+
+    // Create the document.. (this should be insert
+    auto [rc4, iDoc] = cc.create(dbName,
+                                 collectionName,
+                                 {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"mode", "create"}, {"source", "basic_tests.exe"}});
+    EXPECT_EQ(201, rc4);
+    EXPECT_EQ("create", iDoc.value("mode", ""));
+
+    // Alter the "mode" element.
+    iDoc["mode"] = "update";
+
+    // Calling upsert again updates the same document.
+    auto [rc5, uDoc] = cc.update(dbName, collectionName, docId, pkId, iDoc);
+    EXPECT_EQ(200, rc5);
+    EXPECT_EQ("update", uDoc.value("mode", ""));
+
+    // And to check if we call create on the same docId it should fail
+    auto rc6 = cc.find(dbName, collectionName, docId, pkId);
+    EXPECT_EQ(200, rc6.statusCode);
+    EXPECT_EQ("update", rc6.document.value("mode", ""));
+
+    // Remove the document
+    auto rc7 = cc.remove(dbName, collectionName, docId, pkId);
+    EXPECT_EQ(204, rc7);
+}
+
+
 /// @brief Test query API
 TEST(CosmosClient, queryDocument)
 {
@@ -1282,4 +1138,206 @@ TEST(CosmosClient, queryDocument_threads)
     EXPECT_EQ(DOCS * threadCount, oddAddDocsCount.load() + evenAddDocsCount.load());
     EXPECT_EQ(DOCS * threadCount, oddQueryDocsCount.load() + evenQueryDocsCount.load());
     EXPECT_EQ(DOCS * threadCount, oddRemoveDocsCount.load() + evenRemoveDocsCount.load());
+}
+
+
+/// @brief Test the serializers and cast operators
+TEST(CosmosConnection, test1_n)
+{
+    std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    siddiqsoft::CosmosConnection cd {cs};
+
+    EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+              ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
+              std::string(cd.Primary));
+    // std::cerr << "Primary........." << std::string(cd.Primary) << std::endl;
+
+    EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cd.Primary.BaseUri));
+    // std::cerr << "Primary Uri....." << std::string(cd.Primary.BaseUri) << std::endl;
+
+    EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cd.Primary.EncodedKey);
+    // std::cerr << "Primary Key....." << cd.Primary.EncodedKey << std::endl;
+
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host);
+    // std::cerr << "Primary.host...." << ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host << std::endl;
+
+    // std::cerr << "Uri............." << cd.Primary.BaseUri << std::endl;
+}
+
+/// @brief Tests the serializers.
+/// Compiliation will fail for malformed/missing serializers
+TEST(CosmosConnection, test2_n)
+{
+    std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    siddiqsoft::CosmosConnection cd {cs};
+
+    nlohmann::json               info = cd;
+    EXPECT_EQ(4, info.size());
+    // std::cerr << "json............" << info.dump() << std::endl;
+    // std::cerr << "operator<<......" << cd << std::endl;
+    // std::cerr << "std:format......" << std::format("{}", cd) << std::endl;
+}
+
+
+/// @brief Test rotate between primary and secondary connection
+TEST(CosmosConnection, rotateConnection_1)
+{
+    std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
+                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    std::string scs = "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/"
+                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    siddiqsoft::CosmosConnection cd {pcs, scs};
+
+    // We must start at Primary
+    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+
+    // Swap to the secondary..
+    cd.rotate();
+    // //std::cerr << "1. Should be Secondary." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(scs, cd.current().string());
+
+    // Swap again.. which should end up at Primary
+    cd.rotate();
+    // //std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+
+    // Force set at 2
+    cd.rotate(2);
+    // //std::cerr << "3. Should be Secondary." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(scs, cd.current().string());
+
+    // Force set at 1
+    cd.rotate(1);
+    // //std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+}
+
+
+/// @brief Check the rotate method with single connection
+TEST(CosmosConnection, rotateConnection_2)
+{
+    std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
+                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    siddiqsoft::CosmosConnection cd {pcs};
+
+    // We must start at Primary
+    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+
+    // Swap to the secondary..
+    cd.rotate();
+    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+
+    // Swap again.. which should end up at Primary
+    cd.rotate();
+    // //std::cerr << "2. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+
+    // Force set at 2
+    cd.rotate(2);
+    // //std::cerr << "0. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+
+    // Force set at 1
+    cd.rotate(1);
+    // //std::cerr << "4. Should be Primary..." << cd.current() << std::endl;
+    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, cd.CurrentConnectionId);
+    EXPECT_EQ(pcs, cd.current().string());
+}
+
+
+/// @brief Test serializers and cast for the CosmosEndpoint object no extra read/write locations
+TEST(CosmosEndpoint, test1_n)
+{
+    siddiqsoft::CosmosEndpoint cs;
+
+    cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.BaseUri));
+    EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
+    EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+              ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
+              std::string(cs));
+    // std::cerr << "operator<<......" << cs << std::endl;
+    // std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
+    // std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
+    // std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
+
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    cs.rotateReadUri();
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    cs.rotateWriteUri();
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+
+    auto info = nlohmann::json(cs);
+    EXPECT_EQ(6, info.size());
+    // //std::cerr << "json............" << info.dump(3) << std::endl;
+}
+
+
+/// @brief Test serializers and cast operators for CosmosEndpoint object with additional read/write locations.
+TEST(CosmosEndpoint, test2_n)
+{
+    using namespace siddiqsoft::literals;
+
+    siddiqsoft::CosmosEndpoint cs;
+
+    cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+         ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    EXPECT_EQ("https://YOURDBNAME.documents.azure.com:443/", std::string(cs.BaseUri));
+    EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cs.EncodedKey);
+    EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+              ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
+              std::string(cs));
+
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+
+    // Feed some readlocations and writelocations
+    cs.ReadableUris.push_back("https://YOURDBNAME-r1.documents.azure.com:10/"_Uri);
+    cs.ReadableUris.push_back("https://YOURDBNAME-r2.documents.azure.com:11/"_Uri);
+    // Note that writable uris have ports 90 and 91 so we can test the parser
+    cs.WritableUris.push_back("https://YOURDBNAME-w1.documents.azure.com:90/"_Uri);
+    cs.WritableUris.push_back("https://YOURDBNAME-w2.documents.azure.com:91/"_Uri);
+
+    // std::cerr << "operator<<......" << cs << std::endl;
+    // std::cerr << "std::format....." << std::format("{}", cs) << std::endl;
+    // std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
+    // std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
+
+    // Test readable uris..
+    EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    cs.rotateReadUri();
+    EXPECT_EQ("YOURDBNAME-r2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    cs.rotateReadUri();
+    EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+
+    // Test writable uris..
+    EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    cs.rotateWriteUri();
+    EXPECT_EQ("YOURDBNAME-w2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    cs.rotateWriteUri();
+    EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+
+    // If we exhaust the reads..
+    cs.ReadableUris.clear();
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+
+    cs.WritableUris.clear();
+    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
 }
