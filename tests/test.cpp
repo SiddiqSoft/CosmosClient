@@ -40,6 +40,7 @@
 #include <latch>
 #include <functional>
 #include <chrono>
+#include <ranges>
 #include <semaphore>
 
 #include "nlohmann/json.hpp"
@@ -108,7 +109,7 @@ TEST(CosmosClient, configure_Defaults)
     siddiqsoft::CosmosClient cc;
 
     // Check that we have read/write locations detected.
-    auto currentConfig = cc.configuration();
+    auto& currentConfig = cc.configuration();
 
     EXPECT_TRUE(currentConfig.contains("apiVersion"));
     // This forces us to make sure we check side-effects whenever the version changes!
@@ -154,7 +155,7 @@ TEST(CosmosClient, configure_1)
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
     // Check that we have read/write locations detected.
-    auto currentConfig = cc.configuration();
+    auto& currentConfig = cc.configuration();
 
     EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
     EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
@@ -924,11 +925,11 @@ TEST(CosmosClient, queryDocument_threads)
     constexpr auto           DOCS {15};
     static auto              threadCount = std::thread::hardware_concurrency();
     std::atomic_uint32_t     createdDocCount {0};
-    std::latch               startLatch {threadCount * 2}; // we have two thread classes: even and odd
+    std::latch               startLatch {(threadCount * 2)}; // we have two thread classes: even and odd
     std::atomic_uint32_t     evenAddDocsCount {0}, oddAddDocsCount {0};
     std::atomic_uint32_t     evenQueryDocsCount {0}, oddQueryDocsCount {0};
     std::atomic_uint32_t     evenRemoveDocsCount {0}, oddRemoveDocsCount {0};
-    std::latch               endLatch {threadCount * 2};
+    std::latch               endLatch {(threadCount * 2)};
     siddiqsoft::CosmosClient cc; // single instance for all threads!
     std::barrier             creatorsBarrier(threadCount, [&]() noexcept -> void {
 // This code is run when all of the creators have completed
@@ -1340,4 +1341,56 @@ TEST(CosmosEndpoint, test2_n)
 
     cs.WritableUris.clear();
     EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+}
+
+
+TEST(CosmosClient, MoveConstruct)
+{
+    std::vector<siddiqsoft::CosmosClient> clients;
+
+    clients.push_back(siddiqsoft::CosmosClient {});
+    clients.push_back(siddiqsoft::CosmosClient {});
+
+    EXPECT_EQ(2, clients.size());
+}
+
+TEST(CosmosClient, configure_multi)
+{
+    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
+    // WARNING!
+    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
+    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+
+    ASSERT_FALSE(priConnStr.empty())
+            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+
+    std::vector<siddiqsoft::CosmosClient> clients;
+
+    for (auto i = 0; i < 4; i++) {
+        clients.emplace_back(siddiqsoft::CosmosClient {})
+                .configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    }
+
+    EXPECT_EQ(4, clients.size());
+
+    std::atomic_uint passTest {0};
+
+    std::ranges::for_each(clients, [&](auto& cc) {
+        // Check that we have read/write locations detected.
+        auto& currentConfig = cc.configuration();
+
+        EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
+        EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
+
+        // Atleast one read location
+        EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
+        EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
+        // Atleast one write location
+        EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
+        EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
+        passTest++;
+    });
+
+    EXPECT_EQ(4, passTest.load());
 }
