@@ -441,17 +441,25 @@ namespace siddiqsoft
 
     public:
         /// @brief This is the string used in the User-Agent header
-        inline static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.1.0"};
+        inline static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.6.0"};
 
         /// @brief Default constructor
         CosmosClient() { }
 
-#pragma region Disable Move constructors and move assignment operators
-        CosmosClient(const CosmosClient&&) = delete;
-        CosmosClient(const CosmosClient&)  = delete;
-        auto operator=(const CosmosClient&&) = delete;
-        auto operator=(const CosmosClient&) = delete;
-#pragma endregion
+        /// @brief Move constructor
+        /// @param src Other client instance
+        CosmosClient(CosmosClient&& src)
+            : config(std::move(src.config))
+            , serviceSettings(std::move(src.serviceSettings))
+            , restClient(std::move(src.restClient))
+            , isConfigured(src.isConfigured.load())
+            , cnxn(std::move(src.cnxn))
+        {
+        }
+
+        auto& operator=(CosmosClient&& src) = delete;
+        CosmosClient(const CosmosClient&)   = delete;
+        auto& operator=(const CosmosClient&) = delete;
 
         /// @brief Gets the current configuration object
         /// @return Configuration json
@@ -1023,7 +1031,6 @@ static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const 
     return os;
 }
 #pragma endregion
-
 
 
 /// @brief Serializer for the CosmosIterableResponseType

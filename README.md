@@ -109,8 +109,8 @@ void example1(const std::string& p, const std::string& s)
 
 # Roadmap
 
-0. [ ] [Documentation](https://siddiqsoft.github.io/CosmosClient/)
-1. [ ] Async operations
+0. [x] [Documentation](https://siddiqsoft.github.io/CosmosClient/)
+1. [ ] Async operations with auto-retry (follow the read/write locations and toggle primary/secondary)
 2. [ ] Support C++20 modules
 3. [ ] Co-routines
 4. [ ] OpenSSL for non-Windows platforms (current implementation is Windows only)

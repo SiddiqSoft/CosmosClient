@@ -25,7 +25,7 @@
     <dependencies>
       <dependency id="nlohmann.json" version="3.10"/>
       <dependency id="SiddiqSoft.AzureCppUtils" version="1.2"/>
-      <dependency id="SiddiqSoft.restcl" version="0.6.1"/>
+      <dependency id="SiddiqSoft.restcl" version="0.8"/>
     </dependencies>
   </metadata>
 
