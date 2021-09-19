@@ -61,7 +61,8 @@
     <Import Project="..\packages\SiddiqSoft.string2map.2.3.0\build\native\SiddiqSoft.string2map.targets" Condition="Exists('..\packages\SiddiqSoft.string2map.2.3.0\build\native\SiddiqSoft.string2map.targets')" />
     <Import Project="..\packages\SiddiqSoft.acw32h.2.7.0\build\native\SiddiqSoft.acw32h.targets" Condition="Exists('..\packages\SiddiqSoft.acw32h.2.7.0\build\native\SiddiqSoft.acw32h.targets')" />
     <Import Project="..\packages\nlohmann.json.3.10.2\build\native\nlohmann.json.targets" Condition="Exists('..\packages\nlohmann.json.3.10.2\build\native\nlohmann.json.targets')" />
-    <Import Project="..\packages\SiddiqSoft.restcl.0.8.0\build\native\SiddiqSoft.restcl.targets" Condition="Exists('..\packages\SiddiqSoft.restcl.0.8.0\build\native\SiddiqSoft.restcl.targets')" />
+    <Import Project="..\packages\SiddiqSoft.asynchrony-lib.0.9.1\build\native\SiddiqSoft.asynchrony-lib.targets" Condition="Exists('..\packages\SiddiqSoft.asynchrony-lib.0.9.1\build\native\SiddiqSoft.asynchrony-lib.targets')" />
+    <Import Project="..\packages\SiddiqSoft.restcl.0.9.2\build\native\SiddiqSoft.restcl.targets" Condition="Exists('..\packages\SiddiqSoft.restcl.0.9.2\build\native\SiddiqSoft.restcl.targets')" />
   </ImportGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -124,6 +125,7 @@
     <Error Condition="!Exists('..\packages\SiddiqSoft.string2map.2.3.0\build\native\SiddiqSoft.string2map.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.string2map.2.3.0\build\native\SiddiqSoft.string2map.targets'))" />
     <Error Condition="!Exists('..\packages\SiddiqSoft.acw32h.2.7.0\build\native\SiddiqSoft.acw32h.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.acw32h.2.7.0\build\native\SiddiqSoft.acw32h.targets'))" />
     <Error Condition="!Exists('..\packages\nlohmann.json.3.10.2\build\native\nlohmann.json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\nlohmann.json.3.10.2\build\native\nlohmann.json.targets'))" />
-    <Error Condition="!Exists('..\packages\SiddiqSoft.restcl.0.8.0\build\native\SiddiqSoft.restcl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.restcl.0.8.0\build\native\SiddiqSoft.restcl.targets'))" />
+    <Error Condition="!Exists('..\packages\SiddiqSoft.asynchrony-lib.0.9.1\build\native\SiddiqSoft.asynchrony-lib.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.asynchrony-lib.0.9.1\build\native\SiddiqSoft.asynchrony-lib.targets'))" />
+    <Error Condition="!Exists('..\packages\SiddiqSoft.restcl.0.9.2\build\native\SiddiqSoft.restcl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SiddiqSoft.restcl.0.9.2\build\native\SiddiqSoft.restcl.targets'))" />
   </Target>
 </Project>

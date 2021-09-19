@@ -220,19 +220,19 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 
     // First attempt should fail.
     auto rc = cc.discoverRegions();
-    // //std::cerr << "1/3....rc:" << rc << " Expect failure." << std::endl;
+    std::cerr << "1/3....rc:" << rc.statusCode << " Expect failure." << std::endl;
     EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 
     // Try again.. we should succeed.
     cc.cnxn.rotate();
     rc = cc.discoverRegions();
-    // //std::cerr << "2/3....rc:" << rc << " Expect success." << std::endl;
+    std::cerr << "2/3....rc:" << rc.statusCode << " Expect success." << std::endl;
     EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
 
     // Try again.. we should fail again!
     cc.cnxn.rotate();
     rc = cc.discoverRegions();
-    // //std::cerr << "3/3....rc:" << rc << " Expect failure." << std::endl;
+    std::cerr << "3/3....rc:" << rc.statusCode << " Expect failure." << std::endl;
     EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 }
 
