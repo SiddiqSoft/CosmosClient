@@ -55,6 +55,9 @@
 /// @brief Add asynchrony to our library
 #include "siddiqsoft/simple_pool.hpp"
 
+/// @brief Add the json formatter
+#include "siddiqsoft/formatters.hpp"
+
 
 namespace siddiqsoft
 {
@@ -353,6 +356,53 @@ namespace siddiqsoft
     };
 
 
+    /// @brief Cosmos data extends the nlohmann::json and adds the callback
+    /// @notes The fields may contain the following key-values
+    /// operation:          "discoverRegion", "listDatabases", "listCollections", "listDocuments",
+    ///                     "create", "upsert", "update", "remove", "find",
+    ///                     "query"
+    /// db:                 <database name>
+    /// collection:         <collection name>
+    /// docId:              <unique document id>
+    /// partitionKey:       <parition key value>
+    /// continuationToken
+    /// queryString:        <query string>
+    /// queryParameters     <json array query parameters>
+    /// doc:                <json document contents to create,update,upsert>
+    struct CosmosArgumentType
+    {
+        std::string    operation {};
+        std::string    database {};
+        std::string    collection {};
+        std::string    docId {};
+        std::string    partitionKey {};
+        std::string    continuationToken {};
+        std::string    queryString {};
+        nlohmann::json queryParameters;
+        nlohmann::json doc;
+        /// @brief The callback for this request. Invoked with the CosmosResponseType ref
+        /// @note The callback is invoked with this argument and the response to allow propogation and context.
+        std::function<void(CosmosArgumentType const&, CosmosResponseType const&)> onResponse {};
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosArgumentType,
+                                       operation,
+                                       database,
+                                       collection,
+                                       docId,
+                                       partitionKey,
+                                       continuationToken,
+                                       queryString,
+                                       queryParameters,
+                                       doc);
+    };
+
+
+    /// @brief Alias to the callback for async operation
+    /// The first parameter is the argument establishing the "context" for this response and the second
+    /// parameter is the response from the requested operation.
+    using CosmosAsyncCallbackType = std::function<void(CosmosArgumentType const&, CosmosResponseType const&)>;
+
+
     /// @brief The CosmosIterableResponseType inherits from the CosmosResponseType and includes the continuation token
     /// - `std::string` - Continuation Token.
     ///
@@ -442,6 +492,44 @@ namespace siddiqsoft
         /// @brief The connection object stores the Primary, Secondary connection strings as well as the read/write locations for
         /// the given Azure location.
         CosmosConnection cnxn {};
+
+        /// @brief The async worker pool
+        simple_pool<CosmosArgumentType> asyncWorkers {std::bind_front(&CosmosClient::asyncDispatcher, this)};
+
+        /// @brief The async dispatcher/driver
+        /// @param req The queued request
+        void asyncDispatcher(CosmosArgumentType& req)
+        {
+            if (req.operation.starts_with("discoverRegion")) {
+                auto resp = discoverRegions();
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+            else if (req.operation.starts_with("listDatabases")) {
+                auto resp = listDatabases();
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+            else if (req.operation.starts_with("listCollections")) {
+                auto resp = listCollections(req.database);
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+            else if (req.operation.starts_with("listDocuments")) {
+                auto resp = listDocuments(req.database, req.collection, req.continuationToken);
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+            else if (req.operation.starts_with("create")) {
+                auto resp = create(req.database, req.collection, req.doc);
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+            else if (req.operation.starts_with("upsert")) {
+                auto resp = upsert(req.database, req.collection, req.doc);
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+            else if (req.operation.starts_with("remove")) {
+                auto               rc = remove(req.database, req.collection, req.docId, req.partitionKey);
+                CosmosResponseType resp {rc, {}};
+                if (req.onResponse) req.onResponse(req, resp);
+            }
+        }
 
     public:
         /// @brief This is the string used in the User-Agent header
@@ -536,39 +624,44 @@ namespace siddiqsoft
             return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
         }
 
-
-        CosmosResponseType discoverRegionsRecovery()
+        /*
+        void discoverRegions(std::function<void(CosmosResponseType&)> callback)
         {
-            CosmosResponseType ret {0xFA17, {}};
-            auto               retryCount = config.value("libRetryLimit", 1);
 
-            do {
-                auto ts  = DateUtils::RFC7231();
-                auto req = ReqGet(cnxn.current().currentReadUri(),
-                                  {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "", "", ts)},
-                                   {"x-ms-date", ts},
-                                   {"x-restcl-retryCount", retryCount},
-                                   {"x-ms-version", config["apiVersion"]}});
+                auto ts = DateUtils::RFC7231();
+
+                restClient.send(
+                        ReqGet(cnxn.current().currentReadUri(),
+                               {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "", "", ts)},
+                                {"x-ms-date", ts},
+                                {"x-ms-version", config["apiVersion"]}}),
+                        [&callback](const auto& req, const auto& resp) {
+                            if (resp.success()) {
+                                callback({resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}});
+                            }
+                            else if (!resp.success()) {
+                            }
+                    });
 
                 if (auto resp = restClient.send(req); !resp.success()) {
-#ifdef _DEBUG
+    #ifdef _DEBUG
                     std::cerr << "Response (retryCount:" << retryCount << ") from " << req.uri.authority.host << " --> "
                               << resp.status().code << std::endl;
-#endif
+    #endif
                     if (resp.status().code == 12029) {
-#ifdef _DEBUG
+    #ifdef _DEBUG
                         std::cerr << "Rotate to " << cnxn.rotate().current().string() << std::endl;
-#else
+    #else
                         cnxn.rotate();
-#endif
+    #endif
                         --retryCount;
                     }
                     else if (resp["response"]["status"] == 401) {
-#ifdef _DEBUG
+    #ifdef _DEBUG
                         std::cerr << "Rotate to " << cnxn.rotate().current().string() << std::endl;
-#else
+    #else
                         cnxn.rotate();
-#endif
+    #endif
                         --retryCount;
                     }
                     else {
@@ -582,10 +675,8 @@ namespace siddiqsoft
                     retryCount = 0;
                 }
             } while (retryCount > 0);
-
-            return ret;
         }
-
+        */
 
         /// @brief List all databases for the given service
         /// Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
@@ -745,6 +836,18 @@ namespace siddiqsoft
             auto resp = restClient.send(req);
             return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
         }
+
+
+        /// @brief Invokes the requested operation from threadpool
+        /// @param arg The request payload. The json must contain at least "operation"
+        /// @param callback The callback
+        void async(CosmosArgumentType&& op, CosmosAsyncCallbackType callback)
+        {
+            if (callback) op.onResponse = callback;
+
+            asyncWorkers.queue(std::move(op));
+        }
+
 
         /// @brief Update existing document
         /// @param dbName Database name
@@ -1079,6 +1182,18 @@ struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::basi
 {
     template <class FC>
     auto format(const siddiqsoft::CosmosResponseType& s, FC& ctx)
+    {
+        return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
+    }
+};
+
+
+/// @brief Serializer for the CosmosArgumentType
+template <>
+struct std::formatter<siddiqsoft::CosmosArgumentType> : std::formatter<std::basic_string<char>>
+{
+    template <class FC>
+    auto format(const siddiqsoft::CosmosArgumentType& s, FC& ctx)
     {
         return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
     }

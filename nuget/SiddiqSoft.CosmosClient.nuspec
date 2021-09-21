@@ -27,6 +27,7 @@
       <dependency id="SiddiqSoft.AzureCppUtils" version="1.2"/>
       <dependency id="SiddiqSoft.restcl" version="0.9"/>
       <dependency id="SiddiqSoft.asynchrony-lib" version="0.9"/>
+      <dependency id="SiddiqSoft.format-helpers" version="1.0.3"/>
     </dependencies>
   </metadata>
 

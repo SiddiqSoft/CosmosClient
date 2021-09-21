@@ -41,6 +41,53 @@ A single class [CosmosClient](#class-cosmosclient) implements the functionality.
 Note that since this is a header, you'll also get the contents of the `azure-cpp-utils` and `restcl` as well as supporting code.
 C++ modules are a solution to this problem but the implementation in VS 2019 v16.11.2 is flaky and I could not get it working!
 
+## struct `CosmosArgumentType`
+
+This structure is used to specify arguments to the [`async`]() operations and as a parameter to the callback for async completion callback.
+
+CosmosArgumentType | Type | Description
+-------------------|----------------|---------------------
+**`operation`** | `std::string` | Mandatory; one of the following (corresponds to the method):<br/>`discoverRegion`, `listDatabases`, `listCollections`,<br/>`create`, `upsert`, `update`, `remove`,</br>`listDocuments`, `find`, `query`
+`database` | `std::string` | Database name
+`collection` | `std::string` | Collection name
+`docId` | `std::string` | The unique document id. Required for operations: `find`, `update`, `remove`
+`partitionKey` | `std::string` | Required for operaions: `update`, `find`, `remove`, `query`.<br/>In the case of `query`, this may be `*` to indicate cross-partition query.
+`continuationToken` | `std::string` | Used when there would be more than 100 items requrned by the server for operations: `listDocuments`, `find` and `query`.<br/>If you find this field in the response then you must use iteration to fetch the rest of the documents.
+`queryString` | `std::string` | The query string. May include tokens with values in the queryParameters json
+`queryParameters` | `nlohmann::json` | An array of key-value arguments matching the tokens in the queryString
+`doc` | `nlohmann::json` | The document to create/upsert/update
+`onResponse` | function | Callback/lambda to receive the response for the given async request.<br/>Invoked with const reference to the argument structure and the response.
+
+### Signature
+
+```cpp
+    struct CosmosArgumentType
+    {
+        std::string    operation {};
+        std::string    database {};
+        std::string    collection {};
+        std::string    docId {};
+        std::string    partitionKey {};
+        std::string    continuationToken {};
+        std::string    queryString {};
+        nlohmann::json queryParameters;
+        nlohmann::json doc;
+
+        std::function<void(CosmosArgumentType const&, CosmosResponseType const&)> onResponse {};
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosArgumentType,
+                                       operation,
+                                       database,
+                                       collection,
+                                       docId,
+                                       partitionKey,
+                                       continuationToken,
+                                       queryString,
+                                       queryParameters,
+                                       doc);
+    };
+```
+
 ## struct `CosmosResponseType`
 
 This is the primary return type from the [CosmosClient](#struct-cosmosclient) functions.
@@ -113,10 +160,27 @@ CosmosIterableResponseType | Type  | Description
 `continuationToken` | `string` | Do not modify; this is the `x-ms-continuation` token from the response header and inpat for the `listDocuments` and `query` methods to obtain all of the documents.
 
 
+## using `CosmosAsyncCallbackType`
+
+```cpp
+    using CosmosAsyncCallbackType = std::function<void(CosmosArgumentType const& context, CosmosResponseType const& response)>;
+```
+
+ | Type  | Description
+-------------------|----|---
+`context` | [`CosmosArgumentType const&`](#struct-cosmosargumenttype) | Const-reference to the original request.
+`response`   | [`CosmosResponseType const&`](#struct-cosmosresponsetype) | Const-reference to the response from the server.
+
+<hr/>
+
 ## class `CosmosClient`
 
 Implements the Cosmos SQL-API via REST. Omits the attachment API as of this version.
 
+```cpp
+```
+
+### Member variables
 &nbsp; | Type           | Description
 ------:|:---------------|:-------------
 `config` 🔒 | `nlohmann::json` | Configuration for the client
@@ -125,6 +189,11 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 `restClient` 🔒 | `WinHttpRESTClient` | The Rest Client is used for all operations against Cosmos.<br/>Multiple threads may use this class without issue as the underlying `send()` only uses the lone `HINTERNET` and the underlying WinHTTP library performs the connection-pooling.
 `cnxn` 🔒 | `CosmosConnection` | Represents the Primary and optionally Secondary connection string.<br/>Holds the information on the current read/write enpoints and the encryption keys.<br/>This is un-important to the client and its implementation may change without affecting the user-facing API.
 `CosmosClientUserAgentString` | `std::string` | The connection string used by the client against the Azure Cosmos Server.
+`asyncWorkers` | `simple_pool<CosmosArgumentType>` | Implements asynchrony to the cosmos library.
+
+### Member Functions
+&nbsp; | Returns           | Description
+------:|:---------------|:-------------
 [`CosmosClient`](#cosmosclientcosmosclient) ⎔ | | Default constructor.<br/>_Move constructors, assignment operators are not relevant and have been deleted._
 [`configuration`](#cosmosclientconfiguration) ⎔ | `const nlohmann::json&` | Return the as const the `config` object.
 [`configure`](#cosmosclientconfigure) ⎔ | `CosmosClient&` | Configures the client by setting up the `cnxn` object, invokes `discoverRegions` to build the readable/writable locations for the region and prepares the current read/write locations.<br/>Do not invoke this method as it causes the underlying objects to be reset and will likely break any operations.
@@ -138,7 +207,9 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 [`remove`](#cosmosclientremove) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Remove a document matching the document id in the given collection.
 [`query`](#cosmosclientquery) ⎔ |  [`CosmosIterableResponseType`](#struct-cosmositerableresponsetype) | Returns zero-or-more items matching the given search query and parameters.<br/>The client is responsible for repeatedly invoking this method to pull all items.
 [`find`](#cosmosclientfind) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Finds and returns a *single* document matching the given document id.
+[`async`](#cosmosclientasync) ⎔ |   | Finds and returns a *single* document matching the given document id.
 `to_json` ⎔ |  | Serializer for CosmosClient to a json object.
+`asyncDispatcher` |  | Implements the dispatch from the queue and recovery/retry logic.
 
 > There are also implementations for serializing via `std::format` using the json serializer.
 
@@ -228,6 +299,84 @@ Must have the following elements:
 
 Reference to the CosmosClient object.
 
+
+### `CosmosClient::async`
+
+Perform any supported operation using the `simple_pool` which uses a `std::deque` with a threadpool to perform the IO and recovery for simple errors such as `401` and IO transient errors.
+
+```cpp
+    void async(CosmosArgumentType&& op,
+               CosmosAsyncCallbackType callback);
+```
+#### params
+
+Parameter  | Type            | Description
+----------:|-----------------|----------------------
+`op` | [`CosmosArgumentType&&`](#struct-cosmosargumenttype) | The request to be executed asynchronously.
+`callback` | [`CosmosAsyncCallbackType`](#using-cosmosasynccallbacktype) | The callback invoked when the operation completes (success or failure).<br/>The callback includes the original request as well as the response from the server.
+
+#### examples
+
+This is a complete example (without error checking) to illustrate how you can nest operations repeatedly and have them complete asynchronously!
+
+```cpp
+    std::atomic_bool passTest = false;
+    std::string priConnStr    = std::getenv("CCTEST_PRIMARY_CS");
+    std::string secConnStr    = std::getenv("CCTEST_SECONDARY_CS");
+
+    siddiqsoft::CosmosClient cc;
+
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    // #1..Start by listing the databases
+    cc.async({.operation = "listDatabases"},
+             [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
+                 // #2..On completion of listDatabases, get the collections..
+                 cc.async({.operation = "listCollections",
+                           .database = resp.document.value("/Databases/0/id"_json_pointer, "")},
+                          [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
+                              // #3..On successful listCollections, lets create a document..
+                              auto docId          = std::format("azure-cosmos-restcl.{}",
+                                                                std::chrono::system_clock().now().time_since_epoch().count());
+                              auto pkId           = "siddiqsoft.com";
+                              // #3..Create the document..
+                              cc.async({.operation    = "create",
+                                        .database     = ctx.database,
+                                        .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
+                                        .docId        = docId,
+                                        .partitionKey = pkId,
+                                        .doc          = { {"id", docId},
+                                                         {"ttl", 360},
+                                                         {"__pk", pkId},
+                                                         {"func", __func__},
+                                                         {"source", "basic_tests.exe"}}},
+                                       [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx,
+                                                        siddiqsoft::CosmosResponseType const& resp) {
+                                           // #4..We created the document..
+                                           // ...
+                                           // #4..Remove the document
+                                           cc.async({.operation    = "remove",
+                                                     .database           = ctx.database,
+                                                     .collection   = ctx.collection,
+                                                     .docId        = resp.document.value("id", ctx.docId),
+                                                     .partitionKey = ctx.partitionKey},
+                                                    [&cc, &passTest](auto const& ctx, auto const& resp) {
+                                                        // #5..All done. the document should be gone.
+                                                        passTest = true;
+                                                        passTest.notify_all();
+                                                    });
+                                       });
+                          });
+             });
+
+    // Holds until the test completes
+    passTest.wait(false);
+```
+> **NOTE**
+> 
+> When using lambda captures, it is critical that you avoid using `&` and specify the values you'd like to capture explicitly.
+> Using the `&` causes heap errors and slows down as the compiler generates an ever larger heap for you.
+> 
+> Also, if you're using AddressSanitier, it will complain. The above example uses explicit capture and enables AddressSanitizer without issue.
 
 ### `CosmosClient::discoverRegions()`
 
