@@ -43,7 +43,7 @@ C++ modules are a solution to this problem but the implementation in VS 2019 v16
 
 ## struct `CosmosArgumentType`
 
-This structure is used to specify arguments to the [`async`]() operations and as a parameter to the callback for async completion callback.
+This structure is used to specify arguments to the [`queue`]() operations and as a parameter to the callback for async completion callback.
 
 CosmosArgumentType | Type | Description
 -------------------|----------------|---------------------
@@ -57,6 +57,9 @@ CosmosArgumentType | Type | Description
 `queryParameters` | `nlohmann::json` | An array of key-value arguments matching the tokens in the queryString
 `doc` | `nlohmann::json` | The document to create/upsert/update
 `onResponse` | function | Callback/lambda to receive the response for the given async request.<br/>Invoked with const reference to the argument structure and the response.
+
+> Take a look at structured bindings in C++17.
+
 
 ### Signature
 
@@ -74,17 +77,6 @@ CosmosArgumentType | Type | Description
         nlohmann::json doc;
 
         std::function<void(CosmosArgumentType const&, CosmosResponseType const&)> onResponse {};
-
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosArgumentType,
-                                       operation,
-                                       database,
-                                       collection,
-                                       docId,
-                                       partitionKey,
-                                       continuationToken,
-                                       queryString,
-                                       queryParameters,
-                                       doc);
     };
 ```
 
@@ -99,6 +91,8 @@ CosmosResponseType | Type  | Description
 `statusCode` | `uint32_t` | Holds the HTTP response Status Code or the system-error code (WinHTTP error code)
 `document`   | `nlohmann::json` | Holds the response from the Cosmos response.
 
+Azure Cosmos REST API [status codes](https://docs.microsoft.com/en-us/rest/api/cosmos-db/http-status-codes-for-cosmosdb) has the full list with detailed explanations.
+
 statusCode | Comment
 ----------:|:--------------
  `200`    | Success. [`listDatabases`](#cosmosclient-listdatabases), [`listCollections`](#cosmosclient-listcollections), [`listDocuments`](#cosmosclient-listdocuments), [`find`](#cosmosclient-find), [`query`](#cosmosclient-query), [`upsert`](#cosmosclient-upsert)
@@ -107,6 +101,7 @@ statusCode | Comment
  `401`    | Authorization failure.
  `404`    | Document Not found.
  `409`    | Document already exists. [`create`](#cosmosclient-create)
+
 
 *Output Sample*
 
@@ -178,6 +173,43 @@ CosmosIterableResponseType | Type  | Description
 Implements the Cosmos SQL-API via REST. Omits the attachment API as of this version.
 
 ```cpp
+    class CosmosClient
+    {
+    protected:
+        nlohmann::json                  config;
+        nlohmann::json                  serviceSettings;
+        std::atomic_bool                isConfigured;
+        WinHttpRESTClient               restClient;
+        CosmosConnection                cnxn;
+        simple_pool<CosmosArgumentType> asyncWorkers;
+
+        void asyncDispatcher(CosmosArgumentType&);
+
+    public:
+        CosmosClient();
+        CosmosClient(CosmosClient&&);
+
+        auto& operator=(CosmosClient&&)      = delete;
+        CosmosClient(const CosmosClient&)    = delete;
+        auto& operator=(const CosmosClient&) = delete;
+
+        const nlohmann::json& configuration()
+        CosmosClient& configure(const nlohmann::json&) noexcept(false);
+        void queue(CosmosArgumentType&& op, CosmosAsyncCallbackType);
+
+        CosmosResponseType          discoverRegions()
+        CosmosResponseType          listDatabases()
+        CosmosResponseType          listCollections(CosmosArgumentType const& ctx)
+        CosmosIterableResponseType  listDocuments(CosmosArgumentType const& ctx)
+        CosmosResponseType          createDocument(CosmosArgumentType const& ctx)
+        CosmosResponseType          upsertDocument(CosmosArgumentType const& ctx)
+        CosmosResponseType          updateDocument(CosmosArgumentType const& ctx)
+        uint32_t                    removeDocument(CosmosArgumentType const& ctx)
+        CosmosIterableResponseType  queryDocuments(CosmosArgumentType const& ctx)
+        CosmosResponseType          findDocument(CosmosArgumentType const& ctx)
+
+        friend void to_json(nlohmann::json& dest, const CosmosClient& src);
+    }
 ```
 
 ### Member variables
@@ -317,6 +349,23 @@ Parameter  | Type            | Description
 
 #### examples
 
+A simple `async` call uses structured binding introduced in C++17 
+```cpp
+    std::atomic_bool         passTest = false;
+    std::string              priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+    std::string              secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    siddiqsoft::CosmosClient cc;
+
+    // Configure
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    // Make an async call
+    cc.queue({.operation = "listDatabases"},
+             [](auto const& ctx, auto const& resp) {
+                // Print the list of databases..
+                std::cout << std::format("List of databases\n{}\n", resp.document.dump(3));
+             });
+```
+
 This is a complete example (without error checking) to illustrate how you can nest operations repeatedly and have them complete asynchronously!
 
 ```cpp
@@ -328,10 +377,10 @@ This is a complete example (without error checking) to illustrate how you can ne
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
     // #1..Start by listing the databases
-    cc.async({.operation = "listDatabases"},
+    cc.queue({.operation = "listDatabases"},
              [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
                  // #2..On completion of listDatabases, get the collections..
-                 cc.async({.operation = "listCollections",
+                 cc.queue({.operation = "listCollections",
                            .database = resp.document.value("/Databases/0/id"_json_pointer, "")},
                           [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
                               // #3..On successful listCollections, lets create a document..
@@ -339,7 +388,7 @@ This is a complete example (without error checking) to illustrate how you can ne
                                                                 std::chrono::system_clock().now().time_since_epoch().count());
                               auto pkId           = "siddiqsoft.com";
                               // #3..Create the document..
-                              cc.async({.operation    = "create",
+                              cc.queue({.operation    = "create",
                                         .database     = ctx.database,
                                         .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
                                         .docId        = docId,
@@ -354,7 +403,7 @@ This is a complete example (without error checking) to illustrate how you can ne
                                            // #4..We created the document..
                                            // ...
                                            // #4..Remove the document
-                                           cc.async({.operation    = "remove",
+                                           cc.queue({.operation    = "remove",
                                                      .database           = ctx.database,
                                                      .collection   = ctx.collection,
                                                      .docId        = resp.document.value("id", ctx.docId),

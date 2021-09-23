@@ -56,9 +56,9 @@
 
 
 /// @brief Example code
-/// Declare the instance, configure and create a document with only three lines!
+/// Declare the instance, configure and createDocument a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
-TEST(CosmosClient_async, example1)
+TEST(CosmosClient_async, nested_async)
 {
     std::atomic_bool passTest = false;
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -74,41 +74,41 @@ TEST(CosmosClient_async, example1)
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-    cc.async({.operation = "listDatabases"},
+    cc.queue({.operation = siddiqsoft::CosmosOperation::listDatabases},
              [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
                  std::cerr << std::format("Completed listDatabases: {}\n", resp);
 
                  auto dbName = resp.document.value("/Databases/0/id"_json_pointer, "");
-                 cc.async({.operation = "listCollections", .database = dbName},
+                 cc.queue({.operation = siddiqsoft::CosmosOperation::listCollections, .database = dbName},
                           [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
                               std::cerr << std::format("Completed listCollections: {}\n", resp);
 
                               auto collectionName = resp.document.value("/DocumentCollections/0/id"_json_pointer, "");
-                              auto docId          = std::format("azure-cosmos-restcl.{}",
-                                                       std::chrono::system_clock().now().time_since_epoch().count());
+                              auto id             = std::format("azure-cosmos-restcl.{}",
+                                                    std::chrono::system_clock().now().time_since_epoch().count());
                               auto pkId           = "siddiqsoft.com";
 
-                              cc.async({.operation    = "create",
-                                        .database           = ctx.database,
+                              cc.queue({.operation    = siddiqsoft::CosmosOperation::create,
+                                        .database     = ctx.database,
                                         .collection   = collectionName,
-                                        .docId        = docId,
+                                        .id           = id,
                                         .partitionKey = pkId,
-                                        .doc          = {{"id", docId},
-                                                {"ttl", 360},
-                                                {"__pk", pkId},
-                                                {"func", __func__},
-                                                {"source", "basic_tests.exe"}}},
+                                        .document     = {{"id", id},
+                                                     {"ttl", 360},
+                                                     {"__pk", pkId},
+                                                     {"func", __func__},
+                                                     {"source", "basic_tests.exe"}}},
                                        [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx,
                                                         siddiqsoft::CosmosResponseType const& resp) {
                                            std::cerr << std::format("Completed create: {}\n", resp);
                                            // Remove the document
-                                           cc.async({.operation    = "remove",
-                                                     .database           = ctx.database,
+                                           cc.queue({.operation    = siddiqsoft::CosmosOperation::remove,
+                                                     .database     = ctx.database,
                                                      .collection   = ctx.collection,
-                                                     .docId        = resp.document.value("id", ctx.docId),
+                                                     .id           = resp.document.value("id", ctx.id),
                                                      .partitionKey = ctx.partitionKey},
                                                     [&cc, &passTest](auto const& ctx, auto const& resp) {
-                                                        std::cerr << std::format("Completed remove: {}\n", resp);
+                                                        std::cerr << std::format("Completed removeDocument: {}\n", resp);
                                                         // Document should be removed.
                                                         passTest = true;
                                                         passTest.notify_all();
@@ -122,143 +122,8 @@ TEST(CosmosClient_async, example1)
 
     // This sleep is critical to allow the various async operations to complete
     // otherwise the test will abort immediately
-    //std::this_thread::sleep_for(std::chrono::seconds(15));
+    // std::this_thread::sleep_for(std::chrono::seconds(15));
     EXPECT_TRUE(passTest);
-}
-
-
-/// @brief Test the configuration defaults
-/// Checks that we match the changes to the configuration defaults in code against the documentation and client tests.
-TEST(CosmosClient_async, configure_Defaults)
-{
-    siddiqsoft::CosmosClient cc;
-
-    // Check that we have read/write locations detected.
-    auto& currentConfig = cc.configuration();
-
-    EXPECT_TRUE(currentConfig.contains("apiVersion"));
-    // This forces us to make sure we check side-effects whenever the version changes!
-    EXPECT_EQ("2018-12-31", currentConfig.value("apiVersion", ""));
-    EXPECT_TRUE(currentConfig.contains("connectionStrings"));
-    EXPECT_TRUE(currentConfig.contains("partitionKeyNames"));
-}
-
-
-/// @brief Checks the CosmosClient to_json has a consistent output
-TEST(CosmosClient_async, configure_check_json)
-{
-    siddiqsoft::CosmosClient cc;
-
-    // Check that the to_json has a consistent output
-    nlohmann::json info = cc;
-    EXPECT_TRUE(info.contains("serviceSettings"));
-    EXPECT_TRUE(info.contains("database"));
-    EXPECT_TRUE(info.contains("configuration"));
-    EXPECT_EQ(3, info.size());
-}
-
-
-/// @brief Test to check call to configure will pull in the serviceSettings.
-/// The `serviceSettings` contains information about the service as reported by call to discoverRegions
-/// Here we perform a configure and check the responses obtained from the Azure service.
-///
-/// NOTE: The `serviceSettings` is protected and this test declares the macro `COSMOSCLIENT_TESTING_MODE`
-/// to enable public access during testing stage only.
-TEST(CosmosClient_async, configure_1)
-{
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    // Check that we have read/write locations detected.
-    auto& currentConfig = cc.configuration();
-
-    EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
-    EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
-
-    // Atleast one read location
-    EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
-    EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
-    // Atleast one write location
-    EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
-    EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
-}
-
-
-TEST(CosmosClient_async, discoverRegions)
-{
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    // The configure calls the method discoverRegions
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-    nlohmann::json info = cc;
-    EXPECT_TRUE(info.contains("serviceSettings"));
-    EXPECT_TRUE(info.contains("database"));
-    EXPECT_TRUE(info.contains("configuration"));
-    EXPECT_EQ(3, info.size());
-
-    // Check that we have read/write locations detected.
-    // Atleast one read location
-    EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
-    EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
-    // Atleast one write location
-    EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
-    EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
-}
-
-
-TEST(CosmosClient_async, discoverRegions_BadPrimary)
-{
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = "AccountEndpoint=https://localhost:4043/"
-                             ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    std::string secConnStr = std::getenv("CCTEST_PRIMARY_CS");
-
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-
-    // First attempt should fail.
-    auto rc = cc.discoverRegions();
-    std::cerr << "1/3....rc:" << rc.statusCode << " Expect failure." << std::endl;
-    EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
-
-    // Try again.. we should succeed.
-    cc.cnxn.rotate();
-    rc = cc.discoverRegions();
-    std::cerr << "2/3....rc:" << rc.statusCode << " Expect success." << std::endl;
-    EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
-
-    // Try again.. we should fail again!
-    cc.cnxn.rotate();
-    rc = cc.discoverRegions();
-    std::cerr << "3/3....rc:" << rc.statusCode << " Expect failure." << std::endl;
-    EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 }
 
 
@@ -276,11 +141,12 @@ TEST(CosmosClient_async, listDatabases)
 
     siddiqsoft::CosmosClient cc;
 
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-    auto [rc, resp] = cc.listDatabases();
-    // Expect success.
-    EXPECT_EQ(200, rc);
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}})
+            .queue({.operation  = siddiqsoft::CosmosOperation::listDatabases,
+                    .onResponse = [](auto const& req, const siddiqsoft::CosmosResponseType& resp) {
+                        // Expect success.
+                        EXPECT_EQ(200, resp.statusCode);
+                    }});
 }
 
 
@@ -298,18 +164,20 @@ TEST(CosmosClient_async, listCollections)
 
     siddiqsoft::CosmosClient cc;
 
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-    auto [rc, resp] = cc.listDatabases();
-    // Expect success.
-    EXPECT_EQ(200, rc);
-
-    auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
-    // Expect success.
-    EXPECT_EQ(200, rc2);
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}})
+            .queue({.operation  = siddiqsoft::CosmosOperation::listDatabases,
+                    .onResponse = [&cc](auto const& req, const siddiqsoft::CosmosResponseType& resp) {
+                        // Expect success.
+                        EXPECT_EQ(200, resp.statusCode);
+                        cc.queue({.operation  = siddiqsoft::CosmosOperation::listCollections,
+                                  .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
+                                  .onResponse = [](auto const&, auto const& resp) {
+                                      EXPECT_EQ(200, resp.statusCode);
+                                  }});
+                    }});
 }
 
-
+#ifdef WORK_TO_BE_COMPLETED
 /// @brief Tests the listDocuments with a limit of 7 iterations
 TEST(CosmosClient_async, listDocuments)
 {
@@ -330,15 +198,15 @@ TEST(CosmosClient_async, listDocuments)
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
 
-    auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
-    EXPECT_EQ(200, rc2);
+    auto rc2 = cc.listCollections(rc.document.value("/Databases/0/id"_json_pointer, ""));
+    EXPECT_EQ(200, rc2.statusCode);
 
     do {
-        irt = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
-                               respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
+        irt = cc.listDocuments(rc.document.value("/Databases/0/id"_json_pointer, ""),
+                               rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
                                irt.continuationToken);
         EXPECT_EQ(200, irt.statusCode);
         // We check against a collection that has multiple
@@ -371,14 +239,14 @@ TEST(CosmosClient_async, listDocuments_top100)
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
 
-    auto [rc2, respCollections] = cc.listCollections(resp.value("/Databases/0/id"_json_pointer, ""));
-    EXPECT_EQ(200, rc2);
+    auto rc2 = cc.listCollections(rc.document.value("/Databases/0/id"_json_pointer, ""));
+    EXPECT_EQ(200, rc2.statusCode);
 
-    irt = cc.listDocuments(resp.value("/Databases/0/id"_json_pointer, ""),
-                           respCollections.value("/DocumentCollections/0/id"_json_pointer, ""),
+    irt = cc.listDocuments(rc.document.value("/Databases/0/id"_json_pointer, ""),
+                           rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
                            irt.continuationToken);
     EXPECT_EQ(200, irt.statusCode);
     // We check against a collection that has multiple
@@ -388,7 +256,7 @@ TEST(CosmosClient_async, listDocuments_top100)
 }
 
 
-/// @brief Test create document API. Removes the document after completion.
+/// @brief Test createDocument document API. Removes the document after completion.
 /// Requires the environment variables
 TEST(CosmosClient_async, createDocument)
 {
@@ -399,7 +267,7 @@ TEST(CosmosClient_async, createDocument)
     std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
     std::string dbName {};
     std::string collectionName {};
-    std::string docId {};
+    std::string id {};
     std::string pkId {};
 
     // Fail fast if the primary conection string is not present in the build environment
@@ -410,28 +278,28 @@ TEST(CosmosClient_async, createDocument)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    docId          = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    id             = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
     pkId           = "siddiqsoft.com";
 
-    // Now, let us create the document
+    // Now, let us createDocument the document
     auto [rc3, createdDoc] =
-            cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
+            cc.createDocument(dbName, collectionName, {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
     EXPECT_EQ(201, rc3);
 
-    auto rc4 = cc.remove(dbName, collectionName, docId, pkId);
+    auto rc4 = cc.removeDocument(dbName, collectionName, id, pkId);
     EXPECT_EQ(204, rc4);
 }
 
 
-/// @brief Test create document with missing "id" field in the document
+/// @brief Test createDocument document with missing "id" field in the document
 TEST(CosmosClient_async, createDocument_MissingId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -441,7 +309,7 @@ TEST(CosmosClient_async, createDocument_MissingId)
     std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
     std::string dbName {};
     std::string collectionName {};
-    std::string docId {};
+    std::string id {};
     std::string pkId {};
 
 
@@ -452,24 +320,24 @@ TEST(CosmosClient_async, createDocument_MissingId)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    // Now, let us create the document
-    docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId  = "siddiqsoft.com";
+    // Now, let us createDocument the document
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
     EXPECT_THROW(
-            cc.create(dbName, collectionName, {{"MissingId", docId}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
+            cc.createDocument(dbName, collectionName, {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
             , std::invalid_argument);
 }
 
-/// @brief Test create document with missing partition key field in the document
+/// @brief Test createDocument document with missing partition key field in the document
 TEST(CosmosClient_async, createDocument_MissingPkId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -479,7 +347,7 @@ TEST(CosmosClient_async, createDocument_MissingPkId)
     std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
     std::string dbName {};
     std::string collectionName {};
-    std::string docId {};
+    std::string id {};
     std::string pkId {};
 
 
@@ -490,24 +358,24 @@ TEST(CosmosClient_async, createDocument_MissingPkId)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    // Now, let us create the document
-    docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId  = "siddiqsoft.com";
+    // Now, let us createDocument the document
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
     EXPECT_THROW(
-            cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}});
+            cc.createDocument(dbName, collectionName, {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}});
             , std::invalid_argument);
 }
 
-/// @brief Test find API
+/// @brief Test findDocument API
 TEST(CosmosClient_async, findDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -517,7 +385,7 @@ TEST(CosmosClient_async, findDocument)
     std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
     std::string dbName {};
     std::string collectionName {};
-    std::string docId {};
+    std::string id {};
     std::string pkId {};
 
 
@@ -528,32 +396,32 @@ TEST(CosmosClient_async, findDocument)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    // Now, let us create the document
-    docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId  = "siddiqsoft.com";
+    // Now, let us createDocument the document
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
     auto [rc3, createdDoc] =
-            cc.create(dbName, collectionName, {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
+            cc.createDocument(dbName, collectionName, {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
     EXPECT_EQ(201, rc3);
 
     // Find the document we just created
-    auto [rc4, findDoc] = cc.find(dbName, collectionName, docId, pkId);
+    auto [rc4, findDoc] = cc.findDocument(dbName, collectionName, id, pkId);
     EXPECT_EQ(200, rc4);
-    EXPECT_EQ(docId, findDoc.value("id", ""));
+    EXPECT_EQ(id, findDoc.value("id", ""));
 
-    auto rc5 = cc.remove(dbName, collectionName, docId, pkId);
+    auto rc5 = cc.removeDocument(dbName, collectionName, id, pkId);
     EXPECT_EQ(204, rc5);
 }
 
-/// @brief Test upsert API
+/// @brief Test upsertDocument API
 TEST(CosmosClient_async, upsertDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -563,7 +431,7 @@ TEST(CosmosClient_async, upsertDocument)
     std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
     std::string dbName {};
     std::string collectionName {};
-    std::string docId {};
+    std::string id {};
     std::string pkId {};
 
 
@@ -574,42 +442,39 @@ TEST(CosmosClient_async, upsertDocument)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    // Now, let us create the document
-    docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId  = "siddiqsoft.com";
+    // Now, let us createDocument the document
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
     // Create the document.. (this should be insert
-    auto [rc4, iDoc] =
-            cc.upsert(dbName,
-                      collectionName,
-                      {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "insert"}, {"source", "basic_tests.exe"}});
+    auto [rc4, iDoc] = cc.upsertDocument(dbName,
+                                 collectionName,
+                                 {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "insert"}, {"source", "basic_tests.exe"}});
     EXPECT_EQ(201, rc4);
     EXPECT_EQ("insert", iDoc.value("upsert", ""));
 
-    // Calling upsert again updates the same document.
-    auto [rc5, uDoc] =
-            cc.upsert(dbName,
-                      collectionName,
-                      {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}});
+    // Calling upsertDocument again updates the same document.
+    auto [rc5, uDoc] = cc.upsertDocument(dbName,
+                                 collectionName,
+                                 {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}});
     EXPECT_EQ(200, rc5);
     EXPECT_EQ("update", uDoc.value("upsert", ""));
 
-    // And to check if we call create on the same docId it should fail
-    auto rc6 = cc.create(dbName,
-                         collectionName,
-                         {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}});
+    // And to check if we call createDocument on the same docId it should fail
+    auto rc6 = cc.createDocument(
+            dbName, collectionName, {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}});
     EXPECT_EQ(409, rc6.statusCode);
 
     // Remove the document
-    auto rc7 = cc.remove(dbName, collectionName, docId, pkId);
+    auto rc7 = cc.removeDocument(dbName, collectionName, id, pkId);
     EXPECT_EQ(204, rc7);
 }
 
@@ -623,7 +488,7 @@ TEST(CosmosClient_async, updateDocument)
     std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
     std::string dbName {};
     std::string collectionName {};
-    std::string docId {};
+    std::string id {};
     std::string pkId {};
 
 
@@ -634,45 +499,44 @@ TEST(CosmosClient_async, updateDocument)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    // Now, let us create the document
-    docId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId  = "siddiqsoft.com";
+    // Now, let us createDocument the document
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
     // Create the document.. (this should be insert
-    auto [rc4, iDoc] = cc.create(dbName,
-                                 collectionName,
-                                 {{"id", docId}, {"ttl", 360}, {"__pk", pkId}, {"mode", "create"}, {"source", "basic_tests.exe"}});
+    auto [rc4, iDoc] = cc.createDocument(
+            dbName, collectionName, {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"mode", "create"}, {"source", "basic_tests.exe"}});
     EXPECT_EQ(201, rc4);
     EXPECT_EQ("create", iDoc.value("mode", ""));
 
     // Alter the "mode" element.
     iDoc["mode"] = "update";
 
-    // Calling upsert again updates the same document.
-    auto [rc5, uDoc] = cc.update(dbName, collectionName, docId, pkId, iDoc);
+    // Calling upsertDocument again updates the same document.
+    auto [rc5, uDoc] = cc.updateDocument(dbName, collectionName, id, pkId, iDoc);
     EXPECT_EQ(200, rc5);
     EXPECT_EQ("update", uDoc.value("mode", ""));
 
-    // And to check if we call create on the same docId it should fail
-    auto rc6 = cc.find(dbName, collectionName, docId, pkId);
+    // And to check if we call createDocument on the same docId it should fail
+    auto rc6 = cc.findDocument(dbName, collectionName, id, pkId);
     EXPECT_EQ(200, rc6.statusCode);
     EXPECT_EQ("update", rc6.document.value("mode", ""));
 
     // Remove the document
-    auto rc7 = cc.remove(dbName, collectionName, docId, pkId);
+    auto rc7 = cc.removeDocument(dbName, collectionName, id, pkId);
     EXPECT_EQ(204, rc7);
 }
 
 
-/// @brief Test query API
+/// @brief Test queryDocuments API
 TEST(CosmosClient_async, queryDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -694,22 +558,22 @@ TEST(CosmosClient_async, queryDocument)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    // We're going to create DOCS documents
+    // We're going to createDocument DOCS documents
     for (auto i = 0; i < DOCS; i++) {
         docIds.push_back(std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count()));
     }
 
-    // The field "odd" will be used in our query statement
+    // The field "odd" will be used in our queryDocuments statement
     for (auto i = 0; i < docIds.size(); i++) {
-        auto [rc, _] = cc.create(dbName,
+        auto [rc, _] = cc.createDocument(dbName,
                                  collectionName,
                                  {{"id", docIds[i]},
                                   {"ttl", 360},
@@ -729,9 +593,9 @@ TEST(CosmosClient_async, queryDocument)
     nlohmann::json                         allDocs = nlohmann::json::array();
     uint32_t                               allDocsCount {};
 
-    // First, we query for all items that match our criteria (source=__func__)
+    // First, we queryDocuments for all items that match our criteria (source=__func__)
     do {
-        irt = cc.query(dbName,
+        irt = cc.queryDocuments(dbName,
                        collectionName,
                        "*",
                        "SELECT * FROM c WHERE contains(c.source, @v1)",
@@ -751,11 +615,11 @@ TEST(CosmosClient_async, queryDocument)
 #endif
 
     auto matchCount = 0;
-    for (auto& doc : allDocs) {
-        if (!doc.is_null()) {
-            auto& docId = doc.at("id");
-            std::for_each(docIds.begin(), docIds.end(), [&matchCount, &docId](auto& i) {
-                if (i == docId) matchCount++;
+    for (auto& document : allDocs) {
+        if (!document.is_null()) {
+            auto& id = document.at("id");
+            std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
+                if (i == id) matchCount++;
             });
         }
     }
@@ -767,7 +631,7 @@ TEST(CosmosClient_async, queryDocument)
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
     do {
-        irt = cc.query(dbName,
+        irt = cc.queryDocuments(dbName,
                        collectionName,
                        "odd.siddiqsoft.com", // __pk
                        "SELECT * FROM c WHERE c.source=@v1",
@@ -786,7 +650,7 @@ TEST(CosmosClient_async, queryDocument)
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
     do {
-        irt = cc.query(dbName,
+        irt = cc.queryDocuments(dbName,
                        collectionName,
                        "even.siddiqsoft.com", // __pk
                        "SELECT * FROM c WHERE c.source=@v1",
@@ -803,7 +667,7 @@ TEST(CosmosClient_async, queryDocument)
 
     // Remove the documents
     for (auto i = 0; i < docIds.size(); i++) {
-        auto rc = cc.remove(dbName, collectionName, docIds[i], (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com");
+        auto rc = cc.removeDocument(dbName, collectionName, docIds[i], (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com");
         EXPECT_EQ(204, rc);
     }
 }
@@ -844,13 +708,13 @@ TEST(CosmosClient_async, createDocument_threads)
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
     // Threadpool with workers sync on the barrier; this one creates and searches for "odd" items
     ttx = std::chrono::system_clock::now();
@@ -882,8 +746,8 @@ TEST(CosmosClient_async, createDocument_threads)
                     // Create the odd documents..
                     for (auto i = 0; i < DOCS; i++) {
                         try {
-                            // //std::cerr << std::format("{} Calling create:{:02}...\n", tid, i);
-                            auto rc = cc.create(
+                            // //std::cerr << std::format("{} Calling createDocument:{:02}...\n", tid, i);
+                            auto rc = cc.createDocument(
                                     dbName,
                                     collectionName,
                                     {{"id",
@@ -895,14 +759,14 @@ TEST(CosmosClient_async, createDocument_threads)
                                      {"source", sourceId}});
                             addDocsCount += rc.statusCode == 201 ? 1 : 0;
                             docIds.push_back(rc.document.value("id", ""));
-                            // //std::cerr << std::format("{} create:{:02}: rc:{} `id`:{}\n",
+                            // //std::cerr << std::format("{} createDocument:{:02}: rc:{} `id`:{}\n",
                             //                         tid,
                             //                         i,
                             //                         rc.statusCode,
                             //                         !rc.document.is_null() ? rc.document.value("id", "") : "-empty-");
                         }
                         catch (const std::exception& e) {
-                            // std::cerr << std::format("{:02}: create() exception:{}\n", i, e.what());
+                            // std::cerr << std::format("{:02}: createDocument() exception:{}\n", i, e.what());
                         }
                     }
 
@@ -913,9 +777,9 @@ TEST(CosmosClient_async, createDocument_threads)
                     //        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - ttx));
                     creatorsBarrier.arrive_and_wait();
 
-                    // std::cerr << std::format("{}  Finally..remove {} documents..\n", tid, docIds.size());
+                    // std::cerr << std::format("{}  Finally..removeDocument {} documents..\n", tid, docIds.size());
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = cc.remove(dbName, collectionName, docIds[i], "siddiqsoft.com");
+                        auto rc = cc.removeDocument(dbName, collectionName, docIds[i], "siddiqsoft.com");
                         removeDocsCount += rc == 204;
                         // //std::cerr << std::format("{}  Finally..removed {} rc:{}\n", tid, docIds[i], rc);
                     }
@@ -976,13 +840,13 @@ TEST(CosmosClient_async, queryDocument_threads)
 
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
-    auto [rc, resp] = cc.listDatabases();
-    EXPECT_EQ(200, rc);
-    dbName                      = resp.value("/Databases/0/id"_json_pointer, "");
+    auto rc= cc.listDatabases();
+    EXPECT_EQ(200, rc.statusCode);
+    dbName                      = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto [rc2, respCollections] = cc.listCollections(dbName);
-    EXPECT_EQ(200, rc2);
-    collectionName = respCollections.value("/DocumentCollections/0/id"_json_pointer, "");
+    auto rc2 = cc.listCollections(dbName);
+    EXPECT_EQ(200, rc2.statusCode);
+    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
     // Threadpool with workers sync on the barrier; this one creates and searches for "odd" items
     std::vector<std::jthread> creatorsOdd;
@@ -1000,7 +864,7 @@ TEST(CosmosClient_async, queryDocument_threads)
                     for (auto i = 0; i < DOCS; i++) {
                         try {
                             if (!(i % 2 == 0)) {
-                                auto rc = cc.create(
+                                auto rc = cc.createDocument(
                                         dbName,
                                         collectionName,
                                         {{"id",
@@ -1032,7 +896,7 @@ TEST(CosmosClient_async, queryDocument_threads)
                     // Next we start queries
                     siddiqsoft::CosmosIterableResponseType irt {};
                     do {
-                        irt = cc.query(dbName,
+                        irt = cc.queryDocuments(dbName,
                                        collectionName,
                                        "odd.siddiqsoft.com", // __pk
                                        "SELECT * FROM c WHERE c.source=@v1 and c.tid=@v2",
@@ -1044,7 +908,7 @@ TEST(CosmosClient_async, queryDocument_threads)
                     creatorsBarrier.arrive_and_wait();
 
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = cc.remove(dbName, collectionName, docIds[i], "odd.siddiqsoft.com");
+                        auto rc = cc.removeDocument(dbName, collectionName, docIds[i], "odd.siddiqsoft.com");
                         oddRemoveDocsCount += rc == 204;
                     }
 
@@ -1070,7 +934,7 @@ TEST(CosmosClient_async, queryDocument_threads)
                     for (auto i = 0; i < DOCS; i++) {
                         if ((i % 2 == 0)) {
                             try {
-                                auto rc = cc.create(
+                                auto rc = cc.createDocument(
                                         dbName,
                                         collectionName,
                                         {{"id",
@@ -1101,7 +965,7 @@ TEST(CosmosClient_async, queryDocument_threads)
                     // Next we start queries
                     siddiqsoft::CosmosIterableResponseType irt {};
                     do {
-                        irt = cc.query(dbName,
+                        irt = cc.queryDocuments(dbName,
                                        collectionName,
                                        "even.siddiqsoft.com", // __pk
                                        "SELECT * FROM c WHERE c.source=@v1 and c.tid=@v2",
@@ -1112,7 +976,7 @@ TEST(CosmosClient_async, queryDocument_threads)
                     creatorsBarrier.arrive_and_wait();
 
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = cc.remove(dbName, collectionName, docIds[i], "even.siddiqsoft.com");
+                        auto rc = cc.removeDocument(dbName, collectionName, docIds[i], "even.siddiqsoft.com");
                         evenRemoveDocsCount += (204 == rc);
                     }
 
@@ -1218,6 +1082,7 @@ TEST(CosmosClient_async, configure_multi)
 
     EXPECT_EQ(4, passTest.load());
 }
+#endif
 
 TEST(CosmosClient_async, async_discoverRegions)
 {
@@ -1237,23 +1102,21 @@ TEST(CosmosClient_async, async_discoverRegions)
     // The configure calls the method discoverRegions
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-    // ASSERT_NO_THROW(cc.async(nlohmann::json {{"operation", "discoverRegions"}, {"source", __func__}},
+    // ASSERT_NO_THROW(cc.queue(nlohmann::json {{"operation", "discoverRegions"}, {"source", __func__}},
     //                         [&](auto& resp) { passTest = true; }));
-    cc.async({.operation = "discoverRegions"}, [&passTest](auto const& ctx, auto const& resp) {
-        std::cerr << "Invoked from the dispatcher!" << std::endl;
-        passTest = true;
-        passTest.notify_all();
-    });
-
-
-    // std::this_thread::sleep_for(std::chrono::seconds(12));
+    cc.queue({.operation  = siddiqsoft::CosmosOperation::discoverRegions,
+              .onResponse = [&passTest](auto const& ctx, auto const& resp) {
+                  std::cerr << "Invoked from the dispatcher!" << std::endl;
+                  passTest = true;
+                  passTest.notify_all();
+              }});
 
     passTest.wait(false);
     nlohmann::json info = cc;
     EXPECT_TRUE(info.contains("serviceSettings"));
     EXPECT_TRUE(info.contains("database"));
     EXPECT_TRUE(info.contains("configuration"));
-    EXPECT_EQ(3, info.size());
+    EXPECT_EQ(5, info.size()) << info.dump(3);
 
     // Check that we have read/write locations detected.
     // Atleast one read location

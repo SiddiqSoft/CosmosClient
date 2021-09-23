@@ -58,6 +58,8 @@
 /// @brief Add the json formatter
 #include "siddiqsoft/formatters.hpp"
 
+#include "siddiqsoft/TimeThis.hpp"
+
 
 namespace siddiqsoft
 {
@@ -346,40 +348,79 @@ namespace siddiqsoft
     struct CosmosResponseType
     {
         /// @brief Status Code from the server
-        uint32_t statusCode;
+        uint32_t statusCode {};
 
         /// @brief Document from the server
         nlohmann::json document;
 
-        /// @brief Serializer to/from json
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosResponseType, statusCode, document);
+        /// @brief Represents the total time
+        std::chrono::microseconds ttx {};
     };
+
+    /// @brief Serializer for CosmosResponseType
+    /// @param dest Destination json object
+    /// @param src CosmosResponseType
+    static void to_json(nlohmann::json& dest, CosmosResponseType const& src)
+    {
+        dest["statusCode"] = src.statusCode;
+        dest["document"]   = src.document;
+        dest["ttx"]        = src.ttx.count();
+    }
+
+    /// @brief Azure Cosmos Operations
+    enum class CosmosOperation : uint16_t
+    {
+        discoverRegions,
+        listDatabases,
+        listCollections,
+        listDocuments,
+        create,
+        upsert,
+        update,
+        remove,
+        find,
+        query,
+        notset = 0
+    };
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(CosmosOperation,
+                                 {{CosmosOperation::discoverRegions, "discoverRegions"},
+                                  {CosmosOperation::listDatabases, "listDatabases"},
+                                  {CosmosOperation::listCollections, "listCollections"},
+                                  {CosmosOperation::listDocuments, "listDocuments"},
+                                  {CosmosOperation::create, "create"},
+                                  {CosmosOperation::upsert, "upsert"},
+                                  {CosmosOperation::update, "update"},
+                                  {CosmosOperation::remove, "remove"},
+                                  {CosmosOperation::find, "find"},
+                                  {CosmosOperation::query, "query"},
+                                  {CosmosOperation::notset, nullptr}});
 
 
     /// @brief Cosmos data extends the nlohmann::json and adds the callback
     /// @notes The fields may contain the following key-values
-    /// operation:          "discoverRegion", "listDatabases", "listCollections", "listDocuments",
+    /// operation:          "discoverRegions", "listDatabases", "listCollections", "listDocuments",
     ///                     "create", "upsert", "update", "remove", "find",
     ///                     "query"
     /// db:                 <database name>
     /// collection:         <collection name>
     /// docId:              <unique document id>
     /// partitionKey:       <parition key value>
-    /// continuationToken
+    /// continuationToken   <present on listDocuments, query>
     /// queryString:        <query string>
     /// queryParameters     <json array query parameters>
     /// doc:                <json document contents to create,update,upsert>
     struct CosmosArgumentType
     {
-        std::string    operation {};
-        std::string    database {};
-        std::string    collection {};
-        std::string    docId {};
-        std::string    partitionKey {};
-        std::string    continuationToken {};
-        std::string    queryString {};
-        nlohmann::json queryParameters;
-        nlohmann::json doc;
+        CosmosOperation operation {};
+        std::string     database {};
+        std::string     collection {};
+        std::string     id {};
+        std::string     partitionKey {};
+        std::string     continuationToken {};
+        std::string     queryStatement {};
+        nlohmann::json  queryParameters;
+        nlohmann::json  document;
         /// @brief The callback for this request. Invoked with the CosmosResponseType ref
         /// @note The callback is invoked with this argument and the response to allow propogation and context.
         std::function<void(CosmosArgumentType const&, CosmosResponseType const&)> onResponse {};
@@ -388,12 +429,12 @@ namespace siddiqsoft
                                        operation,
                                        database,
                                        collection,
-                                       docId,
+                                       id,
                                        partitionKey,
                                        continuationToken,
-                                       queryString,
+                                       queryStatement,
                                        queryParameters,
-                                       doc);
+                                       document);
     };
 
 
@@ -440,9 +481,17 @@ namespace siddiqsoft
     {
         /// @brief Continuation token from the server
         std::string continuationToken;
-
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(CosmosIterableResponseType, statusCode, document, continuationToken);
     };
+
+
+    /// @brief Serializer for CosmosIterableResponseType uses the serializer for CosmosResponseType
+    /// @param dest Destination json object
+    /// @param src CosmosIterableResponseType
+    static void to_json(nlohmann::json& dest, CosmosIterableResponseType const& src)
+    {
+        to_json(dest, CosmosResponseType(src));
+        dest["continuationToken"] = src.continuationToken;
+    }
 
 
     /// @brief Cosmos Client
@@ -496,44 +545,73 @@ namespace siddiqsoft
         /// @brief The async worker pool
         simple_pool<CosmosArgumentType> asyncWorkers {std::bind_front(&CosmosClient::asyncDispatcher, this)};
 
+
         /// @brief The async dispatcher/driver
         /// @param req The queued request
         void asyncDispatcher(CosmosArgumentType& req)
         {
-            if (req.operation.starts_with("discoverRegion")) {
-                auto resp = discoverRegions();
-                if (req.onResponse) req.onResponse(req, resp);
-            }
-            else if (req.operation.starts_with("listDatabases")) {
-                auto resp = listDatabases();
-                if (req.onResponse) req.onResponse(req, resp);
-            }
-            else if (req.operation.starts_with("listCollections")) {
-                auto resp = listCollections(req.database);
-                if (req.onResponse) req.onResponse(req, resp);
-            }
-            else if (req.operation.starts_with("listDocuments")) {
-                auto resp = listDocuments(req.database, req.collection, req.continuationToken);
-                if (req.onResponse) req.onResponse(req, resp);
-            }
-            else if (req.operation.starts_with("create")) {
-                auto resp = create(req.database, req.collection, req.doc);
-                if (req.onResponse) req.onResponse(req, resp);
-            }
-            else if (req.operation.starts_with("upsert")) {
-                auto resp = upsert(req.database, req.collection, req.doc);
-                if (req.onResponse) req.onResponse(req, resp);
-            }
-            else if (req.operation.starts_with("remove")) {
-                auto               rc = remove(req.database, req.collection, req.docId, req.partitionKey);
-                CosmosResponseType resp {rc, {}};
-                if (req.onResponse) req.onResponse(req, resp);
+            switch (req.operation) {
+                case CosmosOperation::discoverRegions: {
+                    auto resp = discoverRegions();
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::listDatabases: {
+                    auto resp = listDatabases();
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::listCollections: {
+                    auto resp = listCollections(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::listDocuments: {
+                    // This returns CosmosIterableResponseType and it is the responsibility of the client's code to iterate through
+                    // the contents. The client code may async the remainder or use the sync version of listDocuments for the rest.
+                    CosmosIterableResponseType resp = listDocuments(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::create: {
+                    auto resp = createDocument(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::upsert: {
+                    auto resp = upsertDocument(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::update: {
+                    auto resp = updateDocument(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::find: {
+                    // Returns at most a single document or it is not found.
+                    auto resp = findDocument(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::remove: {
+                    // The response is an error code so we will need to normalize into a response type for the callback.
+                    auto rc = removeDocument(req);
+                    if (req.onResponse) req.onResponse(req, {rc, nullptr});
+                } break;
+
+                case CosmosOperation::query: {
+                    // This returns CosmosIterableResponseType and it is the responsibility of the client's code to iterate through
+                    // the contents. The client code may async the remainder or use the sync version of query for the rest.
+                    CosmosIterableResponseType resp = queryDocuments(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
             }
         }
 
     public:
         /// @brief This is the string used in the User-Agent header
-        inline static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.6.0"};
+        inline static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.10.0"};
 
         /// @brief Default constructor
         CosmosClient() { }
@@ -549,9 +627,11 @@ namespace siddiqsoft
         {
         }
 
+
         auto& operator=(CosmosClient&& src) = delete;
         CosmosClient(const CosmosClient&)   = delete;
         auto& operator=(const CosmosClient&) = delete;
+
 
         /// @brief Gets the current configuration object
         /// @return Configuration json
@@ -594,9 +674,9 @@ namespace siddiqsoft
                 cnxn.configure(config);
 
                 // Discover the regions..
-                auto [rc, regionInfo] = discoverRegions();
-                if (rc == 200 && !regionInfo.empty()) {
-                    serviceSettings = regionInfo;
+                auto resp = discoverRegions();
+                if (resp.statusCode == 200 && !resp.document.empty()) {
+                    serviceSettings = resp.document;
                     // Reconfigure/update the information such as the read location
                     cnxn.configure(serviceSettings);
                     // Mark as updated
@@ -608,20 +688,34 @@ namespace siddiqsoft
         }
 
 
+        /// @brief Invokes the requested operation from threadpool
+        /// @param arg The request payload. The json must contain at least "operation"
+        /// @param callback The callback
+        void queue(CosmosArgumentType&& op, CosmosAsyncCallbackType callback = {})
+        {
+            if (callback) op.onResponse = callback;
+            if (!op.onResponse) throw std::invalid_argument("queue requires op.onResponse be valid callback");
+
+            asyncWorkers.queue(std::move(op));
+        }
+
+
         /// @brief Discover the Regions for the current base Uri
         /// This method is invoked by the `configuration` method.
         /// @return Tuple of the status code and the json response (or empty)
         CosmosResponseType discoverRegions()
         {
-            CosmosResponseType ret {0xFA17, {}};
-            auto               ts = DateUtils::RFC7231();
-            ReqGet             req {cnxn.current().currentReadUri(),
+            TimeThis tt {};
+            auto     ts = DateUtils::RFC7231();
+            ReqGet   req {cnxn.current().currentReadUri(),
                         {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "", "", ts)},
                          {"x-ms-date", ts},
                          {"x-ms-version", config["apiVersion"]}}};
 
-            auto               resp = restClient.send(req);
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+            auto     resp = restClient.send(req);
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
         /*
@@ -683,7 +777,7 @@ namespace siddiqsoft
         /// @return The json document response or error code
         CosmosResponseType listDatabases()
         {
-            CosmosResponseType ret {0xFA17, {}};
+            TimeThis tt {};
 
             // We need to add the same value to the header in the field x-ms-date as well as the Authorization field
             auto ts   = DateUtils::RFC7231();
@@ -694,21 +788,26 @@ namespace siddiqsoft
                                {"x-ms-version", config["apiVersion"]}});
 
             auto resp = restClient.send(req);
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
 
         /// @brief List the collections for the given database
         /// @param dbName Database name
         /// @return The json document from Cosmos contains the collections for the given
-        CosmosResponseType listCollections(const std::string& dbName)
+        CosmosResponseType listCollections(CosmosArgumentType const& ctx)
         {
-            auto ts   = DateUtils::RFC7231();
-            auto path = std::format("{}dbs/{}/colls", cnxn.current().currentReadUri(), dbName);
-            auto auth = EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "colls", {"dbs/" + dbName}, ts);
-            auto req  = ReqGet(path, {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
-            auto resp = restClient.send(req);
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+            TimeThis tt {};
+            auto     ts   = DateUtils::RFC7231();
+            auto     path = std::format("{}dbs/{}/colls", cnxn.current().currentReadUri(), ctx.database);
+            auto     auth = EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "colls", {"dbs/" + ctx.database}, ts);
+            auto     req  = ReqGet(path, {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
+            auto     resp = restClient.send(req);
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
         /// @brief List documents for the given database and collection
@@ -748,26 +847,26 @@ namespace siddiqsoft
         ///     }
         /// } while (!irt.continuationToken.empty());
         /// ```
-        CosmosIterableResponseType
-        listDocuments(const std::string& dbName, const std::string& collName, const std::string& continuationToken)
+        CosmosIterableResponseType listDocuments(CosmosArgumentType const& ctx)
         {
-            CosmosIterableResponseType ret {0xFA17, {}, {}};
-            auto                       ts = DateUtils::RFC7231();
-            auto           path = std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentReadUri(), dbName, collName);
+            TimeThis tt {};
+            auto     ts   = DateUtils::RFC7231();
+            auto     path = std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentReadUri(), ctx.database, ctx.collection);
             nlohmann::json headers {
                     {"Authorization",
                      EncryptionUtils::CosmosToken<char>(
-                             cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+                             cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}", ctx.database, ctx.collection), ts)},
                     {"x-ms-date", ts},
                     {"x-ms-version", config["apiVersion"]}};
 
-            if (!continuationToken.empty()) headers["x-ms-continuation"] = continuationToken;
+            if (!ctx.continuationToken.empty()) headers["x-ms-continuation"] = ctx.continuationToken;
 
             auto req  = ReqGet(path, headers);
             auto resp = restClient.send(req);
 
             return {resp.status().code,
                     resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count()),
                     resp["headers"].value("x-ms-continuation", "")};
         }
 
@@ -778,29 +877,35 @@ namespace siddiqsoft
         /// @param doc The document must include the `id` and the partition key.
         /// @return status code and the created document as returned by Cosmos
         /// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
-        CosmosResponseType create(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
+        CosmosResponseType createDocument(CosmosArgumentType const& ctx)
         {
-            if (doc.value("id", "").empty()) throw std::invalid_argument("create - I need the uniqueid of the document");
-            if (doc.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+            TimeThis tt {};
+
+            if (ctx.document.value("id", "").empty()) throw std::invalid_argument("create - I need the uniqueid of the document");
+            if (ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
                 throw std::invalid_argument("create - I need the partitionId of the document");
 
-            CosmosResponseType  ret {0xFA17, {}};
             auto                ts   = DateUtils::RFC7231();
-            auto                pkId = doc.value(config.at("/partitionKeyNames/0"_json_pointer), "");
+            auto                pkId = ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "");
 
             siddiqsoft::ReqPost req {
-                    std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), dbName, collName),
+                    std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), ctx.database, ctx.collection),
                     {{"Authorization",
-                      EncryptionUtils::CosmosToken<char>(
-                              cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
+                                                         "POST",
+                                                         "docs",
+                                                         std::format("dbs/{}/colls/{}", ctx.database, ctx.collection),
+                                                         ts)},
                      {"x-ms-date", ts},
                      {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
-                    doc};
+                    ctx.document};
             auto resp = restClient.send(req);
 
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
 
@@ -811,41 +916,36 @@ namespace siddiqsoft
         /// @return status code and the created document as returned by Cosmos
         /// The status code is `201` when the document has been created
         /// The status code `200` represents a document that has been updated.
-        CosmosResponseType upsert(const std::string& dbName, const std::string& collName, const nlohmann::json& doc)
+        CosmosResponseType upsertDocument(CosmosArgumentType const& ctx)
         {
-            if (doc.value("id", "").empty()) throw std::invalid_argument("upsert - I need the uniqueid of the document");
-            if (doc.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+            TimeThis tt {};
+
+            if (ctx.document.value("id", "").empty()) throw std::invalid_argument("upsert - I need the uniqueid of the document");
+            if (ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
                 throw std::invalid_argument("upsert - I need the partitionId of the document");
 
-            CosmosResponseType  ret {0xFA17, {}};
             auto                ts   = DateUtils::RFC7231();
-            auto                pkId = doc.value(config.at("/partitionKeyNames/0"_json_pointer), "");
+            auto                pkId = ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "");
 
             siddiqsoft::ReqPost req {
-                    std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), dbName, collName),
+                    std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), ctx.database, ctx.collection),
                     {{"Authorization",
-                      EncryptionUtils::CosmosToken<char>(
-                              cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
+                                                         "POST",
+                                                         "docs",
+                                                         std::format("dbs/{}/colls/{}", ctx.database, ctx.collection),
+                                                         ts)},
                      {"x-ms-date", ts},
                      {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
                      {"x-ms-documentdb-is-upsert", "true"},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
-                    doc};
+                    ctx.document};
 
             auto resp = restClient.send(req);
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-        }
-
-
-        /// @brief Invokes the requested operation from threadpool
-        /// @param arg The request payload. The json must contain at least "operation"
-        /// @param callback The callback
-        void async(CosmosArgumentType&& op, CosmosAsyncCallbackType callback)
-        {
-            if (callback) op.onResponse = callback;
-
-            asyncWorkers.queue(std::move(op));
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
 
@@ -855,34 +955,34 @@ namespace siddiqsoft
         /// @param docId Unique document id
         /// @param pkId Partition key
         /// @return Status code and Json document for the docId
-        CosmosResponseType update(const std::string&    dbName,
-                                  const std::string&    collName,
-                                  const std::string&    docId,
-                                  const std::string&    pkId,
-                                  const nlohmann::json& doc)
+        CosmosResponseType updateDocument(CosmosArgumentType const& ctx)
         {
-            CosmosResponseType ret {0xFA17, {}};
-            auto               ts = DateUtils::RFC7231();
+            TimeThis tt {};
+            auto     ts = DateUtils::RFC7231();
 
-            if (docId.empty()) throw std::invalid_argument("update - I need the docId of the document");
-            if (pkId.empty()) throw std::invalid_argument("update - I need the pkId of the document");
-            if (doc.is_null() || doc.size() == 0) throw std::invalid_argument("update - Need the document");
+            if (ctx.id.empty()) throw std::invalid_argument("update - I need the docId of the document");
+            if (ctx.partitionKey.empty()) throw std::invalid_argument("update - I need the pkId of the document");
+            if (ctx.document.is_null() || ctx.document.size() == 0) throw std::invalid_argument("update - Need the document");
 
             siddiqsoft::ReqPut req {
-                    std::format("{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), dbName, collName, docId),
+                    std::format(
+                            "{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), ctx.database, ctx.collection, ctx.id),
                     {{"Authorization",
-                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
-                                                         "PUT",
-                                                         "docs",
-                                                         std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
-                                                         ts)},
+                      EncryptionUtils::CosmosToken<char>(
+                              cnxn.current().Key,
+                              "PUT",
+                              "docs",
+                              std::format("dbs/{}/colls/{}/docs/{}", ctx.database, ctx.collection, ctx.id),
+                              ts)},
                      {"x-ms-date", ts},
-                     {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+                     {"x-ms-documentdb-partitionkey", nlohmann::json {ctx.partitionKey}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
-                    doc};
+                    ctx.document};
             auto resp = restClient.send(req);
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
 
@@ -894,28 +994,29 @@ namespace siddiqsoft
         /// @param pkId The partition Id
         /// @return Status code with empty json
         /// @remarks The remove operation returns no data beyond the status code.
-        uint32_t remove(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
+        uint32_t removeDocument(CosmosArgumentType const& ctx)
         {
-            uint32_t ret {0xFA17};
-            auto     ts = DateUtils::RFC7231();
+            auto ts = DateUtils::RFC7231();
 
-            if (docId.empty()) throw std::invalid_argument("remove - I need the docId of the document");
-            if (pkId.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
-
+            if (ctx.id.empty()) throw std::invalid_argument("remove - I need the docId of the document");
+            if (ctx.partitionKey.empty()) throw std::invalid_argument("remove - I need the pkId of the document");
 
             siddiqsoft::ReqDelete req {
-                    std::format("{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), dbName, collName, docId),
+                    std::format(
+                            "{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), ctx.database, ctx.collection, ctx.id),
                     {{"Authorization",
-                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
-                                                         "DELETE",
-                                                         "docs",
-                                                         std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
-                                                         ts)},
+                      EncryptionUtils::CosmosToken<char>(
+                              cnxn.current().Key,
+                              "DELETE",
+                              "docs",
+                              std::format("dbs/{}/colls/{}/docs/{}", ctx.database, ctx.collection, ctx.id),
+                              ts)},
                      {"x-ms-date", ts},
-                     {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+                     {"x-ms-documentdb-partitionkey", nlohmann::json {ctx.partitionKey}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
             auto resp = restClient.send(req);
+
             return resp.status().code;
         }
 
@@ -964,53 +1065,50 @@ namespace siddiqsoft
         ///    "_count": 2
         /// }
         /// ```
-        CosmosIterableResponseType query(const std::string&    dbName,
-                                         const std::string&    collName,
-                                         const std::string&    pkId,
-                                         const std::string&    queryStatement,
-                                         const nlohmann::json& params            = {},
-                                         const std::string&    continuationToken = {})
+        CosmosIterableResponseType queryDocuments(CosmosArgumentType const& ctx)
         {
-            CosmosIterableResponseType ret {0xFA17, {}, {}};
-            auto                       ts    = DateUtils::RFC7231();
-            auto                       count = 0;
-            nlohmann::json             headers {
+            TimeThis       tt {};
+            auto           ts    = DateUtils::RFC7231();
+            auto           count = 0;
+            nlohmann::json headers {
                     {"Authorization",
                      EncryptionUtils::CosmosToken<char>(
-                             cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", dbName, collName), ts)},
+                             cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", ctx.database, ctx.collection), ts)},
                     {"x-ms-date", ts},
                     {"x-ms-max-item-count", -1}, // -1: Let Cosmos figure out item count
                     {"x-ms-documentdb-isquery", "true"},
                     {"x-ms-version", config["apiVersion"]},
                     {"Content-Type", "application/query+json"}};
 
-            if (queryStatement.empty()) throw std::invalid_argument("Missing queryStatement");
+            if (ctx.queryStatement.empty()) throw std::invalid_argument("Missing queryStatement");
 
-            if (pkId.starts_with("*")) {
+            if (ctx.partitionKey.starts_with("*")) {
                 // Special case query with partitioned data set.
                 headers["x-ms-documentdb-query-enablecrosspartition"] = "true";
                 // This is required if the client does not provide partitionkey
                 headers["x-ms-query-enable-crosspartition"] = "true";
             }
-            else if (!pkId.empty()) {
+            else if (!ctx.partitionKey.empty()) {
                 // Specific partition set by client.
-                headers["x-ms-documentdb-partitionkey"] = nlohmann::json {pkId};
+                headers["x-ms-documentdb-partitionkey"] = nlohmann::json {ctx.partitionKey};
             }
 
-            if (!continuationToken.empty()) {
-                headers["x-ms-continuation"] = continuationToken;
+            if (!ctx.continuationToken.empty()) {
+                headers["x-ms-continuation"] = ctx.continuationToken;
             }
 
-            ReqPost req {std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), dbName, collName),
+            ReqPost req {std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), ctx.database, ctx.collection),
                          headers,
-                         !params.is_null() && params.is_array() ? nlohmann::json {{"query", queryStatement}, {"parameters", params}}
-                                                                : nlohmann::json {{"query", queryStatement}}};
+                         !ctx.queryParameters.is_null() && ctx.queryParameters.is_array()
+                                 ? nlohmann::json {{"query", ctx.queryStatement}, {"parameters", ctx.queryParameters}}
+                                 : nlohmann::json {{"query", ctx.queryStatement}}};
 
             auto    resp = restClient.send(req);
 
             return {resp.status().code,                                              // status code
                     resp.success() ? std::move(resp["content"]) : nlohmann::json {}, // document or empty json
-                    resp["headers"].value("x-ms-continuation", "")};                 //  continuation token or empty
+                    std::chrono::microseconds(tt.elapsed().count()),
+                    resp["headers"].value("x-ms-continuation", "")}; //  continuation token or empty
         }
 
 
@@ -1037,31 +1135,33 @@ namespace siddiqsoft
         /// ```
         /// @remarks
         /// We do not modify or abstract the contents.
-        CosmosResponseType
-        find(const std::string& dbName, const std::string& collName, const std::string& docId, const std::string& pkId)
+        CosmosResponseType findDocument(CosmosArgumentType const& ctx)
         {
-            CosmosResponseType ret {0xFA17, {}};
-            auto               ts = DateUtils::RFC7231();
+            TimeThis tt {};
+            auto     ts = DateUtils::RFC7231();
 
-            if (docId.empty()) throw std::invalid_argument("find - I need the docId of the document");
-            if (pkId.empty()) throw std::invalid_argument("find - I need the pkId of the document");
-
+            if (ctx.id.empty()) throw std::invalid_argument("find - I need the docId of the document");
+            if (ctx.partitionKey.empty()) throw std::invalid_argument("find - I need the pkId of the document");
 
             siddiqsoft::ReqGet req {
-                    std::format("{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), dbName, collName, docId),
+                    std::format(
+                            "{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), ctx.database, ctx.collection, ctx.id),
                     {{"Authorization",
-                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
-                                                         "GET",
-                                                         "docs",
-                                                         std::format("dbs/{}/colls/{}/docs/{}", dbName, collName, docId),
-                                                         ts)},
+                      EncryptionUtils::CosmosToken<char>(
+                              cnxn.current().Key,
+                              "GET",
+                              "docs",
+                              std::format("dbs/{}/colls/{}/docs/{}", ctx.database, ctx.collection, ctx.id),
+                              ts)},
                      {"x-ms-date", ts},
-                     {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+                     {"x-ms-documentdb-partitionkey", nlohmann::json {ctx.partitionKey}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
 
             auto resp = restClient.send(req);
-            return {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
+            return {resp.status().code,
+                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    std::chrono::microseconds(tt.elapsed().count())};
         }
 
 
@@ -1079,6 +1179,8 @@ namespace siddiqsoft
         dest["serviceSettings"] = src.serviceSettings;
         dest["database"]        = src.cnxn;
         dest["configuration"]   = src.config;
+        dest["workers"]         = src.asyncWorkers;
+        dest["userAgentString"] = src.CosmosClientUserAgentString;
     }
 #pragma endregion
 } // namespace siddiqsoft
