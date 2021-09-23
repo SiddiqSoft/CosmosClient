@@ -16,7 +16,7 @@
 - This is Windows-only code; you can still use it for reference and to base your own improved version!
 - Use the Nuget package!
 - Make sure you use `c++latest` as the `<format>` is no longer in the `c++20` option pending ABI resolution.
-- Read the examples! Notably [queryDocuments_thread](../tests/test.cpp) where I demonstrate how you can use threads and `<latch>` and `<barrier>`.
+- Read the examples! Notably [`TEST(CosmosClient, queryDocuments_thread)`](../tests/test.cpp#943) where I demonstrate how you can use threads and `<latch>` and `<barrier>`.
 
 ## Dependencies
 
@@ -25,12 +25,10 @@ We use [NuGet](https://nuget.org) for dependencies. Why? Simply put, it is the *
 Package     | Comments
 -----------:|:----------
 [nlohmann.json](https://github.com/nlohmann/json)<br/>![](https://img.shields.io/nuget/v/nlohmann.json)| This is one of the simplest JSON libraries for C++.<br/>We have to make choices and this is our choice: clean, simple and elegant over efficiency. Our use-case <br/>The library is quite conformant and lends itself to general purpose use since it uses `<vector>` underneath it all.<br/>We leave time and experience (plus manpower) to optimize this library for us. So long as it works and we do not have to worry about some ugly JAVA-esque or C-style interface!
+[asynchrony-lib](https://github.com/SiddiqSoft/asynhrony-lib)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.asynchrony-lib) | This is library with helpers for encryption, base64 encode/decode and token generation for Cosmos.
 [restcl](https://github.com/SiddiqSoft/restcl)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.restcl)| This is our REST client.<br/>There are *many*, *many*, *many* clients out there and I'm not quite happy with their design.<br/>This implementation focuses on the "interface" as a thin wrapper  atop <a href="https://docs.microsoft.com/en-us/windows/win32/winhttp/about-winhttp">WinHTTP library</a>.
 [AzureCppUtils](https://github.com/SiddiqSoft/azure-cpp-utils)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.AzureCppUtils) | This is library with helpers for encryption, base64 encode/decode and token generation for Cosmos.
 
-
-
-_Unless otherwise noted, use the latest. We're quite aggressive updating dependencies._
 
 <hr/>
 
@@ -41,7 +39,7 @@ _Unless otherwise noted, use the latest. We're quite aggressive updating depende
 A single class [CosmosClient](#class-cosmosclient) implements the functionality.
 
 Note that since this is a header, you'll also get the contents of the `azure-cpp-utils` and `restcl` as well as supporting code.
-C++ modules are a solution to this problem but the implementation in VS 2019 v16.11.2 is flaky and I could not get it working!
+C++ modules are a solution to this problem but the implementation in VS 2019 v16.11.3 is flaky and I could not get it working!
 
 ## struct `CosmosArgumentType`
 
