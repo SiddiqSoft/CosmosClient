@@ -689,12 +689,12 @@ namespace siddiqsoft
 
 
         /// @brief Invokes the requested operation from threadpool
-        /// @param arg The request payload. The json must contain at least "operation"
-        /// @param callback The callback
-        void queue(CosmosArgumentType&& op, CosmosAsyncCallbackType callback = {})
+        /// @param arg The request payload. The json must contain at least "operation". The callback is required as member
+        /// .onResponse in the op argument.
+        void async(CosmosArgumentType&& op)
         {
-            if (callback) op.onResponse = callback;
-            if (!op.onResponse) throw std::invalid_argument("queue requires op.onResponse be valid callback");
+            if (op.operation == CosmosOperation::notset) throw std::invalid_argument("async requires op.operation be valid");
+            if (!op.onResponse) throw std::invalid_argument("async requires op.onResponse be valid callback");
 
             asyncWorkers.queue(std::move(op));
         }
@@ -809,6 +809,7 @@ namespace siddiqsoft
                     resp.success() ? std::move(resp["content"]) : nlohmann::json {},
                     std::chrono::microseconds(tt.elapsed().count())};
         }
+
 
         /// @brief List documents for the given database and collection
         /// @param dbName The database name

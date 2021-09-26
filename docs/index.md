@@ -20,11 +20,11 @@
 
 ## Dependencies
 
-We use [NuGet](https://nuget.org) for dependencies. Why? Simply put, it is the *easiest* source for obtaining packages. Publishing your own packages is superior to the manual and as-yet-immature [vcpkg](https://vcpkg.io/en/index.html). _They want me to [git clone](https://vcpkg.io/en/getting-started.html?platform=windows) the thing and build it first..._ _NuGet, comparatively, gives you a first-class experience and writing your own packages is a breeze! Sure, it does not work for non-Windows and I'll have to eventually tackle CMake._
+We use [NuGet](https://nuget.org) for dependencies. Why? Simply put, it is the *easiest* source for obtaining packages.
 
 Package     | Comments
 -----------:|:----------
-[nlohmann.json](https://github.com/nlohmann/json)<br/>![](https://img.shields.io/nuget/v/nlohmann.json)| This is one of the simplest JSON libraries for C++.<br/>We have to make choices and this is our choice: clean, simple and elegant over efficiency. Our use-case <br/>The library is quite conformant and lends itself to general purpose use since it uses `<vector>` underneath it all.<br/>We leave time and experience (plus manpower) to optimize this library for us. So long as it works and we do not have to worry about some ugly JAVA-esque or C-style interface!
+[nlohmann.json](https://github.com/nlohmann/json)<br/>![](https://img.shields.io/nuget/v/nlohmann.json)| This is one of the simplest JSON libraries for C++.<br/>We have to make choices and this is our choice: C++ and STL-aware, clean, simple and elegant over efficiency.
 [asynchrony-lib](https://github.com/SiddiqSoft/asynhrony-lib)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.asynchrony-lib) | This is library with helpers for encryption, base64 encode/decode and token generation for Cosmos.
 [restcl](https://github.com/SiddiqSoft/restcl)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.restcl)| This is our REST client.<br/>There are *many*, *many*, *many* clients out there and I'm not quite happy with their design.<br/>This implementation focuses on the "interface" as a thin wrapper  atop <a href="https://docs.microsoft.com/en-us/windows/win32/winhttp/about-winhttp">WinHTTP library</a>.
 [AzureCppUtils](https://github.com/SiddiqSoft/azure-cpp-utils)<br/>![](https://img.shields.io/nuget/v/SiddiqSoft.AzureCppUtils) | This is library with helpers for encryption, base64 encode/decode and token generation for Cosmos.
@@ -43,7 +43,7 @@ C++ modules are a solution to this problem but the implementation in VS 2019 v16
 
 ## struct `CosmosArgumentType`
 
-This structure is used to specify arguments to the [`queue`](#cosmosclientqueue) operations and as a parameter to the callback for async completion callback.
+This structure is used to specify arguments to the [`async`](#cosmosclientasync) operations and as a parameter to the callback for async completion callback.
 
 CosmosArgumentType | Type | Description
 -------------------|----------------|---------------------
@@ -199,7 +199,7 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 
         const nlohmann::json& configuration()
         CosmosClient& configure(const nlohmann::json&) noexcept(false);
-        void queue(CosmosArgumentType&& op, CosmosAsyncCallbackType);
+        void async(CosmosArgumentType&& op);
 
         CosmosResponseType          discoverRegions();
         CosmosResponseType          listDatabases();
@@ -242,7 +242,7 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 [`removeDocument`](#cosmosclientremovedocument) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Remove a document matching the document id in the given collection.
 [`queryDocuments`](#cosmosclientquerydocuments) ⎔ |  [`CosmosIterableResponseType`](#struct-cosmositerableresponsetype) | Returns zero-or-more items matching the given search query and parameters.<br/>The client is responsible for repeatedly invoking this method to pull all items.
 [`findDocument`](#cosmosclientfinddocument) ⎔ |  [`CosmosResponseType`](#struct-cosmosresponsetype) | Finds and returns a *single* document matching the given document id.
-[`queue`](#cosmosclientqueue) ⎔ |   | Queues the specified request for asynchronous completion.
+[`async`](#cosmosclientasync) ⎔ |   | Queues the specified request for asynchronous completion.<br/>The property `.onResponse` and `.operation` must be provided otherwise this will throw and `invalid_argument` exception.
 `to_json` ⎔ |  | Serializer for CosmosClient to a json object.
 `asyncDispatcher` |  | Implements the dispatch from the queue and recovery/retry logic.
 
@@ -309,7 +309,7 @@ Const reference to the `config` object.
 ### `CosmosClient::configure`
 
 ```cpp
-CosmosClient& configure(const nlohmann::json& src = {});
+    CosmosClient& configure(const nlohmann::json& src = {});
 ```
 
 Re-configure the client. This will invoke the discoverRegions to populate the available regions and sets the
@@ -337,20 +337,18 @@ Reference to the CosmosClient object.
 
 <hr/>
 
-### `CosmosClient::queue`
+### `CosmosClient::async`
 
 Perform any supported operation using the `simple_pool` which uses a `std::deque` with a threadpool to perform the IO and recovery for simple errors such as `401` and IO transient errors.
 
 ```cpp
-    void queue(CosmosArgumentType&& op,
-               CosmosAsyncCallbackType callback={});
+    void async(CosmosArgumentType&& op);
 ```
 #### params
 
 Parameter  | Type            | Description
 ----------:|-----------------|----------------------
-`op` | [`CosmosArgumentType&&`](#struct-cosmosargumenttype) | The request to be executed asynchronously.<br/>*Note* The parameter is moved into the underlying queue and must be `std::move`'d into the function call.
-`callback` | [`CosmosAsyncCallbackType`](#using-cosmosasynccallbacktype) | The callback invoked when the operation completes (success or failure).<br/>The callback includes the original request as well as the response from the server.<br/> If absent then the `.onResponse` must be set otherwise it will throw `invalid_argument` exception.
+`op` | [`CosmosArgumentType&&`](#struct-cosmosargumenttype) | The request to be executed asynchronously.<br/>*Note* The parameter is moved into the underlying queue and must be `std::move`'d into the function call. The field `.onResponse` must be provided otherwise it will throw `invalid_argument` exception.
 
 #### examples
 
@@ -362,7 +360,7 @@ A simple async call uses [structured binding](https://en.cppreference.com/w/cpp/
     // First we Configure.. then we queue..
     cc.configure({{"partitionKeyNames", {"__pk"}},
                   {"connectionStrings", {priConnStr, secConnStr}}})
-      .queue({.operation  = "listDatabases",
+      .async({.operation  = "listDatabases",
               .onResponse = [](auto const& ctx, auto const& resp) {
                                  // Print the list of databases..
                                  std::cout << std::format("List of databases\n{}\n",
@@ -383,11 +381,11 @@ This is a complete example (without error checking) to illustrate how you can ne
     cc.configure({{"partitionKeyNames", {"__pk"}},
                   {"connectionStrings", {priConnStr, secConnStr}}});
     // #1..Start by listing the databases
-    cc.queue({.operation  = "listDatabases",
+    cc.async({.operation  = "listDatabases",
               .onResponse =[&cc, &passTest](auto const& ctx,
                               auto const& resp) {
                  // #2..On completion of listDatabases, get the collections..
-                 cc.queue({.operation  = "listCollections",
+                 cc.async({.operation  = "listCollections",
                            .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
                            .onResponse = [&cc, &passTest](auto const& ctx,
                                            auto const& resp) {
@@ -399,7 +397,7 @@ This is a complete example (without error checking) to illustrate how you can ne
                                                         .count());
                               auto pkId = "siddiqsoft.com";
                               // #3..Create the document..
-                              cc.queue({.operation    = "create",
+                              cc.async({.operation    = "create",
                                         .database     = ctx.database,
                                         .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
                                         .id           = docId,
@@ -414,7 +412,7 @@ This is a complete example (without error checking) to illustrate how you can ne
                                            // #4..We created the document..
                                            // ...
                                            // #4..Remove the document
-                                           cc.queue({.operation    = "remove",
+                                           cc.async({.operation    = "remove",
                                                      .database     = ctx.database,
                                                      .collection   = ctx.collection,
                                                      .id           = resp.document.value("id", ctx.id),
