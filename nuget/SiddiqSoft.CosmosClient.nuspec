@@ -25,8 +25,11 @@
     <dependencies>
       <dependency id="nlohmann.json" version="3.10"/>
       <dependency id="SiddiqSoft.AzureCppUtils" version="1.2"/>
-      <dependency id="SiddiqSoft.restcl" version="0.8"/>
-    </dependencies>
+      <dependency id="SiddiqSoft.restcl" version="0.9"/>
+      <dependency id="SiddiqSoft.asynchrony-lib" version="0.9"/>
+      <dependency id="SiddiqSoft.format-helpers" version="1.0.3"/>
+      <dependency id="SiddiqSoft.TimeThis" version="1"/>
+	</dependencies>
   </metadata>
 
   <!--
