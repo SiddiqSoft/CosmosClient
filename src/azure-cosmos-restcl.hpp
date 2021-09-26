@@ -370,17 +370,17 @@ namespace siddiqsoft
     /// @brief Azure Cosmos Operations
     enum class CosmosOperation : uint16_t
     {
-        discoverRegions,
-        listDatabases,
-        listCollections,
-        listDocuments,
-        create,
-        upsert,
-        update,
-        remove,
-        find,
-        query,
-        notset = 0
+        discoverRegions = 0xA0,
+        listDatabases   = 0xB1,
+        listCollections = 0xB2,
+        listDocuments   = 0xB3,
+        create          = 0xC0,
+        upsert          = 0xC1,
+        update          = 0xC2,
+        remove          = 0xC3,
+        find            = 0xC4,
+        query           = 0xE0,
+        notset          = 0
     };
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CosmosOperation,
@@ -693,7 +693,8 @@ namespace siddiqsoft
         /// .onResponse in the op argument.
         void async(CosmosArgumentType&& op)
         {
-            if (op.operation == CosmosOperation::notset) throw std::invalid_argument("async requires op.operation be valid");
+            if (op.operation == CosmosOperation::notset)
+                throw std::invalid_argument(std::format("{} requires op.operation be valid: {}", __func__, op));
             if (!op.onResponse) throw std::invalid_argument("async requires op.onResponse be valid callback");
 
             asyncWorkers.queue(std::move(op));

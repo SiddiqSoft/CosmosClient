@@ -54,11 +54,10 @@
  * CCTEST_SECONDARY_CS
  */
 
-
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
-TEST(CosmosClient_async, nested_async)
+TEST(CosmosClient, async_example)
 {
     std::atomic_bool passTest = false;
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -130,7 +129,7 @@ TEST(CosmosClient_async, nested_async)
 }
 
 
-TEST(CosmosClient_async, listDatabases)
+TEST(CosmosClient, async_listDatabases)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -153,7 +152,7 @@ TEST(CosmosClient_async, listDatabases)
 }
 
 
-TEST(CosmosClient_async, listCollections)
+TEST(CosmosClient, async_listCollections)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -182,7 +181,7 @@ TEST(CosmosClient_async, listCollections)
 
 #ifdef WORK_TO_BE_COMPLETED
 /// @brief Tests the listDocuments with a limit of 7 iterations
-TEST(CosmosClient_async, listDocuments)
+TEST(CosmosClient, async_listDocuments)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -224,7 +223,7 @@ TEST(CosmosClient_async, listDocuments)
 
 
 /// @brief Invokes listDocuments without continuation
-TEST(CosmosClient_async, listDocuments_top100)
+TEST(CosmosClient, async_listDocuments_top100)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -260,7 +259,7 @@ TEST(CosmosClient_async, listDocuments_top100)
 
 
 /// @brief Test createDocument document with missing "id" field in the document
-TEST(CosmosClient_async, createDocument_MissingId)
+TEST(CosmosClient, async_createDocument_MissingId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -298,7 +297,7 @@ TEST(CosmosClient_async, createDocument_MissingId)
 }
 
 /// @brief Test createDocument document with missing partition key field in the document
-TEST(CosmosClient_async, createDocument_MissingPkId)
+TEST(CosmosClient, async_createDocument_MissingPkId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -337,7 +336,7 @@ TEST(CosmosClient_async, createDocument_MissingPkId)
 #endif
 
 
-TEST(CosmosClient_async, nestedOps)
+TEST(CosmosClient, async_nestedOps)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -453,7 +452,7 @@ TEST(CosmosClient_async, nestedOps)
     passTest.wait(false);
 }
 
-TEST(CosmosClient_async, async_discoverRegions)
+TEST(CosmosClient, async_discoverRegions)
 {
     std::atomic_bool passTest = false;
 
