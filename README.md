@@ -22,7 +22,7 @@ There is a need for a light-weight Azure Cosmos client that is crafted for C++ i
 - C++20 Azure Cosmos REST API client.
   - Be instructive *and* functional.
   - Low-overhead--just not optimized.
-  - C++20 sugarcoating
+  - Leverage C++ sugarcoating (structured bindings and initializer lists).
 - JSON everywhere; configuration, I/O, results.
 - Simple interface -- this means we limit the options you can fiddle
 - Implement the Cosmos SQL REST API
@@ -88,22 +88,41 @@ void example1(const std::string& p, const std::string& s)
     // no checks for id nor the primaryKey field.
     // The goal is to get you the response from Cosmos with little more
     // than convenience overhead.
-    // No useless abstractions.
+    // Minimal abstractions ("there are no zero-cost abstractions").
     // Just use the JSON object!
-    if (auto [rc, doc] = cc.create(dbName, collectionName,
-                                   {{"id", docId},  // We send the JSON document
-                                    {"ttl", 360},   // inline for this example
-                                    {"__pk", pkId}, // PKID is required
-                                    {"func", __func__},
-                                    {"source", "basic_tests.exe"}});
-        201 == rc)
-    {
-        // ...do something
-        // ...useful with doc..
-
-        // Remove the just created document..
-        auto [rcd, _] = cc.remove(dbName, collectionName, doc.value("id", docId), pkId);
-    }
+    // Here, we ask a document to be created and our lambda be invoked
+    // on success or failure.
+    cc.async({.operation  = siddiqsoft::CosmosOperation::create,
+              .database   = dbName,
+              .collection = collectionName,
+              .document   = {{"id", docId},  // We send the JSON document
+                             {"ttl", 360},   // inline for this example
+                             {"__pk", pkId}, // PKID is required
+                             {"func", __func__},
+                             {"source", "basic_tests.exe"}},
+              .onResponse = [&cc](auto const& ctx, auto const& resp){
+                                if( 201 == resp.statusCode ) {
+                                    // Document created..
+                                    ..
+                                    ..
+                                    ..
+                                    // You can even nest (this will queue into the worker
+                                    // pool another async request.. Just make sure you
+                                    // capture the cc instance.
+                                    // The ctx contains the current context/arguments for this callback.
+                                    cc.async({.operation    = siddiqsoft::CosmosOperation::remove,
+                                              .database     = ctx.database,
+                                              .collection   = ctx.collection,
+                                              .id           = ctx.id, // or resp.document["id"] from create op
+                                              .partitionKey = ctx.partitionKey,
+                                              .onResponse   = [](auto const& ctx, auto const& resp){
+                                                 // on remove of document..
+                                              }}); // end of the internal async op
+                                }
+                                else {
+                                   // handle failures..
+                                }
+                            }}); // end of the create async op
 }
 ```
 
