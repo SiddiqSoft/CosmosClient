@@ -179,7 +179,6 @@ TEST(CosmosClient, async_listCollections)
                     }});
 }
 
-#ifdef WORK_TO_BE_COMPLETED
 /// @brief Tests the listDocuments with a limit of 7 iterations
 TEST(CosmosClient, async_listDocuments)
 {
@@ -194,9 +193,6 @@ TEST(CosmosClient, async_listDocuments)
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
     siddiqsoft::CosmosClient               cc;
-    siddiqsoft::CosmosIterableResponseType irt {};
-    uint32_t                               totalDocs = 0;
-    auto                                   iteration = 7; // max 7 times
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
@@ -206,6 +202,31 @@ TEST(CosmosClient, async_listDocuments)
     auto rc2 = cc.listCollections(rc.document.value("/Databases/0/id"_json_pointer, ""));
     EXPECT_EQ(200, rc2.statusCode);
 
+    struct ResponseHandler
+    {
+    uint32_t                               totalDocs = 0;
+    auto                                   iteration = 7; // max 7 times
+    void operator()(CosmosArgumentType const&, CosmosResponseType const&)>  {
+        totalDocs+= resp.document.value<uint32_t>("_count",0);
+        // If we have a continuation token, then queue another request until we're done!
+        if(!resp.continuationToken.empty()) {
+            cc.async({.operation         = siddiqsoft::CosmosOperation::listDocuments,
+                      .database          = ctx.database,
+                      .collection        = ctx.collection,
+                      .continuationToken = resp.continuationToken,
+                      .onResponse        = std::bind(onListDocumentsCallback, this)});
+        }
+    };
+    };
+
+    ResponseHandler myHandler;
+
+    // Start the first listDocuments request.. and we will build our completion in the callback
+    cc.async({.operation  = siddiqsoft::CosmosOperation::listDocuments,
+              .database   = rc.document.value("/Databases/0/id"_json_pointer, ""),
+              .collection = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
+              .onResponse = std::bind(ResponseHandler,myHandler)});
+    /*
     do {
         irt = cc.listDocuments(rc.document.value("/Databases/0/id"_json_pointer, ""),
                                rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
@@ -219,9 +240,11 @@ TEST(CosmosClient, async_listDocuments)
         // If we run out of the iterations the break out of the loop.
         if (--iteration == 0) break;
     } while (!irt.continuationToken.empty());
+    */
 }
 
 
+#ifdef WORK_TO_BE_COMPLETED
 /// @brief Invokes listDocuments without continuation
 TEST(CosmosClient, async_listDocuments_top100)
 {
