@@ -192,92 +192,43 @@ TEST(CosmosClient, async_listDocuments)
     ASSERT_FALSE(priConnStr.empty())
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
-    siddiqsoft::CosmosClient               cc;
+    siddiqsoft::CosmosClient cc;
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
     auto rc = cc.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
 
-    auto rc2 = cc.listCollections(rc.document.value("/Databases/0/id"_json_pointer, ""));
+    auto rc2 = cc.listCollections({.database = rc.document.value("/Databases/0/id"_json_pointer, "")});
     EXPECT_EQ(200, rc2.statusCode);
 
-    struct ResponseHandler
-    {
-    uint32_t                               totalDocs = 0;
-    auto                                   iteration = 7; // max 7 times
-    void operator()(CosmosArgumentType const&, CosmosResponseType const&)>  {
-        totalDocs+= resp.document.value<uint32_t>("_count",0);
-        // If we have a continuation token, then queue another request until we're done!
-        if(!resp.continuationToken.empty()) {
-            cc.async({.operation         = siddiqsoft::CosmosOperation::listDocuments,
-                      .database          = ctx.database,
-                      .collection        = ctx.collection,
-                      .continuationToken = resp.continuationToken,
-                      .onResponse        = std::bind(onListDocumentsCallback, this)});
-        }
-    };
-    };
+    uint32_t totalDocs = 0;
+    uint32_t iteration = 7; // max 7 times
 
-    ResponseHandler myHandler;
 
     // Start the first listDocuments request.. and we will build our completion in the callback
+    // The callback model for the listDocument is such that it will automatically issue additional
+    // async operation until the continuationtoken is empty and the status is valid.
+    // The client may not invoke any additional requests.
     cc.async({.operation  = siddiqsoft::CosmosOperation::listDocuments,
               .database   = rc.document.value("/Databases/0/id"_json_pointer, ""),
               .collection = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
-              .onResponse = std::bind(ResponseHandler,myHandler)});
-    /*
-    do {
-        irt = cc.listDocuments(rc.document.value("/Databases/0/id"_json_pointer, ""),
-                               rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
-                               irt.continuationToken);
-        EXPECT_EQ(200, irt.statusCode);
-        // We check against a collection that has multiple
-        totalDocs += irt.document.value<uint32_t>("_count", 0);
-        EXPECT_EQ(100, irt.document.value("_count", 0));
-        EXPECT_FALSE(irt.continuationToken.empty());
+              .onResponse = [&](auto const& ctx, auto const& resp) {
+                  totalDocs += resp.document.value<uint32_t>("_count", 0);
+                  --iteration;
+                  std::cerr << std::format("....{:02} {}/{}...status:{}..current totalDocs: {:04}...ttx:{}\n",
+                                           iteration,
+                                           ctx.database,
+                                           ctx.collection,
+                                           resp.statusCode,
+                                           totalDocs,
+                                           std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx));
+              }});
 
-        // If we run out of the iterations the break out of the loop.
-        if (--iteration == 0) break;
-    } while (!irt.continuationToken.empty());
-    */
-}
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
-
-#ifdef WORK_TO_BE_COMPLETED
-/// @brief Invokes listDocuments without continuation
-TEST(CosmosClient, async_listDocuments_top100)
-{
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-
-    // Fail fast if the primary conection string is not present in the build environment
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient               cc;
-    siddiqsoft::CosmosIterableResponseType irt {};
-    uint32_t                               totalDocs = 0;
-
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-    auto rc = cc.listDatabases();
-    EXPECT_EQ(200, rc.statusCode);
-
-    auto rc2 = cc.listCollections(rc.document.value("/Databases/0/id"_json_pointer, ""));
-    EXPECT_EQ(200, rc2.statusCode);
-
-    irt = cc.listDocuments(rc.document.value("/Databases/0/id"_json_pointer, ""),
-                           rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
-                           irt.continuationToken);
-    EXPECT_EQ(200, irt.statusCode);
-    // We check against a collection that has multiple
-    totalDocs += irt.document.value<uint32_t>("_count", 0);
-    EXPECT_EQ(100, irt.document.value("_count", 0));
-    EXPECT_FALSE(irt.continuationToken.empty());
+    std::cerr << std::format("Total Docs: {}\n", totalDocs);
+    std::cerr << std::format("Info: {}\n", cc);
 }
 
 
@@ -306,7 +257,7 @@ TEST(CosmosClient, async_createDocument_MissingId)
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections(dbName);
+    auto rc2 = cc.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -314,10 +265,14 @@ TEST(CosmosClient, async_createDocument_MissingId)
     id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
-    EXPECT_THROW(cc.createDocument(
-            dbName, collectionName, {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}});
+    // Missing "id" parameter
+    EXPECT_THROW(cc.async({.operation  = siddiqsoft::CosmosOperation::create,
+                           .database   = dbName,
+                           .collection = collectionName,
+                           .document   = {{"__pk", pkId}, {"ttl", 360}, {"source", "basic_tests.exe"}}});
                  , std::invalid_argument);
 }
+
 
 /// @brief Test createDocument document with missing partition key field in the document
 TEST(CosmosClient, async_createDocument_MissingPkId)
@@ -344,7 +299,7 @@ TEST(CosmosClient, async_createDocument_MissingPkId)
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections(dbName);
+    auto rc2 = cc.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -352,11 +307,12 @@ TEST(CosmosClient, async_createDocument_MissingPkId)
     id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
-    EXPECT_THROW(cc.createDocument(
-            dbName, collectionName, {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}});
+    EXPECT_THROW(cc.async({.operation  = siddiqsoft::CosmosOperation::create,
+                           .database   = dbName,
+                           .collection = collectionName,
+                           .document   = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
                  , std::invalid_argument);
 }
-#endif
 
 
 TEST(CosmosClient, async_nestedOps)
