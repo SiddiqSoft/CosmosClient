@@ -750,9 +750,14 @@ namespace siddiqsoft
                     if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
                     if (op.document.empty()) throw std::invalid_argument("op.document required");
                     break;
-                    // Query has one additional requirement but the rest is same as remove and find
+                    // Query has same requirement as remove and find except for id so we need to split its check
                 case CosmosOperation::query:
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
                     if (op.queryStatement.empty()) throw std::invalid_argument("op.queryStatement required");
+                    break;
+                    // Remove and find have same requirements
                 case CosmosOperation::remove:
                 case CosmosOperation::find:
                     if (op.database.empty()) throw std::invalid_argument("op.database required");
