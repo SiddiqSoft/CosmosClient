@@ -90,10 +90,22 @@ This is the primary return type from the [CosmosClient](#struct-cosmosclient) fu
 
 Includes serializers for nlohmann::json via the macro `NLOHMANN_DEFINE_TYPE_INTRUSIVE`.
 
+```cpp
+    struct CosmosResponseType
+    {
+        uint32_t                    statusCode {};
+        nlohmann::json              document;
+        std::chrono::microseconds   ttx {};
+        bool                        success();
+    };
+```
+
 CosmosResponseType | Type  | Description
 -------------------|----|---
 `statusCode` | `uint32_t` | Holds the HTTP response Status Code or the system-error code (WinHTTP error code)
 `document`   | `nlohmann::json` | Holds the response from the Cosmos response.
+`ttx` | `std::chrono::microseconds` | Holds the time taken for the operation.
+`success()` | `bool` | Returns if the `statusCode < 300` indicating successful REST request.
 
 Azure Cosmos REST API [status codes](https://docs.microsoft.com/en-us/rest/api/cosmos-db/http-status-codes-for-cosmosdb) has the full list with detailed explanations.
 
@@ -154,6 +166,13 @@ For operations on single documents `create()`, `find()`, `update()` return the d
 Extends the [CosmosResponseType](#struct-cosmosresponsetype) by adding the `continuationToken` data member
 to facilitate iteration for the methods [listDocuments](#listdocuments) and [query](#query).
 
+```cpp
+    struct CosmosIterableResponseType : CosmosResponseType
+    {
+        std::string continuationToken {};
+    };
+```
+
 CosmosIterableResponseType | Type  | Description
 -------------------|----|---
 `continuationToken` | `string` | Do not modify; this is the `x-ms-continuation` token from the response header and inpat for the `listDocuments` and `query` methods to obtain all of the documents.
@@ -197,9 +216,9 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
         CosmosClient(const CosmosClient&)    = delete;
         auto& operator=(const CosmosClient&) = delete;
 
-        const nlohmann::json& configuration()
-        CosmosClient& configure(const nlohmann::json&) noexcept(false);
-        void async(CosmosArgumentType&& op);
+        const nlohmann::json&       configuration()
+        CosmosClient&               configure(const nlohmann::json&) noexcept(false);
+        void                        async(CosmosArgumentType&& op);
 
         CosmosResponseType          discoverRegions();
         CosmosResponseType          listDatabases();
@@ -212,11 +231,12 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
         CosmosIterableResponseType  queryDocuments(CosmosArgumentType const&);
         CosmosResponseType          findDocument(CosmosArgumentType const&);
 
-        friend void to_json(nlohmann::json&, const CosmosClient&);
+        friend void                 to_json(nlohmann::json&, const CosmosClient&);
     }
 ```
 
 ### Member variables
+
 &nbsp; | Type           | Description
 ------:|:---------------|:-------------
 `config` 🔒 | `nlohmann::json` | Configuration for the client
@@ -227,6 +247,7 @@ Implements the Cosmos SQL-API via REST. Omits the attachment API as of this vers
 `asyncWorkers` | `simple_pool<CosmosArgumentType>` | Implements asynchrony to the cosmos library.
 
 ### Member Functions
+
 &nbsp; | Returns           | Description
 ------:|:---------------|:-------------
 [`CosmosClient`](#cosmosclientcosmosclient) ⎔ | | Default constructor.<br/>_Move constructors, assignment operators are not relevant and have been deleted._

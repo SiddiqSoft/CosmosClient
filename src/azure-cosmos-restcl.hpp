@@ -355,6 +355,13 @@ namespace siddiqsoft
 
         /// @brief Represents the total time
         std::chrono::microseconds ttx {};
+
+        /// @brief Checks if the response is successful based on the HTTP status code
+        /// @return true iff the statusCode < 300
+        bool success()
+        {
+            return statusCode < 300;
+        }
     };
 
     /// @brief Serializer for CosmosResponseType
@@ -567,10 +574,23 @@ namespace siddiqsoft
                 } break;
 
                 case CosmosOperation::listDocuments: {
-                    // This returns CosmosIterableResponseType and it is the responsibility of the client's code to iterate through
-                    // the contents. The client code may async the remainder or use the sync version of listDocuments for the rest.
+                    // This returns CosmosIterableResponseType and the client's handler is invoked for each block.
                     CosmosIterableResponseType resp = listDocuments(req);
                     if (req.onResponse) req.onResponse(req, resp);
+                    if (resp.success() && !resp.continuationToken.empty()) {
+                        req.continuationToken = resp.continuationToken;
+#ifdef _DEBUG
+                        std::cerr << std::format("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue\n",
+                                                 resp.statusCode,
+                                                 resp.continuationToken,
+                                                 resp.document.value("_count", 0),
+                                                 resp.ttx);
+#endif
+                        // Queue the next instance.
+                        // This approach allows for controlled shutdown as the thread is able to listen and handle
+                        // stop requests.
+                        asyncWorkers.queue(std::move(req));
+                    }
                 } break;
 
                 case CosmosOperation::create: {
@@ -601,10 +621,23 @@ namespace siddiqsoft
                 } break;
 
                 case CosmosOperation::query: {
-                    // This returns CosmosIterableResponseType and it is the responsibility of the client's code to iterate through
-                    // the contents. The client code may async the remainder or use the sync version of query for the rest.
+                    // This returns CosmosIterableResponseType and the client's handler is invoked for each block.
                     CosmosIterableResponseType resp = queryDocuments(req);
                     if (req.onResponse) req.onResponse(req, resp);
+                    if (resp.success() && !resp.continuationToken.empty()) {
+                        req.continuationToken = resp.continuationToken;
+#ifdef _DEBUG
+                        std::cerr << std::format("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue\n",
+                                                 resp.statusCode,
+                                                 resp.continuationToken,
+                                                 resp.document.value("_count", 0),
+                                                 resp.ttx);
+#endif
+                        // Queue the next instance.
+                        // This approach allows for controlled shutdown as the thread is able to listen and handle
+                        // stop requests.
+                        asyncWorkers.queue(std::move(req));
+                    }
                 } break;
             }
         }
@@ -618,7 +651,7 @@ namespace siddiqsoft
 
         /// @brief Move constructor
         /// @param src Other client instance
-        CosmosClient(CosmosClient&& src)
+        CosmosClient(CosmosClient&& src) noexcept
             : config(std::move(src.config))
             , serviceSettings(std::move(src.serviceSettings))
             , restClient(std::move(src.restClient))
@@ -674,8 +707,7 @@ namespace siddiqsoft
                 cnxn.configure(config);
 
                 // Discover the regions..
-                auto resp = discoverRegions();
-                if (resp.statusCode == 200 && !resp.document.empty()) {
+                if (auto resp = discoverRegions(); resp.statusCode == 200 && !resp.document.empty()) {
                     serviceSettings = resp.document;
                     // Reconfigure/update the information such as the read location
                     cnxn.configure(serviceSettings);
@@ -691,12 +723,56 @@ namespace siddiqsoft
         /// @brief Invokes the requested operation from threadpool
         /// @param arg The request payload. The json must contain at least "operation". The callback is required as member
         /// .onResponse in the op argument.
-        void async(CosmosArgumentType&& op)
+        void async(CosmosArgumentType&& op) noexcept(false)
         {
+            // We need to perform some basic validations otherwise we cannot expect to throw within the callback as it would be
+            // inefficient to throw for such basic validations.
+            switch (op.operation) {
+                case CosmosOperation::listDocuments:
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                case CosmosOperation::listCollections:
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    break;
+                    // Create and Upsert have same validation requirements
+                case CosmosOperation::create:
+                case CosmosOperation::upsert:
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.document.empty()) throw std::invalid_argument("op.document required");
+                    if (op.document.value("id", "").empty()) throw std::invalid_argument("op.document[id] required");
+                    if (op.document.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+                        throw std::invalid_argument("op.document[] must contain partition key");
+                    break;
+                case CosmosOperation::update:
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.id.empty()) throw std::invalid_argument("op.id required");
+                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
+                    if (op.document.empty()) throw std::invalid_argument("op.document required");
+                    break;
+                    // Query has same requirement as remove and find except for id so we need to split its check
+                case CosmosOperation::query:
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
+                    if (op.queryStatement.empty()) throw std::invalid_argument("op.queryStatement required");
+                    break;
+                    // Remove and find have same requirements
+                case CosmosOperation::remove:
+                case CosmosOperation::find:
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.id.empty()) throw std::invalid_argument("op.id required");
+                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
+                    break;
+            }
+
+            // Elementary checks..
             if (op.operation == CosmosOperation::notset)
                 throw std::invalid_argument(std::format("{} requires op.operation be valid: {}", __func__, op));
             if (!op.onResponse) throw std::invalid_argument("async requires op.onResponse be valid callback");
 
+            // We can now queue the request..
             asyncWorkers.queue(std::move(op));
         }
 
