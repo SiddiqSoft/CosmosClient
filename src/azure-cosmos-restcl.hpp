@@ -791,7 +791,7 @@ namespace siddiqsoft
 
             auto     resp = restClient.send(req);
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 
@@ -866,7 +866,7 @@ namespace siddiqsoft
 
             auto resp = restClient.send(req);
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 
@@ -883,7 +883,7 @@ namespace siddiqsoft
             auto     req  = ReqGet(path, {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
             auto     resp = restClient.send(req);
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 
@@ -943,7 +943,7 @@ namespace siddiqsoft
             auto resp = restClient.send(req);
 
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count()),
                     resp["headers"].value("x-ms-continuation", "")};
         }
@@ -982,7 +982,7 @@ namespace siddiqsoft
             auto resp = restClient.send(req);
 
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 
@@ -1022,7 +1022,7 @@ namespace siddiqsoft
 
             auto resp = restClient.send(req);
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 
@@ -1059,7 +1059,7 @@ namespace siddiqsoft
                     ctx.document};
             auto resp = restClient.send(req);
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 
@@ -1183,8 +1183,8 @@ namespace siddiqsoft
 
             auto    resp = restClient.send(req);
 
-            return {resp.status().code,                                              // status code
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {}, // document or empty json
+            return {resp.status().code,                                 // status code
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context // document or empty json
                     std::chrono::microseconds(tt.elapsed().count()),
                     resp["headers"].value("x-ms-continuation", "")}; //  continuation token or empty
         }
@@ -1238,7 +1238,7 @@ namespace siddiqsoft
 
             auto resp = restClient.send(req);
             return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : nlohmann::json {},
+                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
                     std::chrono::microseconds(tt.elapsed().count())};
         }
 

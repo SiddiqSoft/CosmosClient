@@ -103,7 +103,7 @@ Includes serializers for nlohmann::json via the macro `NLOHMANN_DEFINE_TYPE_INTR
 CosmosResponseType | Type  | Description
 -------------------|----|---
 `statusCode` | `uint32_t` | Holds the HTTP response Status Code or the system-error code (WinHTTP error code)
-`document`   | `nlohmann::json` | Holds the response from the Cosmos response.
+`document`   | `nlohmann::json` | Holds the response from the Cosmos response or contains the information about the error if there is an IO error.<br/>This will allow you to diagnose the details from Cosmos response.
 `ttx` | `std::chrono::microseconds` | Holds the time taken for the operation.
 `success()` | `bool` | Returns if the `statusCode < 300` indicating successful REST request.
 
