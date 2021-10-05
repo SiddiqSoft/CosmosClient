@@ -70,6 +70,14 @@ steps:
     CCTEST_PRIMARY_CS: $(CCTEST_PRIMARY_CS)
     CCTEST_SECONDARY_CS: $(CCTEST_SECONDARY_CS)
 
+- task: VSTest@2
+  inputs:
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: '**\basic_tests.exe'
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    vsTestVersion: '16.0'
+    codeCoverageEnabled: true
+
 - task: PublishTestResults@2
   displayName: 'Publish Release Test Results **/TEST-*.xml'
   inputs:
