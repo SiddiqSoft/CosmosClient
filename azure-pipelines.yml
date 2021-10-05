@@ -52,6 +52,7 @@ steps:
   displayName: 'Build solution RELEASE'
   inputs:
     solution: '**/*.sln'
+    vsVersion: '16.0'
     platform: 'x64'
     configuration: 'Release'
     maximumCpuCount: true
