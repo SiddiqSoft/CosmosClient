@@ -3,11 +3,9 @@ trigger:
   branches:
     include:
     - main
-    - develop
-    - release/*
   paths:
     exclude:
-    - docs
+    - docs/*
     - docs/index.md
     - README.md
 
@@ -23,9 +21,9 @@ variables:
   
 steps:
 - task: NuGetToolInstaller@1
-  displayName: 'Use NuGet 5.10.0'
+  displayName: 'Use NuGet 5.11.0'
   inputs:
-    versionSpec: '5.10.0'
+    versionSpec: '5.11.0'
     checkLatest: true
 
 - task: GitVersion@5
