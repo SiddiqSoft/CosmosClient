@@ -486,7 +486,7 @@ TEST(CosmosClient, async_queryDocument)
     std::string              collectionName {};
     std::vector<std::string> docIds {};
     std::string              pkId {"siddiqsoft.com"};
-    std::string              sourceId = std::format("{}-{}", getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
+    std::string              sourceId = std::format("{}-{}", _getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
     constexpr auto           DOCS {5};
 
     ASSERT_FALSE(priConnStr.empty())
