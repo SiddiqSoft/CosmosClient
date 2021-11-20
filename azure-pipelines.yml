@@ -28,7 +28,7 @@ steps:
 
 - task: GitVersion@5
   inputs:
-    runtime: 'core'
+    runtime: 'full'
     configFilePath: 'GitVersion.yml'
 
 - script: echo %Action%%BuildVersion%
@@ -73,7 +73,6 @@ steps:
     testSelector: 'testAssemblies'
     testAssemblyVer2: '**\basic_tests.exe'
     searchFolder: '$(System.DefaultWorkingDirectory)'
-    vsTestVersion: '16.0'
     codeCoverageEnabled: true
 
 - task: PublishTestResults@2
