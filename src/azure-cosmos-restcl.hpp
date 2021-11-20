@@ -740,7 +740,7 @@ namespace siddiqsoft
                     if (op.collection.empty()) throw std::invalid_argument("op.collection required");
                     if (op.document.empty()) throw std::invalid_argument("op.document required");
                     if (op.document.value("id", "").empty()) throw std::invalid_argument("op.document[id] required");
-                    if (op.document.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+                    if (!op.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
                         throw std::invalid_argument("op.document[] must contain partition key");
                     break;
                 case CosmosOperation::update:
@@ -960,11 +960,12 @@ namespace siddiqsoft
             TimeThis tt {};
 
             if (ctx.document.value("id", "").empty()) throw std::invalid_argument("create - I need the uniqueid of the document");
-            if (ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+            if (!ctx.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
                 throw std::invalid_argument("create - I need the partitionId of the document");
 
-            auto                ts   = DateUtils::RFC7231();
-            auto                pkId = ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "");
+            auto                ts        = DateUtils::RFC7231();
+            std::string&        pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
+            auto                pkId      = ctx.document.value(pkKeyName, "");
 
             siddiqsoft::ReqPost req {
                     std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), ctx.database, ctx.collection),
@@ -999,11 +1000,11 @@ namespace siddiqsoft
             TimeThis tt {};
 
             if (ctx.document.value("id", "").empty()) throw std::invalid_argument("upsert - I need the uniqueid of the document");
-            if (ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "").empty())
+            if (!ctx.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
                 throw std::invalid_argument("upsert - I need the partitionId of the document");
 
-            auto                ts   = DateUtils::RFC7231();
-            auto                pkId = ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer), "");
+            auto ts   = DateUtils::RFC7231();
+            auto pkId = ctx.document.value(config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>(), "");
 
             siddiqsoft::ReqPost req {
                     std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), ctx.database, ctx.collection),
