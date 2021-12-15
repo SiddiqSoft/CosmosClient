@@ -358,7 +358,7 @@ namespace siddiqsoft
 
         /// @brief Checks if the response is successful based on the HTTP status code
         /// @return true iff the statusCode < 300
-        bool success()
+        bool success() const
         {
             return statusCode < 300;
         }
@@ -668,7 +668,7 @@ namespace siddiqsoft
 
         /// @brief Gets the current configuration object
         /// @return Configuration json
-        const nlohmann::json& configuration()
+        const nlohmann::json& configuration() const
         {
             return config;
         }
