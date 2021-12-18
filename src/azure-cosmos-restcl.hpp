@@ -555,7 +555,7 @@ namespace siddiqsoft
 
         /// @brief The async dispatcher/driver
         /// @param req The queued request
-        void asyncDispatcher(CosmosArgumentType& req)
+        void asyncDispatcher(CosmosArgumentType&& req)
         {
             switch (req.operation) {
                 case CosmosOperation::discoverRegions: {

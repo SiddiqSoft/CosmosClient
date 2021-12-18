@@ -24,9 +24,9 @@
 		<!-- Dependencies -->
 		<dependencies>
 			<dependency id="nlohmann.json" version="3.10"/>
-			<dependency id="SiddiqSoft.acw32h" version="2.6"/>
-			<dependency id="SiddiqSoft.asynchrony-lib" version="0.10"/>
-			<dependency id="SiddiqSoft.AzureCppUtils" version="1.4"/>
+			<dependency id="SiddiqSoft.asynchrony-lib" version="0.11"/>
+			<dependency id="SiddiqSoft.AzureCppUtils" version="1.5"/>
+			<dependency id="SiddiqSoft.format-helpers" version="1.0"/>
 			<dependency id="SiddiqSoft.restcl" version="0.10"/>
 			<dependency id="SiddiqSoft.RunOnEnd" version="1.2"/>
 			<dependency id="SiddiqSoft.RWLEnvelope" version="1.1"/>
