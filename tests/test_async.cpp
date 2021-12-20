@@ -33,6 +33,9 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _CRT_SECURE_NO_WARNINGS 1
+
+
 #include "gtest/gtest.h"
 
 #include <thread>
