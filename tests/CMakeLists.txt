@@ -29,8 +29,11 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
 
     if( CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
         add_compile_definitions(${TESTPROJ} PRIVATE DEBUG=1 _DEBUG=1)
-        add_compile_definitions(${TESTPROJ} PRIVATE COSMOSCLIENT_TESTING_MODE=1)
     endif()
+
+    # Our tests depend on this preprocessor definition during CI/test mode to enable
+    # access to protected members.
+    add_compile_definitions(${TESTPROJ} PRIVATE COSMOSCLIENT_TESTING_MODE=1)
 
     # Dependencies
     #cpmaddpackage("gh:google/googletest#v1.15.2")
