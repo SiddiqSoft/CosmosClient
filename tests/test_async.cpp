@@ -47,7 +47,7 @@
 #include <semaphore>
 
 #include "nlohmann/json.hpp"
-#include "../src/azure-cosmos-restcl.hpp"
+#include "../include/siddiqsoft/azure-cosmos-restcl.hpp"
 
 /*
  * Required Environment Variables

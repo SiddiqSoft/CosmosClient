@@ -1,118 +1,225 @@
+###############################################
+# SiddiqSoft Azure DevOps Pipelines Template  #
+# For C++ Projects                            #
+# Version 2.0                                 #
+###############################################
 trigger:
-  batch: true
+  batch: 'true'
   branches:
     include:
+    - master
     - main
+    - bufix/*
+    - release/*
+    - hotfix/*
+    - feature/*
   paths:
     exclude:
-    - docs/*
-    - docs/index.md
     - README.md
 
-pool:
-  name: Default
-  demands:
-  - msbuild
-  - visualstudio
-  - vstest
-
-variables:
-  buildPlatform: 'x64'
-  
-steps:
-- task: NuGetToolInstaller@1
-  displayName: 'Use NuGet 6.0.0'
-  inputs:
-    versionSpec: '6.0.0'
-    checkLatest: true
-
-- task: GitVersion@5
-  inputs:
-    runtime: 'full'
-    configFilePath: 'GitVersion.yml'
-
-- script: echo %Action%%BuildVersion%
-  displayName: 'Set build version'
-  env:
-    Action: '##vso[build.updatebuildnumber]'
-    BuildVersion: $(GitVersion.NugetVersionV2)
-
-- task: NuGetCommand@2
-  displayName: 'NuGet restore'
-  inputs:
-    command: 'restore'
-    restoreSolution: '**/*.sln'
-    feedsToUse: 'select'
-    vstsFeed: 'ec2759e0-0587-4306-8a8d-8695f15e2336'
-  continueOnError: true
-
-- task: VSBuild@1
-  displayName: 'Build solution RELEASE'
-  inputs:
-    solution: '**/*.sln'
-    vsVersion: '16.0'
-    platform: 'x64'
-    configuration: 'Release'
-    maximumCpuCount: true
-    msbuildArchitecture: 'x64'
-
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: |
-      Write-Host "Run GoogleTest: basic_tests.exe..."
-      cd output\Release
-      dir .
-      .\basic_tests.exe --gtest_output=xml:..\..\TestResults\
-  env:
-    CCTEST_PRIMARY_CS: $(CCTEST_PRIMARY_CS)
-    CCTEST_SECONDARY_CS: $(CCTEST_SECONDARY_CS)
-
-- task: VSTest@2
-  inputs:
-    testSelector: 'testAssemblies'
-    testAssemblyVer2: '**\basic_tests.exe'
-    searchFolder: '$(System.DefaultWorkingDirectory)'
-    codeCoverageEnabled: true
-
-- task: PublishTestResults@2
-  displayName: 'Publish Release Test Results **/TEST-*.xml'
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/TestResults/basic_tests.xml'
-    mergeTestResults: true
-    buildPlatform: 'x64'
-    buildConfiguration: 'Release'
-  continueOnError: true
-
-- task: NuGetCommand@2
-  displayName: 'NuGet pack'
-  inputs:
-    command: 'pack'
-    packagesToPack: 'nuget/*.nuspec'
-    versioningScheme: 'off'
-    buildProperties: 'VERSION=$(build.buildNumber)'
-
-- task: NuGetCommand@2
-  displayName: 'NuGet push'
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg;build/*.nupkg;!build/*symbols.nupkg'
-    nuGetFeedType: 'external'
-    publishFeedCredentials: 'sqs-nuget'
-#  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-
-- task: GitHubRelease@1
-  inputs:
-    gitHubConnection: 'github-packages-sqs'
-    repositoryName: 'SiddiqSoft/CosmosClient'
-    action: 'create'
-    target: '$(Build.SourceVersion)'
-    tagSource: 'userSpecifiedTag'
-    tag: '$(build.buildNumber)'
-    title: 'v$(build.buildNumber)'
-    releaseNotesSource: 'inline'
-    isPreRelease: true
-    changeLogCompareToRelease: 'lastFullRelease'
-    changeLogType: 'commitBased'
-  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+stages:
+################################## STAGE ####################################
+# STAGE: BuildTest                                                          #
+#############################################################################
+- stage: BuildTest
+  displayName: 'Building, Testing and Package'
+  jobs:
+  - job: buildWindows
+    displayName: 'Build and Test Windows'
+    workspace:
+      clean: all
+    pool:
+      name: Default
+      vmImage:
+      demands:
+        - Agent.OS -equals Windows_NT
+    strategy:
+      matrix:
+        Debug:
+          BuildType: Debug
+          cmake.preset: 'Windows-$(BuildType)'
+          MSBuildConfiguration: Debug
+        Release:
+          BuildType: Release
+          cmake.preset: 'Windows-$(BuildType)'
+          MSBuildConfiguration: Release
+    steps:
+    - checkout: self
+      fetchDepth: 0
+      name: step1
+    - task: gitversion/setup@3
+      displayName: 'Install GitVersion..'
+      inputs:
+        versionSpec: '6.0'
+        preferLatestVersion: true
+    - task: gitversion/execute@3
+      displayName: 'Determine Version..'
+      name: version_step
+      inputs:
+        useConfigFile: true
+        configFilePath: 'GitVersion.yml'
+    - task: CMake@1
+      displayName: 'CMake Configure $(cmake.preset)'
+      inputs:
+        cmakeArgs: '--preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+    - task: CMake@1
+      displayName: 'CMake Build $(cmake.preset)'
+      inputs:
+        cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      condition: succeeded()
+    - task: CMake@1
+      displayName: 'CMake Tests $(cmake.preset)'
+      inputs:
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure'
+      continueOnError: true
+      condition: succeeded()
+    - task: PublishTestResults@2
+      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
+      inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
+          mergeTestResults: false
+          buildConfiguration: '$(BuildType)'
+      continueOnError: true
+      condition: succeeded()
+    - task: NuGetToolInstaller@1
+      displayName: 'Install Nuget on Windows'
+      inputs:
+        versionSpec: '>=6.0.0-0'
+        checkLatest: true
+      condition: and(succeeded(), startsWith(variables['Agent.OS'], 'Windows'))
+    - task: NuGetCommand@2
+      displayName: 'NuGet pack v$(GitVersion.MajorMinorPatch)'
+      inputs:
+        command: 'pack'
+        packagesToPack: 'pack/*.nuspec'
+        versioningScheme: 'off'
+        buildProperties: 'VERSION=$(GitVersion.MajorMinorPatch)'
+      condition: and(succeeded(), startsWith(variables['Agent.OS'], 'Windows'))
+    - task: NuGetCommand@2
+      displayName: 'NuGet push (Windows only)'
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;build/*.nupkg'
+        nuGetFeedType: 'external'
+        publishFeedCredentials: 'sqs-nuget'
+      condition: and(succeeded(), eq(variables['BuildType'], 'Release'), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')), startsWith(variables['Agent.OS'], 'Windows'))
+    - task: GitHubRelease@1
+      displayName: 'Release to GitHub'
+      inputs:
+        gitHubConnection: 'github-packages-sqs'
+        repositoryName: '$(Build.Repository.Name)'
+        action: 'create'
+        target: '$(Build.SourceVersion)'
+        tagSource: 'userSpecifiedTag'
+        tag: '$(GitVersion.MajorMinorPatch)'
+        title: 'v$(GitVersion.MajorMinorPatch)'
+        releaseNotesSource: 'inline'
+        releaseNotesInline: 'Documentation https://github.com/$(Build.Repository.Name)'
+        isPreRelease: true
+        changeLogCompareToRelease: 'lastFullRelease'
+        changeLogType: 'commitBased'
+        addChangeLog: false
+        assetUploadMode: 'replace'
+      condition: and(succeeded(), eq(variables['BuildType'], 'Release'), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')), startsWith(variables['Agent.OS'], 'Windows'))
+#   ##################################################################################################### #### ## #
+#   #### Job buildLinux ################################################################################# #### ## #
+#   ##################################################################################################### #### ## #
+  - job: buildLinux
+    displayName: 'Build and Test Linux'
+    workspace:
+      clean: all
+    pool:
+      name: Default
+      vmImage:
+      demands:
+        - Agent.OS -equals Linux
+    strategy:
+      matrix:
+        GCC-Debug:
+          BuildType: Debug
+          cmake.preset: 'Linux-GCC-$(BuildType)'
+          MSBuildConfiguration: Debug
+          cmakeExtraArgs: 
+        GCC-Release:
+          BuildType: Release
+          cmake.preset: 'Linux-GCC-$(BuildType)'
+          cmakeExtraArgs: 
+          MSBuildConfiguration: Release
+        Clang-Debug:
+          BuildType: Debug
+          cmake.preset: 'Linux-Clang-$(BuildType)'
+          MSBuildConfiguration: Debug
+          cmakeExtraArgs: 
+        Clang-Release:
+          BuildType: Release
+          cmake.preset: 'Linux-Clang-$(BuildType)'
+          cmakeExtraArgs: 
+          MSBuildConfiguration: Release
+    steps:
+    - checkout: self
+      fetchDepth: 0
+      name: step1
+    - task: gitversion/setup@3
+      displayName: 'Install GitVersion..'
+      inputs:
+        versionSpec: '6.0'
+        preferLatestVersion: true
+    - task: gitversion/execute@3
+      displayName: 'Determine Version..'
+      name: version_step
+      inputs:
+        useConfigFile: true
+        configFilePath: 'GitVersion.yml'
+    - task: CMake@1
+      displayName: 'CMake Configure $(cmake.preset)'
+      inputs:
+        cmakeArgs: '--preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+    - task: CMake@1
+      displayName: 'CMake Build $(cmake.preset)'
+      inputs:
+        cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      condition: succeeded()
+    - task: CMake@1
+      displayName: 'CMake Tests $(cmake.preset)'
+      env:
+        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+      inputs:
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose'
+      condition: succeeded()
+      continueOnError: true
+    - task: CMake@1
+      displayName: 'CTest Coverage $(cmake.preset) (Linux only)'
+      env:
+        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+      inputs:
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset) --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose -T Test -T Coverage'
+      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
+      continueOnError: true
+    - task: CmdLine@2
+      displayName: 'Coverage collection (Linux builds Only)'
+      inputs:
+        script: |
+          echo "gcovr --delete --root ../../ --print-summary --xml-pretty --xml coverage.xml .  --filter='$(System.DefaultWorkingDirectory)/include/siddiqsoft/*' --filter='$(System.DefaultWorkingDirectory)/tests/*' --gcov-executable 'llvm-cov gcov'"
+          gcovr --delete --root $(System.DefaultWorkingDirectory)/ --print-summary --xml-pretty --xml $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/coverage.xml $(System.DefaultWorkingDirectory)/build/$(cmake.preset)  --filter='$(System.DefaultWorkingDirectory)/include/*' --filter='$(System.DefaultWorkingDirectory)/tests/*' --gcov-executable 'llvm-cov gcov'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)'
+      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
+    - task: PublishTestResults@2
+      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
+        mergeTestResults: false
+        buildConfiguration: '$(BuildType)'
+      continueOnError: false
+      condition: succeeded()
+    - task: PublishCodeCoverageResults@2
+      displayName: 'Publish Coverage Results (Linux builds)'
+      inputs:
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/coverage.*'
+      condition: and(succeeded(), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'), eq(variables['BuildType'], 'Debug'))
+    

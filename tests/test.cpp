@@ -44,7 +44,7 @@
 #include <semaphore>
 
 #include "nlohmann/json.hpp"
-#include "../src/azure-cosmos-restcl.hpp"
+#include "../include/siddiqsoft/azure-cosmos-restcl.hpp"
 
 /*
  * Required Environment Variables
@@ -161,6 +161,7 @@ TEST(CosmosClient, configure_1)
     // Check that we have read/write locations detected.
     auto& currentConfig = cc.configuration();
 
+#if defined(DEBUG)
     EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
     EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
 
@@ -170,6 +171,7 @@ TEST(CosmosClient, configure_1)
     // Atleast one write location
     EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
     EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
+#endif
 }
 
 
@@ -699,11 +701,11 @@ TEST(CosmosClient, queryDocument)
         auto rc = cc.createDocument({.database   = dbName,
                                      .collection = collectionName,
                                      .document   = {{"id", docIds[i]},
-                                                  {"ttl", 360},
-                                                  {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                                  {"i", i},
-                                                  {"odd", !(i % 2 == 0)},
-                                                  {"source", sourceId}}});
+                                                    {"ttl", 360},
+                                                    {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                                    {"i", i},
+                                                    {"odd", !(i % 2 == 0)},
+                                                    {"source", sourceId}}});
         EXPECT_EQ(201, rc.statusCode);
     }
 
@@ -725,7 +727,7 @@ TEST(CosmosClient, queryDocument)
                  .continuationToken = irt.continuationToken,
                  .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
                  .queryParameters   = {{{"name", "@v1"},
-                                      {"value", std::format("{}-", getpid())}}}}); // the params is an array of name-value items
+                                        {"value", std::format("{}-", getpid())}}}}); // the params is an array of name-value items
         EXPECT_EQ(200, irt.statusCode);
         if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
             // Append to the current container
@@ -737,7 +739,7 @@ TEST(CosmosClient, queryDocument)
     } while (!irt.continuationToken.empty());
     EXPECT_EQ(DOCS, allDocsCount); // total
 
-#ifdef _DEBUG
+#ifdef DEBUG
     // std::cerr << allDocs.dump(4) << std::endl;
 #endif
 
@@ -745,9 +747,13 @@ TEST(CosmosClient, queryDocument)
     for (auto& document : allDocs) {
         if (!document.is_null()) {
             auto& id = document.at("id");
-            std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
-                if (i == id) matchCount++;
-            });
+            for (auto& i : docIds) {
+                std::print(std::cerr, "{} - {} == {}\n", __func__, i, id.dump());
+                matchCount+= (i == id.dump());
+            }
+            //std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
+            //    if (i == id) matchCount++;
+            //});
         }
     }
     EXPECT_EQ(DOCS, matchCount);
@@ -885,15 +891,15 @@ TEST(CosmosClient, createDocument_threads)
                                     {.database   = dbName,
                                      .collection = collectionName,
                                      .document   = {{"id",
-                                                   std::format("{}.{}.{}",
+                                                     std::format("{}.{}.{}",
                                                                tid,
                                                                i,
                                                                std::chrono::system_clock::now().time_since_epoch().count())},
-                                                  {"ttl", 360},
-                                                  {"__pk", "siddiqsoft.com"},
-                                                  {"i", i},
-                                                  {"tid", tid},
-                                                  {"source", sourceId}}});
+                                                    {"ttl", 360},
+                                                    {"__pk", "siddiqsoft.com"},
+                                                    {"i", i},
+                                                    {"tid", tid},
+                                                    {"source", sourceId}}});
                             addDocsCount += rc.statusCode == 201 ? 1 : 0;
                             docIds.push_back(rc.document.value("id", ""));
                             // //std::cerr << std::format("{} createDocument:{:02}: rc:{} `id`:{}\n",
@@ -1008,15 +1014,15 @@ TEST(CosmosClient, queryDocument_threads)
                                         {.database   = dbName,
                                          .collection = collectionName,
                                          .document   = {{"id",
-                                                       std::format("{}.{}.{}",
+                                                         std::format("{}.{}.{}",
                                                                    t,
                                                                    i,
                                                                    std::chrono::system_clock::now().time_since_epoch().count())},
-                                                      {"ttl", 360},
-                                                      {"__pk", "odd.siddiqsoft.com"},
-                                                      {"i", i},
-                                                      {"tid", tid},
-                                                      {"source", sourceId}}});
+                                                        {"ttl", 360},
+                                                        {"__pk", "odd.siddiqsoft.com"},
+                                                        {"i", i},
+                                                        {"tid", tid},
+                                                        {"source", sourceId}}});
                                 if (rc.statusCode == 201) {
                                     createdDocCount++;
                                     docIds.push_back(rc.document.value("id", ""));
@@ -1084,15 +1090,15 @@ TEST(CosmosClient, queryDocument_threads)
                                         {.database   = dbName,
                                          .collection = collectionName,
                                          .document   = {{"id",
-                                                       std::format("{}.{}.{}",
+                                                         std::format("{}.{}.{}",
                                                                    t,
                                                                    i,
                                                                    std::chrono::system_clock::now().time_since_epoch().count())},
-                                                      {"ttl", 360},
-                                                      {"__pk", "even.siddiqsoft.com"},
-                                                      {"i", i},
-                                                      {"tid", tid},
-                                                      {"source", sourceId}}});
+                                                        {"ttl", 360},
+                                                        {"__pk", "even.siddiqsoft.com"},
+                                                        {"i", i},
+                                                        {"tid", tid},
+                                                        {"source", sourceId}}});
                                 if (rc.statusCode == 201) {
                                     createdDocCount++;
                                     docIds.push_back(rc.document.value("id", ""));
@@ -1146,8 +1152,7 @@ TEST(CosmosClient, queryDocument_threads)
     /// @brief Helper to count even/odd elements in range
     /// @param  Ending item
     /// @param  Starting item (defaults to 0)
-    auto evenOddCount = [](uint16_t fc, uint16_t sc = 0) -> auto
-    {
+    auto evenOddCount = [](uint16_t fc, uint16_t sc = 0) -> auto {
         struct rvt
         {
             uint16_t even {}, odd {};
@@ -1186,8 +1191,8 @@ TEST(CosmosClient, queryDocument_threads)
 /// @brief Test the serializers and cast operators
 TEST(CosmosConnection, test1_n)
 {
-    std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    std::string                  cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+                                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
     siddiqsoft::CosmosConnection cd {cs};
 
     EXPECT_EQ("AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
@@ -1211,8 +1216,8 @@ TEST(CosmosConnection, test1_n)
 /// Compiliation will fail for malformed/missing serializers
 TEST(CosmosConnection, test2_n)
 {
-    std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
-                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    std::string                  cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/"
+                                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
     siddiqsoft::CosmosConnection cd {cs};
 
     nlohmann::json               info = cd;
@@ -1226,10 +1231,10 @@ TEST(CosmosConnection, test2_n)
 /// @brief Test rotate between primary and secondary connection
 TEST(CosmosConnection, rotateConnection_1)
 {
-    std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
-                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    std::string scs = "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/"
-                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    std::string                  pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
+                                       ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    std::string                  scs = "AccountEndpoint=https://YOURDBNAME-2.documents.azure.com:443/"
+                                       ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
     siddiqsoft::CosmosConnection cd {pcs, scs};
 
     // We must start at Primary
@@ -1266,8 +1271,8 @@ TEST(CosmosConnection, rotateConnection_1)
 /// @brief Check the rotate method with single connection
 TEST(CosmosConnection, rotateConnection_2)
 {
-    std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
-                      ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    std::string                  pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/"
+                                       ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
     siddiqsoft::CosmosConnection cd {pcs};
 
     // We must start at Primary
@@ -1335,7 +1340,8 @@ TEST(CosmosEndpoint, test1_n)
 /// @brief Test serializers and cast operators for CosmosEndpoint object with additional read/write locations.
 TEST(CosmosEndpoint, test2_n)
 {
-    using namespace siddiqsoft::literals;
+    using namespace siddiqsoft::restcl_literals;
+    using namespace siddiqsoft::splituri_literals;
 
     siddiqsoft::CosmosEndpoint cs;
 
