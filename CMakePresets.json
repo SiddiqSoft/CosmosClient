@@ -11,7 +11,9 @@
             "generator": "Ninja",
             "environment": {
                 "CTEST_PARALLEL_LEVEL": "0",
-                "CMAKE_COLOR_DIAGNOSTICS": "1"
+                "CMAKE_COLOR_DIAGNOSTICS": "1",
+                "CCTEST_PRIMARY_CS": "secret",
+                "CCTEST_SECONDARY_CS": "secret"
             },
             "cacheVariables": {
                 "CPM_SOURCE_CACHE": "${sourceParentDir}/.cpmcache",
