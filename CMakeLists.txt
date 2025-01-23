@@ -50,7 +50,6 @@ set( CMAKE_CXX_EXTENSIONS Off)
                         
 # ____________________________________
 # Dependencies
-
 CPMAddPackage("gh:nlohmann/json#v3.11.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE nlohmann_json::nlohmann_json)
 CPMAddPackage("gh:SiddiqSoft/SplitUri#2.1.1")
@@ -64,12 +63,12 @@ target_link_libraries(${PROJECT_NAME} INTERFACE string2map::string2map)
 CPMAddPackage("gh:SiddiqSoft/RunOnEnd#1.3.2")
 target_link_libraries(${PROJECT_NAME} INTERFACE RunOnEnd::RunOnEnd)
 
-CPMAddPackage("gh:SiddiqSoft/asynchrony#7b8f1f0ccb0636dd4516161a9815b0df51fcd03d")
+CPMAddPackage("gh:SiddiqSoft/asynchrony#1.9.2")
 target_link_libraries(${PROJECT_NAME} INTERFACE asynchrony::asynchrony)
 CPMAddPackage("gh:SiddiqSoft/timethis#2.1.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/restcl#8c4b0425a66fbed39b3a8447c95c85b3116831e4")
+CPMAddPackage("gh:SiddiqSoft/restcl#9b9661f0117105a65cd5ee8e92fdd93ec58192fb")
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 
 
