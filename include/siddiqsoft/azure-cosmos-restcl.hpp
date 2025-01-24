@@ -568,8 +568,8 @@ namespace siddiqsoft
                 {"_typever", CosmosClientUserAgentString},
                 {"libRetryLimit", 7},
                 {"apiVersion", "2018-12-31"}, // The API version for Cosmos REST API
-                {"connectionStrings", {}},    // The Connection String from the Azure portal
-                {"partitionKeyNames", {}}     // The partition key names is an array of partition key names
+                {"connectionStrings", nullptr},    // The Connection String from the Azure portal
+                {"partitionKeyNames", nullptr}     // The partition key names is an array of partition key names
         };
 
         /// @brief Service Settings saved from discoverRegion

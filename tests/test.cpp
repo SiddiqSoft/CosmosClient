@@ -189,8 +189,9 @@ TEST(CosmosClient, configure_1)
 
     // Check that we have read/write locations detected.
     auto& currentConfig = cc.configuration();
+    std::print(std::cerr, "{} - Contents of current configuration\n{}", __func__, currentConfig.dump(2));
 
-#if defined(DEBUG)
+#if defined(COSMOSCLIENT_TESTING_MODE)
     EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
     EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
 
@@ -220,10 +221,17 @@ TEST(CosmosClient, discoverRegions)
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
     nlohmann::json info = cc;
+    std::print(std::cerr, "{} - Configuration\n{}\n", __func__, info.dump(2));
+
     EXPECT_TRUE(info.contains("serviceSettings"));
     EXPECT_TRUE(info.contains("database"));
     EXPECT_TRUE(info.contains("configuration"));
     EXPECT_EQ(5, info.size()) << info.dump(3);
+
+    auto rc = cc.discoverRegions();
+    std::print(std::cerr, "{} - ....rc:{}\n", __func__, rc);
+
+    EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 
     // Check that we have read/write locations detected.
     // Atleast one read location
