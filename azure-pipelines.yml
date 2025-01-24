@@ -136,7 +136,6 @@ stages:
       vmImage:
       demands:
         - Agent.OS -equals Linux
-        - Agent.OSArchitecture -equals 'X64'
         - docker
     strategy:
       matrix:
