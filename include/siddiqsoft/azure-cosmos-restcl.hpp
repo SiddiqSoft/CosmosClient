@@ -830,7 +830,7 @@ namespace siddiqsoft
                                      {"x-ms-date", ts},
                                      {"x-ms-version", config["apiVersion"]}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -907,7 +907,7 @@ namespace siddiqsoft
                       {"x-ms-date", ts},
                       {"x-ms-version", config["apiVersion"]}});
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -925,7 +925,7 @@ namespace siddiqsoft
             auto     req    = rest_request<char>(HttpMethodType::METHOD_GET,
                                           path,
                                                  {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -983,7 +983,7 @@ namespace siddiqsoft
             if (!ctx.continuationToken.empty()) headers["x-ms-continuation"] = ctx.continuationToken;
 
             auto req        = rest_request<char>(HttpMethodType::METHOD_GET, path, headers);
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosIterableResponseType::CreateFrom(tt, resp);
         }
@@ -1021,7 +1021,7 @@ namespace siddiqsoft
                                    {"x-ms-version", config["apiVersion"]},
                                    {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -1061,7 +1061,7 @@ namespace siddiqsoft
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -1098,7 +1098,7 @@ namespace siddiqsoft
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -1134,7 +1134,7 @@ namespace siddiqsoft
                      {"x-ms-documentdb-partitionkey", nlohmann::json {ctx.partitionKey}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
 
             return resp.has_value() ? resp->statusCode() : resp.error();
@@ -1225,7 +1225,7 @@ namespace siddiqsoft
                             ? nlohmann::json {{"query", ctx.queryStatement}, {"parameters", ctx.queryParameters}}
                             : nlohmann::json {{"query", ctx.queryStatement}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosIterableResponseType::CreateFrom(tt, resp);
         }
@@ -1278,7 +1278,7 @@ namespace siddiqsoft
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }

@@ -58,19 +58,30 @@
  * https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql
  */
 
-static const std::string EMULATOR_CONNECTION_STRING {
+static const std::string EMULATOR_CONNECTION_STRING =
         "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/"
-        "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"};
-static const std::string EMULATOR_KEY {"C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="};
-static const std::string EMULATOR_ENDPOINT {"localhost:8081"};
+        "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
+static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+static const std::string EMULATOR_ENDPOINT = "localhost:8081";
 
-static auto              GetPrimaryConnectionString() -> std::pair<std::string, std::string>
+static auto              GetConnectionStrings() -> std::pair<std::string, std::string>
 {
     auto pcs = std::getenv("CCTEST_PRIMARY_CS");
     auto scs = std::getenv("CCTEST_SECONDARY_CS");
 
     return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING, scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
 }
+
+
+TEST(CosmosClient, checkEmulatorInfo)
+{
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
+    ASSERT_FALSE(priConnStr.empty())
+            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    ASSERT_FALSE(secConnStr.empty())
+            << "Missing environment variable CCTEST_SECONDARY_CS; Set it to Secondary Connection string from Azure portal.";
+}
+
 
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
@@ -80,13 +91,7 @@ TEST(CosmosClient, example1)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr {};
-    std::string secConnStr {};
-
-    EXPECT_NO_THROW({
-        priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-        secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-    });
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     ASSERT_FALSE(priConnStr.empty())
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -170,8 +175,7 @@ TEST(CosmosClient, configure_1)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     ASSERT_FALSE(priConnStr.empty())
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -202,8 +206,7 @@ TEST(CosmosClient, discoverRegions)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     ASSERT_FALSE(priConnStr.empty())
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -231,12 +234,11 @@ TEST(CosmosClient, discoverRegions)
 
 TEST(CosmosClient, discoverRegions_BadPrimary)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = "AccountEndpoint=https://localhost:4043/"
-                             ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
-    std::string secConnStr = std::getenv("CCTEST_PRIMARY_CS");
+    // Fake/Bad connection string!
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
+    priConnStr                    = "AccountEndpoint=https://localhost:4043/"
+                                    ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+
 
     ASSERT_FALSE(priConnStr.empty())
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -270,8 +272,7 @@ TEST(CosmosClient, listDatabases)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     // Fail fast if the primary conection string is not present in the build environment
     ASSERT_FALSE(priConnStr.empty())
@@ -292,8 +293,7 @@ TEST(CosmosClient, listCollections)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     // Fail fast if the primary conection string is not present in the build environment
     ASSERT_FALSE(priConnStr.empty())
@@ -319,8 +319,7 @@ TEST(CosmosClient, listDocuments)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     // Fail fast if the primary conection string is not present in the build environment
     ASSERT_FALSE(priConnStr.empty())
@@ -361,8 +360,7 @@ TEST(CosmosClient, listDocuments_top100)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     // Fail fast if the primary conection string is not present in the build environment
     ASSERT_FALSE(priConnStr.empty())
@@ -399,8 +397,7 @@ TEST(CosmosClient, createDocument)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
@@ -442,8 +439,7 @@ TEST(CosmosClient, createDocument_MissingId)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
@@ -481,8 +477,7 @@ TEST(CosmosClient, createDocument_MissingPkId)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
@@ -520,8 +515,7 @@ TEST(CosmosClient, findDocument)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
@@ -567,8 +561,7 @@ TEST(CosmosClient, upsertDocument)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
@@ -628,8 +621,7 @@ TEST(CosmosClient, updateDocument)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
@@ -689,8 +681,7 @@ TEST(CosmosClient, queryDocument)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string              priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string              secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string              dbName {};
     std::string              collectionName {};
     std::vector<std::string> docIds {};
@@ -840,9 +831,8 @@ TEST(CosmosClient, createDocument_threads)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto                 ttx        = std::chrono::system_clock::now();
-    std::string          priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string          secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto ttx                      = std::chrono::system_clock::now();
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string          dbName {};
     std::string          collectionName {};
     std::string          pkId {"siddiqsoft.com"};
@@ -973,8 +963,7 @@ TEST(CosmosClient, queryDocument_threads)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string              priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string              secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string              dbName {};
     std::string              collectionName {};
     std::string              pkId {"siddiqsoft.com"};
