@@ -567,9 +567,9 @@ namespace siddiqsoft
         nlohmann::json config {
                 {"_typever", CosmosClientUserAgentString},
                 {"libRetryLimit", 7},
-                {"apiVersion", "2018-12-31"}, // The API version for Cosmos REST API
-                {"connectionStrings", nullptr},    // The Connection String from the Azure portal
-                {"partitionKeyNames", nullptr}     // The partition key names is an array of partition key names
+                {"apiVersion", "2018-12-31"},   // The API version for Cosmos REST API
+                {"connectionStrings", nullptr}, // The Connection String from the Azure portal
+                {"partitionKeyNames", nullptr}  // The partition key names is an array of partition key names
         };
 
         /// @brief Service Settings saved from discoverRegion
@@ -722,6 +722,7 @@ namespace siddiqsoft
         CosmosClient& configure(const nlohmann::json& src = {}) noexcept(false)
         {
             if (!src.empty()) {
+                if (src.is_array()) throw std::invalid_argument("src is array instead of object");
                 // The minimum is that the ConnectionStrings exist with at least one element; a string from the Azure portal with
                 // the Primary Connection String.
                 if (!src.contains("connectionStrings")) throw std::invalid_argument("connectionStrings missing");
@@ -730,8 +731,22 @@ namespace siddiqsoft
                 // are required during setup.
                 if (!src.contains("partitionKeyNames")) throw std::invalid_argument("partitionKeyNames missing");
 
+#if defined(DEBUG0)
+                std::print(std::cerr,
+                           "{} - Contents of existing configuraion\n{}\nIncoming Configuration:\n{}\n",
+                           __func__,
+                           config.dump(2),
+                           src.dump(2));
+#endif
+
                 // Update our local configuration
-                config.update(src);
+                // config.update(src);
+                config["connectionStrings"] = src["connectionStrings"];
+                config["partitionKeyNames"] = src["partitionKeyNames"];
+
+#if defined(DEBUG0)
+                std::print(std::cerr, "{} - Contents of Updated configuraion\n{}\n", __func__, config.dump(2));
+#endif
 
                 // We continue configuring..
                 // After the update we must ensure that the requirements are still met: ConnectionStrings array
@@ -740,8 +755,17 @@ namespace siddiqsoft
                     throw std::invalid_argument("connectionStrings array must contain atleast primary element");
 
                 // Update the database configuration
+#if defined(DEBUG0)
+                std::print(std::cerr, "{} - Contents of connection configuraion\n{}\n", __func__, nlohmann::json(cnxn).dump(2));
+#endif
                 cnxn.configure(config);
 
+#if defined(DEBUG0)
+                std::print(std::cerr,
+                           "{} - Contents of Updated connection configuraion\n{}\n",
+                           __func__,
+                           nlohmann::json(cnxn).dump(2));
+#endif
                 // Discover the regions..
                 if (auto resp = discoverRegions(); resp.statusCode == 200 && !resp.document.empty()) {
                     serviceSettings = resp.document;
@@ -830,7 +854,7 @@ namespace siddiqsoft
                                      {"x-ms-date", ts},
                                      {"x-ms-version", config["apiVersion"]}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -907,7 +931,7 @@ namespace siddiqsoft
                       {"x-ms-date", ts},
                       {"x-ms-version", config["apiVersion"]}});
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -925,7 +949,7 @@ namespace siddiqsoft
             auto     req    = rest_request<char>(HttpMethodType::METHOD_GET,
                                           path,
                                                  {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -983,7 +1007,7 @@ namespace siddiqsoft
             if (!ctx.continuationToken.empty()) headers["x-ms-continuation"] = ctx.continuationToken;
 
             auto req        = rest_request<char>(HttpMethodType::METHOD_GET, path, headers);
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosIterableResponseType::CreateFrom(tt, resp);
         }
@@ -1021,7 +1045,7 @@ namespace siddiqsoft
                                    {"x-ms-version", config["apiVersion"]},
                                    {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -1061,7 +1085,7 @@ namespace siddiqsoft
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -1098,7 +1122,7 @@ namespace siddiqsoft
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }
@@ -1134,7 +1158,7 @@ namespace siddiqsoft
                      {"x-ms-documentdb-partitionkey", nlohmann::json {ctx.partitionKey}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
 
             return resp.has_value() ? resp->statusCode() : resp.error();
@@ -1225,7 +1249,7 @@ namespace siddiqsoft
                             ? nlohmann::json {{"query", ctx.queryStatement}, {"parameters", ctx.queryParameters}}
                             : nlohmann::json {{"query", ctx.queryStatement}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosIterableResponseType::CreateFrom(tt, resp);
         }
@@ -1278,7 +1302,7 @@ namespace siddiqsoft
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, "freshConnect", false});
+            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
             auto resp       = restClient->send(req);
             return CosmosResponseType::CreateFrom(tt, resp);
         }

@@ -68,7 +68,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE asynchrony::asynchrony)
 CPMAddPackage("gh:SiddiqSoft/timethis#2.1.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/restcl#9b9661f0117105a65cd5ee8e92fdd93ec58192fb")
+CPMAddPackage("gh:SiddiqSoft/restcl#af19bb26c4818ffd34a7b2bf5da4683063cd9b20")
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 
 
