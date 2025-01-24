@@ -184,6 +184,9 @@ stages:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
+    - script: |
+        docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+      condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
       env:
