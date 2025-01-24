@@ -42,6 +42,7 @@
 #include <chrono>
 #include <ranges>
 #include <semaphore>
+#include <utility>
 
 #include "nlohmann/json.hpp"
 #include "../include/siddiqsoft/azure-cosmos-restcl.hpp"
@@ -57,6 +58,19 @@
  * https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql
  */
 
+static const std::string EMULATOR_CONNECTION_STRING {
+        "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/"
+        "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"};
+static const std::string EMULATOR_KEY {"C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="};
+static const std::string EMULATOR_ENDPOINT {"localhost:8081"};
+
+static auto              GetPrimaryConnectionString() -> std::pair<std::string, std::string>
+{
+    auto pcs = std::getenv("CCTEST_PRIMARY_CS");
+    auto scs = std::getenv("CCTEST_SECONDARY_CS");
+
+    return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING, scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
+}
 
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
@@ -66,8 +80,13 @@ TEST(CosmosClient, example1)
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    std::string priConnStr {};
+    std::string secConnStr {};
+
+    EXPECT_NO_THROW({
+        priConnStr = std::getenv("CCTEST_PRIMARY_CS");
+        secConnStr = std::getenv("CCTEST_SECONDARY_CS");
+    });
 
     ASSERT_FALSE(priConnStr.empty())
             << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -752,11 +771,11 @@ TEST(CosmosClient, queryDocument)
             auto& id = document.at("id");
             for (auto& i : docIds) {
                 std::print(std::cerr, "{} - {} == {}\n", __func__, i, id.dump());
-                matchCount+= (i == id.dump());
+                matchCount += (i == id.dump());
             }
-            //std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
-            //    if (i == id) matchCount++;
-            //});
+            // std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
+            //     if (i == id) matchCount++;
+            // });
         }
     }
     EXPECT_EQ(DOCS, matchCount);
