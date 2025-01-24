@@ -136,6 +136,8 @@ stages:
       vmImage:
       demands:
         - Agent.OS -equals Linux
+        - Agent.OSArchitecture -equals 'X64'
+        - docker
     strategy:
       matrix:
         GCC-Debug:
@@ -186,8 +188,11 @@ stages:
       condition: succeeded()
     - script: |
         docker ps
+        echo "Stop existing/running emulator if present.."
         docker container stop linux-emulator
+        echo "Update/fetch emulator.."
         docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+        echo "Start the emulator as linux-emulator.."
         docker run \
                --publish 8081:8081 \
                --publish 10250-10255:10250-10255 \
@@ -213,6 +218,7 @@ stages:
       continueOnError: true
     - script: |
         docker ps
+        echo "Stop the running emulator.."
         docker container stop linux-emulator
       condition: succeeded()
     - task: CmdLine@2
