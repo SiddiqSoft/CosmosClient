@@ -189,6 +189,8 @@ stages:
         docker ps
         echo "Stop existing/running emulator if present.."
         docker container stop linux-emulator
+        echo "Remove the container name.."
+        docker container remove linux-emulator
         echo "Update/fetch emulator.."
         docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
         echo "Start the emulator as linux-emulator.."
@@ -219,6 +221,8 @@ stages:
         docker ps
         echo "Stop the running emulator.."
         docker container stop linux-emulator
+        echo "Remove the container name.."
+        docker container remove linux-emulator
       condition: succeeded()
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'
