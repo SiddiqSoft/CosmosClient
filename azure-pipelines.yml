@@ -188,6 +188,12 @@ stages:
         docker ps
         docker container stop linux-emulator
         docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+        docker run \
+               --publish 8081:8081 \
+               --publish 10250-10255:10250-10255 \
+               --name linux-emulator \
+               --detach \
+               mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
@@ -205,6 +211,10 @@ stages:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset) --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose -T Test -T Coverage'
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
       continueOnError: true
+    - script: |
+        docker ps
+        docker container stop linux-emulator
+      condition: succeeded()
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'
       inputs:
