@@ -185,6 +185,8 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
     - script: |
+        docker ps
+        docker container stop linux-emulator
         docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
       condition: succeeded()
     - task: CMake@1
