@@ -168,7 +168,6 @@ stages:
       vmImage:
       demands:
         - Agent.OS -equals Linux
-        - podman
     strategy:
       matrix:
         GCC-Debug:
