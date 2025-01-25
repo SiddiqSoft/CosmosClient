@@ -595,7 +595,7 @@ TEST_F(CosmosClientSuite, async_queryDocument)
     std::this_thread::sleep_for(std::chrono::seconds(2));
     EXPECT_EQ(DOCS, allDocsCount); // total
 
-#ifdef _DEBUG
+#if defined(DEBUG)
     // std::cerr << allDocs.dump(4) << std::endl;
 #endif
 

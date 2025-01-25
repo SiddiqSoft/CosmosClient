@@ -976,7 +976,7 @@ TEST_F(CosmosClientSuite, createDocument_threads)
     std::latch           endLatch {threadCount};
     std::barrier         creatorsBarrier(threadCount, [&]() noexcept -> void {
 // This code is run when all of the creators have completed
-#ifdef _DEBUG
+#if defined(DEBUG)
         std::cerr << std::format("!! Barrier hit. DOCS:{} x threadCount:{} -> addDocsCount:{} removeDocsCount:{} ttx:{}!!\n",
                                  DOCS,
                                  threadCount,
@@ -1111,7 +1111,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
     siddiqsoft::CosmosClient cc; // single instance for all threads!
     std::barrier             creatorsBarrier(threadCount, [&]() noexcept -> void {
 // This code is run when all of the creators have completed
-#ifdef _DEBUG
+#if defined(DEBUG)
         std::cerr << std::format("*** Barrier hit. DOCS:{}   threadCount:{} even:{}-{}-{}  odd:{}-{}-{} ***\n",
                                  DOCS,
                                  threadCount,
@@ -1314,7 +1314,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
     // Each thread creates up to DOCS documents even/odd
     auto eo = evenOddCount(DOCS);
 
-#ifdef _DEBUG
+#if defined(DEBUG)
     std::cerr << std::format("DOCS:{}  threadCount:{}  total:{}  threadCount x even:{}  threadCount x odd:{}\n",
                              DOCS,
                              threadCount,

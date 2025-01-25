@@ -637,7 +637,7 @@ namespace siddiqsoft
                     if (req.onResponse) req.onResponse(req, resp);
                     if (resp.success() && !resp.continuationToken.empty()) {
                         req.continuationToken = resp.continuationToken;
-#ifdef _DEBUG
+#if defined(DEBUG)
                         std::cerr << std::format("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue\n",
                                                  resp.statusCode,
                                                  resp.continuationToken,
@@ -684,7 +684,7 @@ namespace siddiqsoft
                     if (req.onResponse) req.onResponse(req, resp);
                     if (resp.success() && !resp.continuationToken.empty()) {
                         req.continuationToken = resp.continuationToken;
-#ifdef _DEBUG
+#if defined(DEBUG)
                         std::cerr << std::format("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue\n",
                                                  resp.statusCode,
                                                  resp.continuationToken,
@@ -698,7 +698,7 @@ namespace siddiqsoft
                     }
                 } break;
                 default: {
-#ifdef _DEBUG
+#if defined(DEBUG)
                     std::cerr << std::format("....Operation `{}` NOT SUPPORTED\n", std::to_underlying(req.operation));
 #endif
                 }
