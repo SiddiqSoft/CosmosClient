@@ -732,7 +732,7 @@ TEST_F(CosmosClientSuite, upsertDocument)
             {.database   = dbName,
              .collection = collectionName,
              .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}}});
-    EXPECT_EQ(200, rc5.statusCode);
+    EXPECT_EQ(201, rc5.statusCode);
     EXPECT_EQ("update", rc5.document.value("upsert", ""));
 
     // And to check if we call createDocument on the same docId it should fail
