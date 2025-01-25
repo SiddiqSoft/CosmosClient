@@ -72,6 +72,7 @@ stages:
     - task: Bash@3
       displayName: 'Install and Start Azure CosmosDB emulator'
       inputs:
+        targetType: 'inline'
         script: |
           docker ps
           echo "Stop existing/running emulator if present.."
@@ -97,6 +98,7 @@ stages:
     - task: Bash@3
       displayName: 'Stop Azure CosmosDB emulator'
       inputs:
+        targetType: 'inline'
         script: |
           docker ps
           echo "Stop the running emulator.."
@@ -217,6 +219,7 @@ stages:
     - task: Bash@3
       displayName: 'Install and Start Azure CosmosDB emulator'
       inputs:
+        targetType: 'inline'
         script: |
           docker ps
           echo "Stop existing/running emulator if present.."
@@ -252,6 +255,7 @@ stages:
     - task: Bash@3
       displayName: 'Stop Azure CosmosDB emulator'
       inputs:
+        targetType: 'inline'
         script: |
           docker ps
           echo "Stop the running emulator.."
