@@ -351,31 +351,7 @@ namespace siddiqsoft
 
         /// @brief Checks if the response is successful based on the HTTP status code
         /// @return true iff the statusCode < 300
-        inline bool               success() const { return statusCode < 300; }
-
-        static CosmosResponseType CreateFrom(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>& ret)
-        {
-            CosmosResponseType crt;
-            /*
-            return {resp.has_value() ? resp->status().code : resp.error(),
-                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
-                    std::chrono::microseconds(tt.elapsed().count())};
-            */
-
-            crt.ttx = std::chrono::microseconds(tt.elapsed().count());
-            if (ret.has_value() && ret->success()) {
-                crt.statusCode = ret->statusCode();
-                crt.document   = std::move(ret->getContentBodyJSON());
-            }
-            else if (ret.has_value()) {
-                // Has value but not successful, return the code
-                std::tie(crt.statusCode, std::ignore) = ret->status();
-            }
-            else {
-                crt.statusCode = ret.error();
-            }
-            return std::move(crt);
-        }
+        inline bool success() const { return statusCode < 300; }
     };
 
     /// @brief Serializer for CosmosResponseType
@@ -388,24 +364,61 @@ namespace siddiqsoft
         dest["ttx"]        = src.ttx.count();
     }
 
+
+    [[nodiscard]] static auto make_CosmosResponseType(timethis& tt, const std::expected<siddiqsoft::rest_response<char>, int>&& ret)
+            -> CosmosResponseType
+    {
+        CosmosResponseType crt;
+
+        crt.ttx = std::chrono::microseconds(tt.elapsed().count());
+        if (ret.has_value() && ret->success()) {
+#if defined(DEBUG)
+            std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
+#endif
+
+            crt.statusCode = ret->statusCode();
+            crt.document   = std::move(ret->getContentBodyJSON());
+
+#if defined(DEBUG)
+            std::println(std::cerr, "{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
+#endif
+        }
+        else if (ret.has_value()) {
+#if defined(DEBUG)
+            std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
+#endif
+            // Has value but not successful, return the code
+            std::tie(crt.statusCode, std::ignore) = ret->status();
+        }
+        else {
+            crt.statusCode = ret.error();
+        }
+
+        return std::move(crt);
+    }
+
     /// @brief Azure Cosmos Operations
     enum class CosmosOperation
     {
-        discoverRegions = 0xA0,
-        listDatabases   = 0xB1,
-        listCollections = 0xB2,
-        listDocuments   = 0xB3,
-        create          = 0xC0,
-        upsert          = 0xC1,
-        update          = 0xC2,
-        remove          = 0xC3,
-        find            = 0xC4,
-        query           = 0xE0,
-        notset          = 0
+        createDatabase,
+        createCollection,
+        discoverRegions,
+        listDatabases,
+        listCollections,
+        listDocuments,
+        create,
+        upsert,
+        update,
+        remove,
+        find,
+        query,
+        notset = 0
     };
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CosmosOperation,
-                                 {{CosmosOperation::discoverRegions, "discoverRegions"},
+                                 {{CosmosOperation::createDatabase, "createDatabase"},
+                                  {CosmosOperation::createCollection, "createCollection"},
+                                  {CosmosOperation::discoverRegions, "discoverRegions"},
                                   {CosmosOperation::listDatabases, "listDatabases"},
                                   {CosmosOperation::listCollections, "listCollections"},
                                   {CosmosOperation::listDocuments, "listDocuments"},
@@ -501,34 +514,34 @@ namespace siddiqsoft
     struct CosmosIterableResponseType : CosmosResponseType
     {
         /// @brief Continuation token from the server
-        std::string                       continuationToken;
-
-        static CosmosIterableResponseType CreateFrom(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>& ret)
-        {
-            CosmosIterableResponseType crt;
-            /*
-            return {resp.status().code,
-                    resp.success() ? std::move(resp["content"]) : resp, // return error/io context
-                    std::chrono::microseconds(tt.elapsed().count()),
-                    resp["headers"].value("x-ms-continuation", "")};
-            */
-
-            crt.ttx = std::chrono::microseconds(tt.elapsed().count());
-            if (ret.has_value() && ret->success()) {
-                crt.statusCode        = ret->statusCode();
-                crt.document          = std::move(ret->getContentBodyJSON());
-                crt.continuationToken = ret->getHeaders().value("x-ms-continuation", "");
-            }
-            else if (ret.has_value()) {
-                // Has value but not successful, return the code
-                std::tie(crt.statusCode, std::ignore) = ret->status();
-            }
-            else {
-                crt.statusCode = ret.error();
-            }
-            return std::move(crt);
-        }
+        std::string continuationToken;
     };
+
+    [[nodiscard]] static auto make_CosmosIterableResponseType(timethis&                                                   tt,
+                                                              const std::expected<siddiqsoft::rest_response<char>, int>&& ret)
+            -> CosmosIterableResponseType
+    {
+        CosmosIterableResponseType crt;
+
+        crt.ttx = std::chrono::microseconds(tt.elapsed().count());
+        if (ret.has_value() && ret->success()) {
+            crt.statusCode = ret->statusCode();
+            crt.document   = std::move(ret->getContentBodyJSON());
+            try {
+                crt.continuationToken = ret->getHeader("x-ms-continuation");
+            }
+            catch (...) {
+            }
+        }
+        else if (ret.has_value()) {
+            // Has value but not successful, return the code
+            std::tie(crt.statusCode, std::ignore) = ret->status();
+        }
+        else {
+            crt.statusCode = ret.error();
+        }
+        return std::move(crt);
+    }
 
 
     /// @brief Serializer for CosmosIterableResponseType uses the serializer for CosmosResponseType
@@ -593,6 +606,16 @@ namespace siddiqsoft
         void asyncDispatcher(CosmosArgumentType&& req)
         {
             switch (req.operation) {
+                case CosmosOperation::createDatabase: {
+                    auto resp = createDatabase(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
+                case CosmosOperation::createCollection: {
+                    auto resp = createCollection(req);
+                    if (req.onResponse) req.onResponse(req, resp);
+                } break;
+
                 case CosmosOperation::discoverRegions: {
                     auto resp = discoverRegions();
                     if (req.onResponse) req.onResponse(req, resp);
@@ -788,6 +811,15 @@ namespace siddiqsoft
             // We need to perform some basic validations otherwise we cannot expect to throw within the callback as it would be
             // inefficient to throw for such basic validations.
             switch (op.operation) {
+                case CosmosOperation::createDatabase: {
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                } break;
+
+                case CosmosOperation::createCollection: {
+                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                } break;
+
                 case CosmosOperation::listDocuments:
                     if (op.collection.empty()) throw std::invalid_argument("op.collection required");
                 case CosmosOperation::listCollections:
@@ -848,71 +880,63 @@ namespace siddiqsoft
         {
             timethis           tt {};
             auto               ts = DateUtils::RFC7231();
+
             rest_request<char> req {HttpMethodType::METHOD_GET,
                                     cnxn.current().currentReadUri(),
                                     {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "", "", ts)},
                                      {"x-ms-date", ts},
                                      {"x-ms-version", config["apiVersion"]}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", false},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
         }
 
 
-        /*
-        void discoverRegions(std::function<void(CosmosResponseType&)> callback)
+        /// @brief Create an entity in documentdb using the json object as the payload.
+        /// @param dbName Database name
+        /// @param collName Collection name
+        /// @param doc The document must include the `id` and the partition key.
+        /// @return status code and the created document as returned by Cosmos
+        /// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
+        CosmosResponseType createDatabase(CosmosArgumentType const& ctx)
         {
+            timethis tt {};
 
-                auto ts = DateUtils::RFC7231();
+            if (ctx.database.empty())
+                throw std::invalid_argument(
+                        std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
 
-                restClient->send(
-                        rest_request(cnxn.current().currentReadUri(),
-                               {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "", "", ts)},
-                                {"x-ms-date", ts},
-                                {"x-ms-version", config["apiVersion"]}}),
-                        [&callback](const auto& req, const auto& resp) {
-                            if (resp.success()) {
-                                callback({resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}});
-                            }
-                            else if (!resp.success()) {
-                            }
-                    });
+            auto         ts        = DateUtils::RFC7231();
+            std::string& pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
+            //auto         pkId      = ctx.document.value(pkKeyName, "");
 
-                if (auto resp = restClient->send(req); !resp.success()) {
-    #ifdef _DEBUG
-                    std::cerr << "Response (retryCount:" << retryCount << ") from " << req.uri.authority.host << " --> "
-                              << resp.status().code << std::endl;
-    #endif
-                    if (resp.status().code == 12029) {
-    #ifdef _DEBUG
-                        std::cerr << "Rotate to " << cnxn.rotate().current().string() << std::endl;
-    #else
-                        cnxn.rotate();
-    #endif
-                        --retryCount;
-                    }
-                    else if (resp["response"]["status"] == 401) {
-    #ifdef _DEBUG
-                        std::cerr << "Rotate to " << cnxn.rotate().current().string() << std::endl;
-    #else
-                        cnxn.rotate();
-    #endif
-                        --retryCount;
-                    }
-                    else {
-                        ret        = {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-                        retryCount = 0;
-                    }
-                }
-                else {
-                    // Success..
-                    ret        = {resp.status().code, resp.success() ? std::move(resp["content"]) : nlohmann::json {}};
-                    retryCount = 0;
-                }
-            } while (retryCount > 0);
+            /* Signature:
+             * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
+             */
+            auto req        = rest_request<char> {HttpMethodType::METHOD_POST,
+                                                  std::format("{}dbs", cnxn.current().currentWriteUri()),
+                                                  {{"Authorization",
+                                                    EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
+                                                                                "POST",
+                                                                                "dbs",
+                                                                                "", // no parent for create database
+                                                                                ts)},
+                                                   {"x-ms-date", ts},
+                                                   {"x-ms-session-token", ts},
+                                                   //{"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+                                                   {"x-ms-version", config["apiVersion"]},
+                                                   {"x-ms-cosmos-allow-tentative-writes", "true"}},
+                                                  {{"id", ctx.database}}};
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
-        */
+
 
         /// @brief List all databases for the given service
         /// Refer to https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
@@ -931,11 +955,51 @@ namespace siddiqsoft
                       {"x-ms-date", ts},
                       {"x-ms-version", config["apiVersion"]}});
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
 
+        /// @brief Create an entity in documentdb using the json object as the payload.
+        /// @param dbName Database name
+        /// @param collName Collection name
+        /// @param doc The document must include the `id` and the partition key.
+        /// @return status code and the created document as returned by Cosmos
+        /// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
+        CosmosResponseType createCollection(CosmosArgumentType const& ctx)
+        {
+            timethis tt {};
+
+            if (!ctx.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
+                throw std::invalid_argument("create - I need the partitionId for db");
+
+            auto         ts        = DateUtils::RFC7231();
+            std::string& pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
+            auto         pkId      = ctx.document.value(pkKeyName, "");
+
+            /* Signature:
+             * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
+             * https://{databaseaccount}.documents.azure.com/dbs/{db-id}/colls
+             */
+            auto req        = rest_request<char> {HttpMethodType::METHOD_POST,
+                                                  std::format("{}dbs/{}/colls", cnxn.current().currentWriteUri(), ctx.database),
+                                                  {{"Authorization",
+                                                    EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
+                                                                                "POST",
+                                                                                "",
+                                                                                "", // no parent for create database
+                                                                                ts)},
+                                                   {"x-ms-date", ts},
+                                                   {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+                                                   {"x-ms-version", config["apiVersion"]},
+                                                   {"x-ms-cosmos-allow-tentative-writes", "true"}},
+                                                  {{"id", ctx.database}}};
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
+        }
 
         /// @brief List the collections for the given database
         /// @param dbName Database name
@@ -943,15 +1007,16 @@ namespace siddiqsoft
         CosmosResponseType listCollections(CosmosArgumentType const& ctx)
         {
             timethis tt {};
-            auto     ts     = DateUtils::RFC7231();
-            auto     path   = std::format("{}dbs/{}/colls", cnxn.current().currentReadUri(), ctx.database);
-            auto     auth   = EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "colls", {"dbs/" + ctx.database}, ts);
-            auto     req    = rest_request<char>(HttpMethodType::METHOD_GET,
+            auto     ts   = DateUtils::RFC7231();
+            auto     path = std::format("{}dbs/{}/colls", cnxn.current().currentReadUri(), ctx.database);
+            auto     auth = EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "colls", {"dbs/" + ctx.database}, ts);
+            auto     req  = rest_request<char>(HttpMethodType::METHOD_GET,
                                           path,
-                                                 {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+                                               {{"Authorization", auth}, {"x-ms-date", ts}, {"x-ms-version", config["apiVersion"]}});
+            auto     restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
 
 
@@ -1006,10 +1071,13 @@ namespace siddiqsoft
 
             if (!ctx.continuationToken.empty()) headers["x-ms-continuation"] = ctx.continuationToken;
 
-            auto req        = rest_request<char>(HttpMethodType::METHOD_GET, path, headers);
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosIterableResponseType::CreateFrom(tt, resp);
+            auto req = rest_request<char>(HttpMethodType::METHOD_GET, path, headers);
+            return make_CosmosIterableResponseType(tt,
+                                                   GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                                  {"trace", true},
+                                                                  {"verifyPeer", 0L},
+                                                                  {"freshConnect", false}})
+                                                           ->send(req));
         }
 
 
@@ -1045,9 +1113,10 @@ namespace siddiqsoft
                                    {"x-ms-version", config["apiVersion"]},
                                    {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
 
 
@@ -1085,9 +1154,10 @@ namespace siddiqsoft
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
 
 
@@ -1122,9 +1192,10 @@ namespace siddiqsoft
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
 
 
@@ -1158,8 +1229,9 @@ namespace siddiqsoft
                      {"x-ms-documentdb-partitionkey", nlohmann::json {ctx.partitionKey}},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            auto resp = restClient->send(req);
 
             return resp.has_value() ? resp->statusCode() : resp.error();
         }
@@ -1249,9 +1321,12 @@ namespace siddiqsoft
                             ? nlohmann::json {{"query", ctx.queryStatement}, {"parameters", ctx.queryParameters}}
                             : nlohmann::json {{"query", ctx.queryStatement}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosIterableResponseType::CreateFrom(tt, resp);
+            return make_CosmosIterableResponseType(tt,
+                                                   GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                                  {"trace", true},
+                                                                  {"verifyPeer", 0L},
+                                                                  {"freshConnect", false}})
+                                                           ->send(req));
         }
 
 
@@ -1302,9 +1377,10 @@ namespace siddiqsoft
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
 
-            auto restClient = GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            auto resp       = restClient->send(req);
-            return CosmosResponseType::CreateFrom(tt, resp);
+            auto restClient = GetRESTClient(
+                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
+            // auto resp = restClient->send(req);
+            return make_CosmosResponseType(tt, restClient->send(req));
         }
 
 
@@ -1423,12 +1499,11 @@ struct std::formatter<siddiqsoft::CosmosIterableResponseType> : std::formatter<s
 
 /// @brief Serializer for the CosmosResponseType
 template <>
-struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::basic_string<char>>
+struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::string>
 {
-    template <class FC>
-    auto format(const siddiqsoft::CosmosResponseType& s, FC& ctx) const
+    auto format(const siddiqsoft::CosmosResponseType& s, auto& ctx) const
     {
-        return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
+        return std::format_to(ctx.out(), "statusCode: {}, document: {}, ttx: {}", s.statusCode, s.document.dump(), s.ttx);
     }
 };
 
@@ -1436,7 +1511,10 @@ struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::basi
 template <>
 struct std::formatter<siddiqsoft::CosmosOperation> : std::formatter<std::underlying_type<siddiqsoft::CosmosOperation>>
 {
-    auto format(siddiqsoft::CosmosOperation co, auto& ctx) const { return std::format_to(ctx.out(), "Unknown Operation"); }
+    auto format(siddiqsoft::CosmosOperation co, auto& ctx) const
+    {
+        return std::format_to(ctx.out(), "{}", nlohmann::json(co).dump());
+    }
 };
 
 /// @brief Serializer for the CosmosArgumentType

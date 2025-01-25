@@ -60,23 +60,56 @@
  * Runs on MacOS (Apple Silicon)
  * https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
  */
-
 static const std::string EMULATOR_CONNECTION_STRING =
         "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/"
         "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
 static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 static const std::string EMULATOR_ENDPOINT = "localhost:8081";
 
-static auto              GetConnectionStrings() -> std::pair<std::string, std::string>
+class CosmosClient : public ::testing::Test
 {
-    auto pcs = std::getenv("CCTEST_PRIMARY_CS");
-    auto scs = std::getenv("CCTEST_SECONDARY_CS");
+public:
+    static auto GetConnectionStrings() -> std::pair<std::string, std::string>
+    {
+        auto pcs = std::getenv("CCTEST_PRIMARY_CS");
+        auto scs = std::getenv("CCTEST_SECONDARY_CS");
 
-    return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING, scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
-}
+        return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING,
+                              scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
+    }
+
+protected:
+    void SetUp() override
+    {
+        // std::print(std::cerr, "{} - Init the CurlLib singleton.\n", __func__);
+        //  configure
+        //  start
+        //  get a context object
+        // myCurlInstance = LibCurlSingleton::GetInstance();
+    }
+
+public:
+    auto createDatabase(const std::string& dbName)
+    {
+        siddiqsoft::CosmosClient cc;
+
+        auto [priConnStr, secConnStr] = GetConnectionStrings();
+        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}})
+                .createDatabase({.database = dbName});
+    }
 
 
-TEST(CosmosClient, checkEmulatorInfo)
+    auto deleteDatabase(const std::string& dbName)
+    {
+        siddiqsoft::CosmosClient cc;
+
+        auto [priConnStr, secConnStr] = GetConnectionStrings();
+        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}})
+                .createDatabase({.database = dbName});
+    }
+};
+
+TEST_F(CosmosClient, checkEmulatorInfo)
 {
     auto [priConnStr, secConnStr] = GetConnectionStrings();
     ASSERT_FALSE(priConnStr.empty())
@@ -85,11 +118,24 @@ TEST(CosmosClient, checkEmulatorInfo)
             << "Missing environment variable CCTEST_SECONDARY_CS; Set it to Secondary Connection string from Azure portal.";
 }
 
+/// @brief Example code
+/// Declare the instance, configure and createDocument a document with only three lines!
+/// The code here is based on configuration and dynamic fetching for the database, collection and regions.
+TEST_F(CosmosClient, createDatabase1)
+{
+    std::string targetDBName = std::format("{}_{}_{}", __func__, __COUNTER__, __TIME__);
+
+    auto        rc3          = createDatabase(targetDBName);
+
+    std::println(std::cerr, "{} - targetDBName: {}  Response..............\n{}", __func__, targetDBName, rc3);
+    EXPECT_EQ(201, rc3.statusCode);
+}
+
 
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
-TEST(CosmosClient, example1)
+TEST_F(CosmosClient, example1)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -102,7 +148,6 @@ TEST(CosmosClient, example1)
     siddiqsoft::CosmosClient cc;
 
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
 
     if (auto rc = cc.listDatabases(); 200 == rc.statusCode) {
         auto dbName = rc.document.value("/Databases/0/id"_json_pointer, "");
@@ -138,7 +183,7 @@ TEST(CosmosClient, example1)
 
 /// @brief Test the configuration defaults
 /// Checks that we match the changes to the configuration defaults in code against the documentation and client tests.
-TEST(CosmosClient, configure_Defaults)
+TEST_F(CosmosClient, configure_Defaults)
 {
     siddiqsoft::CosmosClient cc;
 
@@ -154,7 +199,7 @@ TEST(CosmosClient, configure_Defaults)
 
 
 /// @brief Checks the CosmosClient to_json has a consistent output
-TEST(CosmosClient, configure_check_json)
+TEST_F(CosmosClient, configure_check_json)
 {
     siddiqsoft::CosmosClient cc;
 
@@ -173,7 +218,7 @@ TEST(CosmosClient, configure_check_json)
 ///
 /// NOTE: The `serviceSettings` is protected and this test declares the macro `COSMOSCLIENT_TESTING_MODE`
 /// to enable public access during testing stage only.
-TEST(CosmosClient, configure_1)
+TEST_F(CosmosClient, configure_1)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -205,7 +250,7 @@ TEST(CosmosClient, configure_1)
 }
 
 
-TEST(CosmosClient, discoverRegions)
+TEST_F(CosmosClient, discoverRegions)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -242,7 +287,7 @@ TEST(CosmosClient, discoverRegions)
 }
 
 
-TEST(CosmosClient, discoverRegions_BadPrimary)
+TEST_F(CosmosClient, discoverRegions_BadPrimary)
 {
     // Fake/Bad connection string!
     auto [priConnStr, secConnStr] = GetConnectionStrings();
@@ -277,7 +322,7 @@ TEST(CosmosClient, discoverRegions_BadPrimary)
 }
 
 
-TEST(CosmosClient, listDatabases)
+TEST_F(CosmosClient, listDatabases)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -303,7 +348,7 @@ TEST(CosmosClient, listDatabases)
 }
 
 
-TEST(CosmosClient, listCollections)
+TEST_F(CosmosClient, listCollections)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -319,14 +364,14 @@ TEST(CosmosClient, listCollections)
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
     auto rc = cc.listDatabases();
-    //std::println(std::cerr, "{} - listDatabases - Results\n{}", __func__, rc.document.dump(4));
-    // Expect success.
+    // std::println(std::cerr, "{} - listDatabases - Results\n{}", __func__, rc.document.dump(4));
+    //  Expect success.
     EXPECT_EQ(200, rc.statusCode);
     EXPECT_TRUE(rc.document.contains("Databases"));
     EXPECT_TRUE(rc.document["Databases"].is_array());
 
     for (auto& db : rc.document["Databases"]) {
-        std::println(std::cerr, "----- db `{}` :\n{}", db.value("id",""), db.dump(2));
+        std::println(std::cerr, "----- db `{}` :\n{}", db.value("id", ""), db.dump(2));
         auto rc2 = cc.listCollections({.database = db.value("id", "")});
         std::println(std::cerr, "{} - listCollections - Results\n{}", __func__, rc2.document.dump(4));
         // Expect success.
@@ -338,7 +383,7 @@ TEST(CosmosClient, listCollections)
 
 
 /// @brief Tests the listDocuments with a limit of 7 iterations
-TEST(CosmosClient, listDocuments)
+TEST_F(CosmosClient, listDocuments)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -370,7 +415,7 @@ TEST(CosmosClient, listDocuments)
         // We check against a collection that has multiple
         totalDocs += irt.document.value<uint32_t>("_count", 0);
         EXPECT_LE(1, irt.document.value("_count", 0));
-        //EXPECT_FALSE(irt.continuationToken.empty());
+        // EXPECT_FALSE(irt.continuationToken.empty());
 
         // If we run out of the iterations the break out of the loop.
         if (--iteration == 0) break;
@@ -379,7 +424,7 @@ TEST(CosmosClient, listDocuments)
 
 
 /// @brief Invokes listDocuments without continuation
-TEST(CosmosClient, listDocuments_top100)
+TEST_F(CosmosClient, listDocuments_top100)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -416,7 +461,7 @@ TEST(CosmosClient, listDocuments_top100)
 
 /// @brief Test createDocument document API. Removes the document after completion.
 /// Requires the environment variables
-TEST(CosmosClient, createDocument)
+TEST_F(CosmosClient, createDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -458,7 +503,7 @@ TEST(CosmosClient, createDocument)
 
 
 /// @brief Test createDocument document with missing "id" field in the document
-TEST(CosmosClient, createDocument_MissingId)
+TEST_F(CosmosClient, createDocument_MissingId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -496,7 +541,7 @@ TEST(CosmosClient, createDocument_MissingId)
 }
 
 /// @brief Test createDocument document with missing partition key field in the document
-TEST(CosmosClient, createDocument_MissingPkId)
+TEST_F(CosmosClient, createDocument_MissingPkId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -534,7 +579,7 @@ TEST(CosmosClient, createDocument_MissingPkId)
 }
 
 /// @brief Test findDocument API
-TEST(CosmosClient, findDocument)
+TEST_F(CosmosClient, findDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -580,7 +625,7 @@ TEST(CosmosClient, findDocument)
 }
 
 /// @brief Test upsertDocument API
-TEST(CosmosClient, upsertDocument)
+TEST_F(CosmosClient, upsertDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -640,7 +685,7 @@ TEST(CosmosClient, upsertDocument)
 }
 
 
-TEST(CosmosClient, updateDocument)
+TEST_F(CosmosClient, updateDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -700,7 +745,7 @@ TEST(CosmosClient, updateDocument)
 
 
 /// @brief Test queryDocuments API
-TEST(CosmosClient, queryDocument)
+TEST_F(CosmosClient, queryDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -850,7 +895,7 @@ TEST(CosmosClient, queryDocument)
 }
 
 
-TEST(CosmosClient, createDocument_threads)
+TEST_F(CosmosClient, createDocument_threads)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -982,7 +1027,7 @@ TEST(CosmosClient, createDocument_threads)
 }
 
 
-TEST(CosmosClient, queryDocument_threads)
+TEST_F(CosmosClient, queryDocument_threads)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -1426,7 +1471,7 @@ TEST(CosmosEndpoint, test2_n)
 }
 
 
-TEST(CosmosClient, MoveConstruct)
+TEST_F(CosmosClient, MoveConstruct)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
 
@@ -1436,7 +1481,7 @@ TEST(CosmosClient, MoveConstruct)
     EXPECT_EQ(2, clients.size());
 }
 
-TEST(CosmosClient, configure_multi)
+TEST_F(CosmosClient, configure_multi)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!

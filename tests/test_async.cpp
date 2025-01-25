@@ -56,11 +56,47 @@
  * Optional Environment Variables
  * CCTEST_SECONDARY_CS
  */
+static const std::string EMULATOR_CONNECTION_STRING =
+        "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/"
+        "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
+static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+static const std::string EMULATOR_ENDPOINT = "localhost:8081";
+
+class CosmosClient : public ::testing::Test
+{
+public:
+    static auto GetConnectionStrings() -> std::pair<std::string, std::string>
+    {
+        auto pcs = std::getenv("CCTEST_PRIMARY_CS");
+        auto scs = std::getenv("CCTEST_SECONDARY_CS");
+
+        return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING,
+                              scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
+    }
+
+protected:
+    void SetUp() override
+    {
+        // std::print(std::cerr, "{} - Init the CurlLib singleton.\n", __func__);
+        //  configure
+        //  start
+        //  get a context object
+        // myCurlInstance = LibCurlSingleton::GetInstance();
+    }
+
+public:
+    void createDatabase(const std::string& dbName)
+    {
+        siddiqsoft::CosmosClient cc;
+
+        cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    }
+};
 
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
-TEST(CosmosClient, async_example)
+TEST_F(CosmosClient, async_example)
 {
     std::atomic_bool passTest = false;
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -99,20 +135,20 @@ TEST(CosmosClient, async_example)
                                          .id           = id,
                                          .partitionKey = pkId,
                                          .document     = {{"id", id},
-                                                      {"ttl", 360},
-                                                      {"__pk", pkId},
-                                                      {"func", __func__},
-                                                      {"source", "basic_tests.exe"}},
+                                                          {"ttl", 360},
+                                                          {"__pk", pkId},
+                                                          {"func", __func__},
+                                                          {"source", "basic_tests.exe"}},
                                          .onResponse   = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx,
                                                                         siddiqsoft::CosmosResponseType const& resp) {
                                              std::cerr << std::format("Completed create: {}\n", resp);
                                              // Remove the document
                                              cc.async({.operation    = siddiqsoft::CosmosOperation::remove,
-                                                       .database     = ctx.database,
-                                                       .collection   = ctx.collection,
-                                                       .id           = resp.document.value("id", ctx.id),
-                                                       .partitionKey = ctx.partitionKey,
-                                                       .onResponse   = [&cc, &passTest](auto const& ctx, auto const& resp) {
+                                                         .database     = ctx.database,
+                                                         .collection   = ctx.collection,
+                                                         .id           = resp.document.value("id", ctx.id),
+                                                         .partitionKey = ctx.partitionKey,
+                                                         .onResponse   = [&cc, &passTest](auto const& ctx, auto const& resp) {
                                                            std::cerr << std::format("Completed removeDocument: {}\n", resp);
                                                            // Document should be removed.
                                                            passTest = true;
@@ -132,7 +168,7 @@ TEST(CosmosClient, async_example)
 }
 
 
-TEST(CosmosClient, async_listDatabases)
+TEST_F(CosmosClient, async_listDatabases)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -155,7 +191,7 @@ TEST(CosmosClient, async_listDatabases)
 }
 
 
-TEST(CosmosClient, async_listCollections)
+TEST_F(CosmosClient, async_listCollections)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -183,7 +219,7 @@ TEST(CosmosClient, async_listCollections)
 }
 
 /// @brief Tests the listDocuments with a limit of 7 iterations
-TEST(CosmosClient, async_listDocuments)
+TEST_F(CosmosClient, async_listDocuments)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -236,7 +272,7 @@ TEST(CosmosClient, async_listDocuments)
 
 
 /// @brief Test createDocument document with missing "id" field in the document
-TEST(CosmosClient, async_createDocument_MissingId)
+TEST_F(CosmosClient, async_createDocument_MissingId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -278,7 +314,7 @@ TEST(CosmosClient, async_createDocument_MissingId)
 
 
 /// @brief Test createDocument document with missing partition key field in the document
-TEST(CosmosClient, async_createDocument_MissingPkId)
+TEST_F(CosmosClient, async_createDocument_MissingPkId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -318,7 +354,7 @@ TEST(CosmosClient, async_createDocument_MissingPkId)
 }
 
 
-TEST(CosmosClient, async_nestedOps)
+TEST_F(CosmosClient, async_nestedOps)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -354,12 +390,12 @@ TEST(CosmosClient, async_nestedOps)
                                        .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
                                        .partitionKey = "siddiqsoft.com",
                                        .document     = {{"id",
-                                                     std::format("azure-cosmos-restcl.{}",
+                                                         std::format("azure-cosmos-restcl.{}",
                                                                  std::chrono::system_clock().now().time_since_epoch().count())},
-                                                    {"ttl", 360},
-                                                    {"__pk", "siddiqsoft.com"},
-                                                    {"mode", "create"},
-                                                    {"source", "basic_tests.exe"}},
+                                                        {"ttl", 360},
+                                                        {"__pk", "siddiqsoft.com"},
+                                                        {"mode", "create"},
+                                                        {"source", "basic_tests.exe"}},
                                        .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
                                            std::cerr << std::format("2..{}\n", ctx);
                                            EXPECT_EQ(201, resp.statusCode);
@@ -370,12 +406,12 @@ TEST(CosmosClient, async_nestedOps)
                                            newDocument["mode"] = "upsert";
                                            cc.async(
                                                    {.operation    = siddiqsoft::CosmosOperation::upsert,
-                                                    .database     = ctx.database,
-                                                    .collection   = ctx.collection,
-                                                    .id           = ctx.id,
-                                                    .partitionKey = ctx.partitionKey,
-                                                    .document     = newDocument,
-                                                    .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
+                                                      .database     = ctx.database,
+                                                      .collection   = ctx.collection,
+                                                      .id           = ctx.id,
+                                                      .partitionKey = ctx.partitionKey,
+                                                      .document     = newDocument,
+                                                      .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
                                                         std::cerr << std::format("3..{}\n", ctx);
                                                         EXPECT_EQ(200, resp.statusCode);
                                                         EXPECT_EQ("upsert", resp.document.value("mode", ""));
@@ -384,23 +420,23 @@ TEST(CosmosClient, async_nestedOps)
                                                         newDocument["mode"] = "update";
                                                         cc.async(
                                                                 {.operation    = siddiqsoft::CosmosOperation::update,
-                                                                 .database     = ctx.database,
-                                                                 .collection   = ctx.collection,
-                                                                 .id           = resp.document["id"],
-                                                                 .partitionKey = ctx.partitionKey,
-                                                                 .document     = newDocument,
-                                                                 .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
+                                                                     .database     = ctx.database,
+                                                                     .collection   = ctx.collection,
+                                                                     .id           = resp.document["id"],
+                                                                     .partitionKey = ctx.partitionKey,
+                                                                     .document     = newDocument,
+                                                                     .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
                                                                      std::cerr << std::format("4..{}\n", ctx);
                                                                      EXPECT_EQ(200, resp.statusCode);
                                                                      EXPECT_EQ("update", resp.document.value("mode", ""));
                                                                      // Now, we should "find" this document
                                                                      cc.async(
                                                                              {.operation    = siddiqsoft::CosmosOperation::find,
-                                                                              .database     = ctx.database,
-                                                                              .collection   = ctx.collection,
-                                                                              .id           = ctx.id,
-                                                                              .partitionKey = ctx.partitionKey,
-                                                                              .onResponse   = [&cc, &passTest](const auto& ctx,
+                                                                                  .database     = ctx.database,
+                                                                                  .collection   = ctx.collection,
+                                                                                  .id           = ctx.id,
+                                                                                  .partitionKey = ctx.partitionKey,
+                                                                                  .onResponse   = [&cc, &passTest](const auto& ctx,
                                                                                                              const auto& resp) {
                                                                                   std::cerr << std::format("5..{}\n", ctx);
                                                                                   EXPECT_EQ(200, resp.statusCode);
@@ -410,11 +446,11 @@ TEST(CosmosClient, async_nestedOps)
                                                                                   cc.async(
                                                                                           {.operation = siddiqsoft::
                                                                                                    CosmosOperation::remove,
-                                                                                           .database     = ctx.database,
-                                                                                           .collection   = ctx.collection,
-                                                                                           .id           = ctx.id,
-                                                                                           .partitionKey = ctx.partitionKey,
-                                                                                           .onResponse   = [&cc, &passTest](
+                                                                                                 .database     = ctx.database,
+                                                                                                 .collection   = ctx.collection,
+                                                                                                 .id           = ctx.id,
+                                                                                                 .partitionKey = ctx.partitionKey,
+                                                                                                 .onResponse   = [&cc, &passTest](
                                                                                                                  const auto& ctx,
                                                                                                                  const auto& resp) {
                                                                                                std::cerr << std::format("6..{}\n",
@@ -434,7 +470,7 @@ TEST(CosmosClient, async_nestedOps)
     passTest.wait(false);
 }
 
-TEST(CosmosClient, async_discoverRegions)
+TEST_F(CosmosClient, async_discoverRegions)
 {
     std::atomic_bool passTest = false;
 
@@ -478,7 +514,7 @@ TEST(CosmosClient, async_discoverRegions)
 }
 
 
-TEST(CosmosClient, async_queryDocument)
+TEST_F(CosmosClient, async_queryDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -518,11 +554,11 @@ TEST(CosmosClient, async_queryDocument)
                   .database   = dbName,
                   .collection = collectionName,
                   .document   = {{"id", docIds[i]},
-                               {"ttl", 360},
-                               {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                               {"i", i},
-                               {"odd", !(i % 2 == 0)},
-                               {"source", sourceId}},
+                                 {"ttl", 360},
+                                 {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                 {"i", i},
+                                 {"odd", !(i % 2 == 0)},
+                                 {"source", sourceId}},
                   .onResponse = [](auto const& ctx, auto const& resp) {
                       EXPECT_EQ(201, resp.statusCode);
                   }});
