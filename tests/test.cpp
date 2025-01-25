@@ -65,91 +65,80 @@ static const std::string EMULATOR_CONNECTION_STRING =
         "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
 static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 static const std::string EMULATOR_ENDPOINT = "localhost:8081";
+static const uint        SEED_DOCUMENT_COUNT {10};
+static std::string       testDBName                 = std::format("CosmosClient_Test_DB{}", __COUNTER__);
+static std::string       testDBName0                = std::format("CosmosClient_Test_DB0_{}", __COUNTER__);
+static std::vector<std::string> testCollectionNames = {std::format("CosmosClient_Test_COLL{}", __COUNTER__),
+                                                       std::format("CosmosClient_Test_COLL{}", __COUNTER__)};
+static std::string              testDocName0        = std::format("CosmosClient_Test_Doc0_{}-", __COUNTER__);
 
-class CosmosClient : public ::testing::Test
+///
+// Helpers
+///
+#pragma region Test Suite Helpers
+static siddiqsoft::CosmosClient testSuiteClient;
+
+/**
+ * @brief Get the Connection Strings object
+ *
+ * @return std::pair<std::string, std::string>
+ */
+static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 {
-public:
-    std::string              testDBName          = std::format("CosmosClient_Test_DB{}", __COUNTER__);
-    std::string              testDBName0         = std::format("CosmosClient_Test_DB0_{}", __COUNTER__);
-    std::vector<std::string> testCollectionNames = {std::format("CosmosClient_Test_COLL{}", __COUNTER__),
-                                                    std::format("CosmosClient_Test_COLL{}", __COUNTER__)};
-    std::string              testDocName0        = std::format("CosmosClient_Test_Doc0_{}-", __COUNTER__);
+    auto pcs = std::getenv("CCTEST_PRIMARY_CS");
+    auto scs = std::getenv("CCTEST_SECONDARY_CS");
 
-    static auto              GetConnectionStrings() -> std::pair<std::string, std::string>
-    {
-        auto pcs = std::getenv("CCTEST_PRIMARY_CS");
-        auto scs = std::getenv("CCTEST_SECONDARY_CS");
+    return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING, scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
+}
 
-        return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING,
-                              scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
-    }
+static auto TScreateDatabase(const std::string& dbName)
+{
+    return testSuiteClient.createDatabase({.database = dbName});
+}
 
+static auto TSfindDatabase(const std::string& dbName)
+{
+    return testSuiteClient.findDatabase({.database = dbName});
+}
 
-public:
-    auto createDatabase(const std::string& dbName)
-    {
-        //siddiqsoft::CosmosClient cc;
+static auto TSdeleteDatabase(const std::string& dbName)
+{
+    return testSuiteClient.deleteDatabase({.database = dbName});
+}
 
-        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
-                .createDatabase({.database = dbName});
-    }
+static auto TScreateCollection(const std::string& dbName, const std::string& collName)
+{
+    return testSuiteClient.createCollection({.database = dbName, .collection = collName});
+}
 
-    auto findDatabase(const std::string& dbName)
-    {
-        //siddiqsoft::CosmosClient cc;
+static auto TScreateDocument(const std::string& dbName, const std::string& collName, const std::string& docName)
+{
+    return testSuiteClient.createDocument({.database   = dbName,
+                                           .collection = collName,
+                                           .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
+}
 
-        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
-                .findDatabase({.database = dbName});
-    }
+#pragma endregion
 
-    auto deleteDatabase(const std::string& dbName)
-    {
-        //siddiqsoft::CosmosClient cc;
-
-        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
-                .deleteDatabase({.database = dbName});
-    }
-
-    auto createCollection(const std::string& dbName, const std::string& collName)
-    {
-        //siddiqsoft::CosmosClient cc;
-
-        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
-                .createCollection({.database = dbName, .collection = collName});
-    }
-
-    auto createDocument(const std::string& dbName, const std::string& collName, const std::string& docName)
-    {
-        //siddiqsoft::CosmosClient cc;
-        /*
-                return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
-                        .createDocument({.database   = dbName,
-                                         .collection = collName,
-                                         .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
-                */
-        return cc.createDocument({.database   = dbName,
-                                  .collection = collName,
-                                  .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
-    }
-
+class CosmosClientSuite : public ::testing::Test
+{
 protected:
-    siddiqsoft::CosmosClient cc;
-
-    void                     SetUp() override
+    static void SetUpTestCase()
     {
-        cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+        // Perform one-time setup for the entire test suite
+        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
 
 
-        if (auto rc2 = findDatabase(testDBName0); rc2.statusCode == 404) {
-            auto rc1 = createDatabase(testDBName0);
+        if (auto rc2 = TSfindDatabase(testDBName0); rc2.statusCode == 404) {
+            auto rc1 = TScreateDatabase(testDBName0);
         }
 
         // Next we create the collections..
         try {
             for (auto& collName : testCollectionNames) {
-                if (auto rc3 = createCollection(testDBName0, collName); rc3.statusCode == 201) {
-                    for (auto i = 0; i < 10; i++) {
-                        auto rc4 = createDocument(testDBName0, collName, testDocName0 + std::to_string(i));
+                if (auto rc3 = TScreateCollection(testDBName0, collName); rc3.statusCode == 201) {
+                    for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
+                        auto rc4 = TScreateDocument(testDBName0, collName, testDocName0 + std::to_string(i));
                     }
                 }
             }
@@ -158,14 +147,15 @@ protected:
         }
     }
 
-    void TearDown() override
+    static void TearDownTestCase()
     {
+        // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        auto rc9 = deleteDatabase(testDBName0);
+        auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
 
-TEST_F(CosmosClient, checkEmulatorInfo)
+TEST(Validation, checkEmulatorInfo)
 {
     auto [priConnStr, secConnStr] = GetConnectionStrings();
     ASSERT_FALSE(priConnStr.empty())
@@ -175,26 +165,26 @@ TEST_F(CosmosClient, checkEmulatorInfo)
 }
 
 
-TEST_F(CosmosClient, createDatabase1)
+TEST_F(CosmosClientSuite, createDatabase1)
 {
-    auto rc1 = createDatabase(testDBName);
+    auto rc1 = TScreateDatabase(testDBName);
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc1);
     EXPECT_EQ(201, rc1.statusCode);
 
-    auto rc2 = findDatabase(testDBName);
+    auto rc2 = TSfindDatabase(testDBName);
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc2);
     EXPECT_EQ(200, rc2.statusCode);
 
-    auto rc3 = deleteDatabase(testDBName);
+    auto rc3 = TSdeleteDatabase(testDBName);
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc3);
     EXPECT_EQ(204, rc3.statusCode);
 }
 
 
-TEST_F(CosmosClient, createCollection1)
+TEST_F(CosmosClientSuite, createCollection1)
 {
-    if (auto rc2 = findDatabase(testDBName); rc2.statusCode == 404) {
-        auto rc1 = createDatabase(testDBName);
+    if (auto rc2 = TSfindDatabase(testDBName); rc2.statusCode == 404) {
+        auto rc1 = TScreateDatabase(testDBName);
         // std::println(std::cerr, "{} - db: {}  Response..............createDatabase\n{}", __func__, testDBName, rc1);
         EXPECT_EQ(201, rc1.statusCode);
     }
@@ -202,7 +192,7 @@ TEST_F(CosmosClient, createCollection1)
     // Next we create the collections..
     try {
         for (auto& collName : testCollectionNames) {
-            auto rc3 = createCollection(testDBName, collName);
+            auto rc3 = TScreateCollection(testDBName, collName);
             std::println(std::cerr, "{} - db: {}  Response..............createCollection\n{}", __func__, testDBName, rc3);
             EXPECT_EQ(201, rc3.statusCode);
         }
@@ -211,7 +201,7 @@ TEST_F(CosmosClient, createCollection1)
     }
 
     // Cleanup the db we just created.
-    auto rc9 = deleteDatabase(testDBName);
+    auto rc9 = TSdeleteDatabase(testDBName);
     // std::println(std::cerr, "{} - db: {}  Response..............deleteDatabase\n{}", __func__, testDBName, rc9);
     EXPECT_EQ(204, rc9.statusCode);
 }
@@ -220,19 +210,11 @@ TEST_F(CosmosClient, createCollection1)
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
-TEST_F(CosmosClient, example1)
+TEST_F(CosmosClientSuite, example1)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
     siddiqsoft::CosmosClient cc;
 
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
 
     if (auto rc = cc.listDatabases(); 200 == rc.statusCode) {
         auto dbName = rc.document.value("/Databases/0/id"_json_pointer, "");
@@ -268,7 +250,7 @@ TEST_F(CosmosClient, example1)
 
 /// @brief Test the configuration defaults
 /// Checks that we match the changes to the configuration defaults in code against the documentation and client tests.
-TEST_F(CosmosClient, configure_Defaults)
+TEST(Validation, configure_Defaults)
 {
     siddiqsoft::CosmosClient cc;
 
@@ -284,7 +266,7 @@ TEST_F(CosmosClient, configure_Defaults)
 
 
 /// @brief Checks the CosmosClient to_json has a consistent output
-TEST_F(CosmosClient, configure_check_json)
+TEST(Validation, configure_check_json)
 {
     siddiqsoft::CosmosClient cc;
 
@@ -303,7 +285,7 @@ TEST_F(CosmosClient, configure_check_json)
 ///
 /// NOTE: The `serviceSettings` is protected and this test declares the macro `COSMOSCLIENT_TESTING_MODE`
 /// to enable public access during testing stage only.
-TEST_F(CosmosClient, configure_1)
+TEST(Validation, configure_1)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -335,7 +317,7 @@ TEST_F(CosmosClient, configure_1)
 }
 
 
-TEST_F(CosmosClient, discoverRegions)
+TEST(Validation, discoverRegions)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -372,7 +354,7 @@ TEST_F(CosmosClient, discoverRegions)
 }
 
 
-TEST_F(CosmosClient, discoverRegions_BadPrimary)
+TEST(Validation, discoverRegions_BadPrimary)
 {
     // Fake/Bad connection string!
     auto [priConnStr, secConnStr] = GetConnectionStrings();
@@ -407,7 +389,7 @@ TEST_F(CosmosClient, discoverRegions_BadPrimary)
 }
 
 
-TEST_F(CosmosClient, listDatabases)
+TEST_F(CosmosClientSuite, listDatabases)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -433,7 +415,7 @@ TEST_F(CosmosClient, listDatabases)
 }
 
 
-TEST_F(CosmosClient, listCollections)
+TEST_F(CosmosClientSuite, listCollections)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -468,7 +450,7 @@ TEST_F(CosmosClient, listCollections)
 
 
 /// @brief Tests the listDocuments with a limit of 7 iterations
-TEST_F(CosmosClient, listDocuments)
+TEST_F(CosmosClientSuite, listDocuments)
 {
     siddiqsoft::CosmosClient               cc;
     siddiqsoft::CosmosIterableResponseType irt {};
@@ -502,7 +484,7 @@ TEST_F(CosmosClient, listDocuments)
 
 
 /// @brief Invokes listDocuments without continuation
-TEST_F(CosmosClient, listDocuments_top8)
+TEST_F(CosmosClientSuite, listDocuments_top8)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -532,14 +514,14 @@ TEST_F(CosmosClient, listDocuments_top8)
     // We check against a collection that has multiple
     totalDocs += irt.document.value<uint32_t>("_count", 0);
     EXPECT_EQ(10, irt.document.value("_count", 0));
-    //EXPECT_FALSE(irt.continuationToken.empty());
-    //std::cerr << "Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
+    // EXPECT_FALSE(irt.continuationToken.empty());
+    // std::cerr << "Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
 }
 
 
 /// @brief Test createDocument document API. Removes the document after completion.
 /// Requires the environment variables
-TEST_F(CosmosClient, createDocument)
+TEST_F(CosmosClientSuite, createDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -584,7 +566,7 @@ TEST_F(CosmosClient, createDocument)
 
 
 /// @brief Test createDocument document with missing "id" field in the document
-TEST_F(CosmosClient, createDocument_MissingId)
+TEST_F(CosmosClientSuite, createDocument_MissingId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -622,7 +604,7 @@ TEST_F(CosmosClient, createDocument_MissingId)
 }
 
 /// @brief Test createDocument document with missing partition key field in the document
-TEST_F(CosmosClient, createDocument_MissingPkId)
+TEST_F(CosmosClientSuite, createDocument_MissingPkId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -660,7 +642,7 @@ TEST_F(CosmosClient, createDocument_MissingPkId)
 }
 
 /// @brief Test findDocument API
-TEST_F(CosmosClient, findDocument)
+TEST_F(CosmosClientSuite, findDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -706,7 +688,7 @@ TEST_F(CosmosClient, findDocument)
 }
 
 /// @brief Test upsertDocument API
-TEST_F(CosmosClient, upsertDocument)
+TEST_F(CosmosClientSuite, upsertDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -766,7 +748,7 @@ TEST_F(CosmosClient, upsertDocument)
 }
 
 
-TEST_F(CosmosClient, updateDocument)
+TEST_F(CosmosClientSuite, updateDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -826,7 +808,7 @@ TEST_F(CosmosClient, updateDocument)
 
 
 /// @brief Test queryDocuments API
-TEST_F(CosmosClient, queryDocument)
+TEST_F(CosmosClientSuite, queryDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -976,7 +958,7 @@ TEST_F(CosmosClient, queryDocument)
 }
 
 
-TEST_F(CosmosClient, createDocument_threads)
+TEST_F(CosmosClientSuite, createDocument_threads)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -1108,7 +1090,7 @@ TEST_F(CosmosClient, createDocument_threads)
 }
 
 
-TEST_F(CosmosClient, queryDocument_threads)
+TEST_F(CosmosClientSuite, queryDocument_threads)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -1552,7 +1534,7 @@ TEST(CosmosEndpoint, test2_n)
 }
 
 
-TEST_F(CosmosClient, MoveConstruct)
+TEST_F(CosmosClientSuite, MoveConstruct)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
 
@@ -1562,7 +1544,7 @@ TEST_F(CosmosClient, MoveConstruct)
     EXPECT_EQ(2, clients.size());
 }
 
-TEST_F(CosmosClient, configure_multi)
+TEST_F(CosmosClientSuite, configure_multi)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!

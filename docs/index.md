@@ -16,7 +16,7 @@
 - This is Windows-only code; you can still use it for reference and to base your own improved version!
 - Use the Nuget package!
 - Make sure you use `c++latest` as the `<format>` is no longer in the `c++20` option pending ABI resolution.
-- Read the examples! Notably [`TEST_F(CosmosClient, queryDocuments_thread)`](../tests/test.cpp#943) where I demonstrate how you can use threads and `<latch>` and `<barrier>`.
+- Read the examples! Notably [`TEST_F(CosmosClientSuite, queryDocuments_thread)`](../tests/test.cpp#943) where I demonstrate how you can use threads and `<latch>` and `<barrier>`.
 
 ## Dependencies
 
