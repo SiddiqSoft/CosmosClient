@@ -69,11 +69,40 @@ stages:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
+    - task: Bash@3
+      displayName: 'Install and Start Azure CosmosDB emulator'
+      inputs:
+        script: |
+          docker ps
+          echo "Stop existing/running emulator if present.."
+          docker container stop linux-emulator
+          echo "Remove the container name.."
+          docker container remove linux-emulator
+          echo "Update/fetch emulator.."
+          docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          echo "Start the emulator as linux-emulator.."
+          docker run \
+              --publish 8081:8081 \
+              --publish 1234:1234 \
+              --name linux-emulator \
+              --detach \
+              mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+      condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
       inputs:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure'
       continueOnError: true
+      condition: succeeded()
+    - task: Bash@3
+      displayName: 'Stop Azure CosmosDB emulator'
+      inputs:
+        script: |
+          docker ps
+          echo "Stop the running emulator.."
+          docker container stop linux-emulator
+          echo "Remove the container name.."
+          docker container remove linux-emulator
       condition: succeeded()
     - task: PublishTestResults@2
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
@@ -185,21 +214,24 @@ stages:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
-    - script: |
-        docker ps
-        echo "Stop existing/running emulator if present.."
-        docker container stop linux-emulator
-        echo "Remove the container name.."
-        docker container remove linux-emulator
-        echo "Update/fetch emulator.."
-        docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
-        echo "Start the emulator as linux-emulator.."
-        docker run \
-            --publish 8081:8081 \
-            --publish 1234:1234 \
-            --name linux-emulator \
-            --detach \
-            mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    - task: Bash@3
+      displayName: 'Install and Start Azure CosmosDB emulator'
+      inputs:
+        script: |
+          docker ps
+          echo "Stop existing/running emulator if present.."
+          docker container stop linux-emulator
+          echo "Remove the container name.."
+          docker container remove linux-emulator
+          echo "Update/fetch emulator.."
+          docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          echo "Start the emulator as linux-emulator.."
+          docker run \
+              --publish 8081:8081 \
+              --publish 1234:1234 \
+              --name linux-emulator \
+              --detach \
+              mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
@@ -217,12 +249,15 @@ stages:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset) --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose -T Test -T Coverage'
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
       continueOnError: true
-    - script: |
-        docker ps
-        echo "Stop the running emulator.."
-        docker container stop linux-emulator
-        echo "Remove the container name.."
-        docker container remove linux-emulator
+    - task: Bash@3
+      displayName: 'Stop Azure CosmosDB emulator'
+      inputs:
+        script: |
+          docker ps
+          echo "Stop the running emulator.."
+          docker container stop linux-emulator
+          echo "Remove the container name.."
+          docker container remove linux-emulator
       condition: succeeded()
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'
