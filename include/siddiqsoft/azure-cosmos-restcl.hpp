@@ -1048,7 +1048,7 @@ namespace siddiqsoft
 
             return make_CosmosResponseType(tt,
                                            GetRESTClient({{"userAgent", CosmosClientUserAgentString},
-                                                          {"trace", true},
+                                                          {"trace", false},
                                                           {"verifyPeer", 0L},
                                                           {"freshConnect", false}})
                                                    ->send(req));
@@ -1166,10 +1166,13 @@ namespace siddiqsoft
                                    {"x-ms-version", config["apiVersion"]},
                                    {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
-            auto restClient = GetRESTClient(
-                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            // auto resp = restClient->send(req);
-            return make_CosmosResponseType(tt, restClient->send(req));
+
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", true},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
         }
 
 

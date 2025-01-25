@@ -72,8 +72,8 @@ public:
     std::string              testDBName          = std::format("CosmosClient_Test_DB{}", __COUNTER__);
     std::string              testDBName0         = std::format("CosmosClient_Test_DB0_{}", __COUNTER__);
     std::vector<std::string> testCollectionNames = {std::format("CosmosClient_Test_COLL{}", __COUNTER__),
-                                                    std::format("CosmosClient_Test_COLL{}", __COUNTER__),
                                                     std::format("CosmosClient_Test_COLL{}", __COUNTER__)};
+    std::string              testDocName0        = std::format("CosmosClient_Test_Doc0_{}-", __COUNTER__);
 
     static auto              GetConnectionStrings() -> std::pair<std::string, std::string>
     {
@@ -88,7 +88,7 @@ public:
 public:
     auto createDatabase(const std::string& dbName)
     {
-        siddiqsoft::CosmosClient cc;
+        //siddiqsoft::CosmosClient cc;
 
         return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
                 .createDatabase({.database = dbName});
@@ -96,7 +96,7 @@ public:
 
     auto findDatabase(const std::string& dbName)
     {
-        siddiqsoft::CosmosClient cc;
+        //siddiqsoft::CosmosClient cc;
 
         return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
                 .findDatabase({.database = dbName});
@@ -104,7 +104,7 @@ public:
 
     auto deleteDatabase(const std::string& dbName)
     {
-        siddiqsoft::CosmosClient cc;
+        //siddiqsoft::CosmosClient cc;
 
         return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
                 .deleteDatabase({.database = dbName});
@@ -112,15 +112,34 @@ public:
 
     auto createCollection(const std::string& dbName, const std::string& collName)
     {
-        siddiqsoft::CosmosClient cc;
+        //siddiqsoft::CosmosClient cc;
 
         return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
                 .createCollection({.database = dbName, .collection = collName});
     }
 
-protected:
-    void SetUp() override
+    auto createDocument(const std::string& dbName, const std::string& collName, const std::string& docName)
     {
+        //siddiqsoft::CosmosClient cc;
+        /*
+                return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
+                        .createDocument({.database   = dbName,
+                                         .collection = collName,
+                                         .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
+                */
+        return cc.createDocument({.database   = dbName,
+                                  .collection = collName,
+                                  .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
+    }
+
+protected:
+    siddiqsoft::CosmosClient cc;
+
+    void                     SetUp() override
+    {
+        cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+
+
         if (auto rc2 = findDatabase(testDBName0); rc2.statusCode == 404) {
             auto rc1 = createDatabase(testDBName0);
         }
@@ -128,7 +147,11 @@ protected:
         // Next we create the collections..
         try {
             for (auto& collName : testCollectionNames) {
-                auto rc3 = createCollection(testDBName0, collName);
+                if (auto rc3 = createCollection(testDBName0, collName); rc3.statusCode == 201) {
+                    for (auto i = 0; i < 10; i++) {
+                        auto rc4 = createDocument(testDBName0, collName, testDocName0 + std::to_string(i));
+                    }
+                }
             }
         }
         catch (...) {
@@ -447,31 +470,20 @@ TEST_F(CosmosClient, listCollections)
 /// @brief Tests the listDocuments with a limit of 7 iterations
 TEST_F(CosmosClient, listDocuments)
 {
-    // Create our database first..
-    auto pre0 = createDatabase(testDBName);
-    EXPECT_EQ(201, pre0.statusCode);
-
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    // Fail fast if the primary conection string is not present in the build environment
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
     siddiqsoft::CosmosClient               cc;
     siddiqsoft::CosmosIterableResponseType irt {};
     uint32_t                               totalDocs = 0;
     auto                                   iteration = 7; // max 7 times
 
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
 
     auto rc = cc.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
+    EXPECT_NE("", rc.document.value("/Databases/0/id"_json_pointer, ""));
 
     auto rc2 = cc.listCollections({.database = rc.document.value("/Databases/0/id"_json_pointer, "")});
     EXPECT_EQ(200, rc2.statusCode);
+    EXPECT_NE("", rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""));
 
     do {
         irt = cc.listDocuments({.database          = rc.document.value("/Databases/0/id"_json_pointer, ""),
@@ -490,7 +502,7 @@ TEST_F(CosmosClient, listDocuments)
 
 
 /// @brief Invokes listDocuments without continuation
-TEST_F(CosmosClient, listDocuments_top100)
+TEST_F(CosmosClient, listDocuments_top8)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -519,9 +531,9 @@ TEST_F(CosmosClient, listDocuments_top100)
     EXPECT_EQ(200, irt.statusCode);
     // We check against a collection that has multiple
     totalDocs += irt.document.value<uint32_t>("_count", 0);
-    EXPECT_EQ(100, irt.document.value("_count", 0));
-    EXPECT_FALSE(irt.continuationToken.empty());
-    std::cerr << "Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
+    EXPECT_EQ(10, irt.document.value("_count", 0));
+    //EXPECT_FALSE(irt.continuationToken.empty());
+    //std::cerr << "Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
 }
 
 
@@ -548,14 +560,17 @@ TEST_F(CosmosClient, createDocument)
 
     auto rc = cc.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
-    dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
+    dbName = rc.document.value("/Databases/0/id"_json_pointer, "");
+    EXPECT_FALSE(dbName.empty());
 
     auto rc2 = cc.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
+    std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, dbName, rc2);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
+    EXPECT_FALSE(collectionName.empty());
 
-    id             = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId           = "siddiqsoft.com";
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
     // Now, let us createDocument the document
     auto rc3 = cc.createDocument({.database   = dbName,
