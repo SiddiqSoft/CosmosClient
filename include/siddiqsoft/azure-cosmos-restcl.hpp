@@ -1021,39 +1021,37 @@ namespace siddiqsoft
         /// @param collName Collection name
         /// @param doc The document must include the `id` and the partition key.
         /// @return status code and the created document as returned by Cosmos
-        /// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
+        /// @see Example over at https://learn.microsoft.com/en-us/rest/api/cosmos-db/create-a-collection
         CosmosResponseType createCollection(CosmosArgumentType const& ctx)
         {
             timethis tt {};
 
-            if (!ctx.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
-                throw std::invalid_argument("create - I need the partitionId for db");
+            if (!config.contains("/partitionKeyNames/0"_json_pointer))
+                throw std::invalid_argument("create - I need the partitionKey for collection");
 
             auto         ts        = DateUtils::RFC7231();
             std::string& pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
-            auto         pkId      = ctx.document.value(pkKeyName, "");
 
             /* Signature:
              * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
              * https://{databaseaccount}.documents.azure.com/dbs/{db-id}/colls
              */
-            auto req        = rest_request<char> {HttpMethodType::METHOD_POST,
-                                                  std::format("{}dbs/{}/colls", cnxn.current().currentWriteUri(), ctx.database),
-                                                  {{"Authorization",
-                                                    EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
-                                                                                "POST",
-                                                                                "",
-                                                                                "", // no parent for create database
-                                                                                ts)},
-                                                   {"x-ms-date", ts},
-                                                   {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
-                                                   {"x-ms-version", config["apiVersion"]},
-                                                   {"x-ms-cosmos-allow-tentative-writes", "true"}},
-                                                  {{"id", ctx.database}}};
-            auto restClient = GetRESTClient(
-                    {{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            // auto resp = restClient->send(req);
-            return make_CosmosResponseType(tt, restClient->send(req));
+            auto req = rest_request<char> {
+                    HttpMethodType::METHOD_POST,
+                    std::format("{}dbs/{}/colls", cnxn.current().currentWriteUri(), ctx.database),
+                    {{"Authorization",
+                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "POST", "colls", {"dbs/" + ctx.database}, ts)},
+                     {"x-ms-date", ts},
+                     {"x-ms-version", config["apiVersion"]},
+                     {"x-ms-cosmos-allow-tentative-writes", "true"}},
+                    {{"id", ctx.collection}, {"partitionKey", {{"kind", "Hash"}, {"Version", 2}, {"paths", {"/" + pkKeyName}}}}}};
+
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", true},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
         }
 
         /// @brief List the collections for the given database

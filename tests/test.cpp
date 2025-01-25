@@ -69,10 +69,13 @@ static const std::string EMULATOR_ENDPOINT = "localhost:8081";
 class CosmosClient : public ::testing::Test
 {
 public:
-    std::string testDBName     = std::format("CosmosClient_Test_DB{}", __COUNTER__);
-    std::string testCollection = std::format("CosmosClient_Test_COLL{}", __COUNTER__);
+    std::string              testDBName          = std::format("CosmosClient_Test_DB{}", __COUNTER__);
+    std::string              testDBName0         = std::format("CosmosClient_Test_DB0_{}", __COUNTER__);
+    std::vector<std::string> testCollectionNames = {std::format("CosmosClient_Test_COLL{}", __COUNTER__),
+                                                    std::format("CosmosClient_Test_COLL{}", __COUNTER__),
+                                                    std::format("CosmosClient_Test_COLL{}", __COUNTER__)};
 
-    static auto GetConnectionStrings() -> std::pair<std::string, std::string>
+    static auto              GetConnectionStrings() -> std::pair<std::string, std::string>
     {
         auto pcs = std::getenv("CCTEST_PRIMARY_CS");
         auto scs = std::getenv("CCTEST_SECONDARY_CS");
@@ -81,15 +84,6 @@ public:
                               scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
     }
 
-protected:
-    void SetUp() override
-    {
-        // std::print(std::cerr, "{} - Init the CurlLib singleton.\n", __func__);
-        //  configure
-        //  start
-        //  get a context object
-        // myCurlInstance = LibCurlSingleton::GetInstance();
-    }
 
 public:
     auto createDatabase(const std::string& dbName)
@@ -115,6 +109,37 @@ public:
         return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
                 .deleteDatabase({.database = dbName});
     }
+
+    auto createCollection(const std::string& dbName, const std::string& collName)
+    {
+        siddiqsoft::CosmosClient cc;
+
+        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
+                .createCollection({.database = dbName, .collection = collName});
+    }
+
+protected:
+    void SetUp() override
+    {
+        if (auto rc2 = findDatabase(testDBName0); rc2.statusCode == 404) {
+            auto rc1 = createDatabase(testDBName0);
+        }
+
+        // Next we create the collections..
+        try {
+            for (auto& collName : testCollectionNames) {
+                auto rc3 = createCollection(testDBName0, collName);
+            }
+        }
+        catch (...) {
+        }
+    }
+
+    void TearDown() override
+    {
+        // Cleanup the db we just created.
+        auto rc9 = deleteDatabase(testDBName0);
+    }
 };
 
 TEST_F(CosmosClient, checkEmulatorInfo)
@@ -126,9 +151,7 @@ TEST_F(CosmosClient, checkEmulatorInfo)
             << "Missing environment variable CCTEST_SECONDARY_CS; Set it to Secondary Connection string from Azure portal.";
 }
 
-/// @brief Example code
-/// Declare the instance, configure and createDocument a document with only three lines!
-/// The code here is based on configuration and dynamic fetching for the database, collection and regions.
+
 TEST_F(CosmosClient, createDatabase1)
 {
     auto rc1 = createDatabase(testDBName);
@@ -142,6 +165,32 @@ TEST_F(CosmosClient, createDatabase1)
     auto rc3 = deleteDatabase(testDBName);
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc3);
     EXPECT_EQ(204, rc3.statusCode);
+}
+
+
+TEST_F(CosmosClient, createCollection1)
+{
+    if (auto rc2 = findDatabase(testDBName); rc2.statusCode == 404) {
+        auto rc1 = createDatabase(testDBName);
+        // std::println(std::cerr, "{} - db: {}  Response..............createDatabase\n{}", __func__, testDBName, rc1);
+        EXPECT_EQ(201, rc1.statusCode);
+    }
+
+    // Next we create the collections..
+    try {
+        for (auto& collName : testCollectionNames) {
+            auto rc3 = createCollection(testDBName, collName);
+            std::println(std::cerr, "{} - db: {}  Response..............createCollection\n{}", __func__, testDBName, rc3);
+            EXPECT_EQ(201, rc3.statusCode);
+        }
+    }
+    catch (...) {
+    }
+
+    // Cleanup the db we just created.
+    auto rc9 = deleteDatabase(testDBName);
+    // std::println(std::cerr, "{} - db: {}  Response..............deleteDatabase\n{}", __func__, testDBName, rc9);
+    EXPECT_EQ(204, rc9.statusCode);
 }
 
 
@@ -398,6 +447,10 @@ TEST_F(CosmosClient, listCollections)
 /// @brief Tests the listDocuments with a limit of 7 iterations
 TEST_F(CosmosClient, listDocuments)
 {
+    // Create our database first..
+    auto pre0 = createDatabase(testDBName);
+    EXPECT_EQ(201, pre0.statusCode);
+
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
