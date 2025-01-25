@@ -28,6 +28,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     endif()
 
     if( CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
+        message(STATUS "  Setting DEBUG macro..")
         add_compile_definitions(${TESTPROJ} PRIVATE DEBUG=1 _DEBUG=1)
     endif()
 

@@ -372,19 +372,19 @@ namespace siddiqsoft
 
         crt.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(DEBUG)
+#if defined(DEBUG0)
             std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
 #endif
 
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 
-#if defined(DEBUG)
+#if defined(DEBUG0)
             std::println(std::cerr, "{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
-#if defined(DEBUG)
+#if defined(DEBUG0)
             std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
 #endif
             // Has value but not successful, return the code
@@ -905,36 +905,89 @@ namespace siddiqsoft
         CosmosResponseType createDatabase(CosmosArgumentType const& ctx)
         {
             timethis tt {};
+            auto     ts = DateUtils::RFC7231();
 
             if (ctx.database.empty())
                 throw std::invalid_argument(
                         std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
 
-            auto         ts        = DateUtils::RFC7231();
-            std::string& pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
-            //auto         pkId      = ctx.document.value(pkKeyName, "");
+            /* Signature:
+             * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
+             */
+            auto req = rest_request<char> {
+                    HttpMethodType::METHOD_POST,
+                    std::format("{}dbs", cnxn.current().currentWriteUri()),
+                    {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "POST", "dbs", "", ts)},
+                     {"x-ms-date", ts},
+                     {"x-ms-session-token", ts},
+                     {"x-ms-version", config["apiVersion"]},
+                     {"x-ms-cosmos-allow-tentative-writes", "true"}},
+                    {{"id", ctx.database}}};
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", false},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
+        }
+
+
+        CosmosResponseType deleteDatabase(CosmosArgumentType const& ctx)
+        {
+            timethis tt {};
+            auto     ts = DateUtils::RFC7231();
+
+            if (ctx.database.empty())
+                throw std::invalid_argument(
+                        std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
 
             /* Signature:
              * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
              */
-            auto req        = rest_request<char> {HttpMethodType::METHOD_POST,
-                                                  std::format("{}dbs", cnxn.current().currentWriteUri()),
-                                                  {{"Authorization",
-                                                    EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
-                                                                                "POST",
-                                                                                "dbs",
-                                                                                "", // no parent for create database
-                                                                                ts)},
-                                                   {"x-ms-date", ts},
-                                                   {"x-ms-session-token", ts},
-                                                   //{"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
-                                                   {"x-ms-version", config["apiVersion"]},
-                                                   {"x-ms-cosmos-allow-tentative-writes", "true"}},
-                                                  {{"id", ctx.database}}};
-            auto restClient = GetRESTClient(
-                    {{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            // auto resp = restClient->send(req);
-            return make_CosmosResponseType(tt, restClient->send(req));
+            auto req = rest_request<char> {HttpMethodType::METHOD_DELETE,
+                                           std::format("{}dbs/{}", cnxn.current().currentWriteUri(), ctx.database),
+                                           {{"Authorization",
+                                             EncryptionUtils::CosmosToken<char>(
+                                                     cnxn.current().Key, "DELETE", "dbs", std::format("dbs/{}", ctx.database), ts)},
+                                            {"x-ms-date", ts},
+                                            {"x-ms-session-token", ts},
+                                            {"x-ms-version", config["apiVersion"]},
+                                            {"x-ms-cosmos-allow-tentative-writes", "true"}}};
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", false},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
+        }
+
+        CosmosResponseType findDatabase(CosmosArgumentType const& ctx)
+        {
+            timethis tt {};
+            auto     ts = DateUtils::RFC7231();
+
+            if (ctx.database.empty())
+                throw std::invalid_argument(
+                        std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
+
+            /* Signature:
+             * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
+             */
+            auto req = rest_request<char> {HttpMethodType::METHOD_GET,
+                                           std::format("{}dbs/{}", cnxn.current().currentWriteUri(), ctx.database),
+                                           {{"Authorization",
+                                             EncryptionUtils::CosmosToken<char>(
+                                                     cnxn.current().Key, "GET", "dbs", std::format("dbs/{}", ctx.database), ts)},
+                                            {"x-ms-date", ts},
+                                            {"x-ms-session-token", ts},
+                                            {"x-ms-version", config["apiVersion"]},
+                                            {"x-ms-cosmos-allow-tentative-writes", "true"}}};
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", false},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
         }
 
 
@@ -955,10 +1008,12 @@ namespace siddiqsoft
                       {"x-ms-date", ts},
                       {"x-ms-version", config["apiVersion"]}});
 
-            auto restClient = GetRESTClient(
-                    {{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}});
-            // auto resp = restClient->send(req);
-            return make_CosmosResponseType(tt, restClient->send(req));
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", false},
+                                                          {"verifyPeer", 0L},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
         }
 
         /// @brief Create an entity in documentdb using the json object as the payload.

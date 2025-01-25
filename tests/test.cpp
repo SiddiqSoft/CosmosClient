@@ -69,6 +69,9 @@ static const std::string EMULATOR_ENDPOINT = "localhost:8081";
 class CosmosClient : public ::testing::Test
 {
 public:
+    std::string testDBName     = std::format("CosmosClient_Test_DB{}", __COUNTER__);
+    std::string testCollection = std::format("CosmosClient_Test_COLL{}", __COUNTER__);
+
     static auto GetConnectionStrings() -> std::pair<std::string, std::string>
     {
         auto pcs = std::getenv("CCTEST_PRIMARY_CS");
@@ -93,19 +96,24 @@ public:
     {
         siddiqsoft::CosmosClient cc;
 
-        auto [priConnStr, secConnStr] = GetConnectionStrings();
-        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}})
+        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
                 .createDatabase({.database = dbName});
     }
 
+    auto findDatabase(const std::string& dbName)
+    {
+        siddiqsoft::CosmosClient cc;
+
+        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
+                .findDatabase({.database = dbName});
+    }
 
     auto deleteDatabase(const std::string& dbName)
     {
         siddiqsoft::CosmosClient cc;
 
-        auto [priConnStr, secConnStr] = GetConnectionStrings();
-        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}})
-                .createDatabase({.database = dbName});
+        return cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}})
+                .deleteDatabase({.database = dbName});
     }
 };
 
@@ -123,12 +131,17 @@ TEST_F(CosmosClient, checkEmulatorInfo)
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
 TEST_F(CosmosClient, createDatabase1)
 {
-    std::string targetDBName = std::format("{}_{}_{}", __func__, __COUNTER__, __TIME__);
+    auto rc1 = createDatabase(testDBName);
+    std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc1);
+    EXPECT_EQ(201, rc1.statusCode);
 
-    auto        rc3          = createDatabase(targetDBName);
+    auto rc2 = findDatabase(testDBName);
+    std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc2);
+    EXPECT_EQ(200, rc2.statusCode);
 
-    std::println(std::cerr, "{} - targetDBName: {}  Response..............\n{}", __func__, targetDBName, rc3);
-    EXPECT_EQ(201, rc3.statusCode);
+    auto rc3 = deleteDatabase(testDBName);
+    std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc3);
+    EXPECT_EQ(204, rc3.statusCode);
 }
 
 
