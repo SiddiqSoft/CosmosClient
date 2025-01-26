@@ -168,15 +168,21 @@ TEST(Validation, checkEmulatorInfo)
 TEST_F(CosmosClientSuite, createDatabase1)
 {
     auto rc1 = TScreateDatabase(testDBName);
+#if defined(DEBUG0)
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc1);
+#endif
     EXPECT_EQ(201, rc1.statusCode);
 
     auto rc2 = TSfindDatabase(testDBName);
+#if defined(DEBUG0)
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc2);
+#endif
     EXPECT_EQ(200, rc2.statusCode);
 
     auto rc3 = TSdeleteDatabase(testDBName);
+#if defined(DEBUG0)
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, testDBName, rc3);
+#endif
     EXPECT_EQ(204, rc3.statusCode);
 }
 
@@ -193,7 +199,9 @@ TEST_F(CosmosClientSuite, createCollection1)
     try {
         for (auto& collName : testCollectionNames) {
             auto rc3 = TScreateCollection(testDBName, collName);
+#if defined(DEBUG0)
             std::println(std::cerr, "{} - db: {}  Response..............createCollection\n{}", __func__, testDBName, rc3);
+#endif
             EXPECT_EQ(201, rc3.statusCode);
         }
     }
@@ -212,21 +220,17 @@ TEST_F(CosmosClientSuite, createCollection1)
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
 TEST_F(CosmosClientSuite, example1)
 {
-    siddiqsoft::CosmosClient cc;
-
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
-
-    if (auto rc = cc.listDatabases(); 200 == rc.statusCode) {
+    if (auto rc = testSuiteClient.listDatabases(); 200 == rc.statusCode) {
         auto dbName = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-        if (auto rc2 = cc.listCollections({.database = dbName}); 200 == rc2.statusCode) {
+        if (auto rc2 = testSuiteClient.listCollections({.database = dbName}); 200 == rc2.statusCode) {
             auto collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
             // Now, let us createDocument the document
             auto id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
             auto pkId = "siddiqsoft.com";
 
-            if (auto rc3 = cc.createDocument(
+            if (auto rc3 = testSuiteClient.createDocument(
                         {.database   = dbName,
                          .collection = collectionName,
                          .document =
@@ -237,10 +241,10 @@ TEST_F(CosmosClientSuite, example1)
                 // ...useful with cDoc..
 
                 // Remove the just created document..
-                auto rc4 = cc.removeDocument({.database     = dbName,
-                                              .collection   = collectionName,
-                                              .id           = rc3.document.value("id", id),
-                                              .partitionKey = pkId});
+                auto rc4 = testSuiteClient.removeDocument({.database     = dbName,
+                                                           .collection   = collectionName,
+                                                           .id           = rc3.document.value("id", id),
+                                                           .partitionKey = pkId});
                 EXPECT_EQ(204, rc4);
             }
         }
@@ -391,21 +395,8 @@ TEST(Validation, discoverRegions_BadPrimary)
 
 TEST_F(CosmosClientSuite, listDatabases)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    // Fail fast if the primary conection string is not present in the build environment
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW({ cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}); });
-
     EXPECT_NO_THROW({
-        auto rc = cc.listDatabases();
+        auto rc = testSuiteClient.listDatabases();
         std::println(std::cerr, "{} - Results\n{}", __func__, rc.document.dump(4));
         EXPECT_TRUE(rc.document.contains("Databases"));
         EXPECT_TRUE(rc.document["Databases"].is_array());
@@ -417,20 +408,7 @@ TEST_F(CosmosClientSuite, listDatabases)
 
 TEST_F(CosmosClientSuite, listCollections)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    // Fail fast if the primary conection string is not present in the build environment
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-    auto rc = cc.listDatabases();
+    auto rc = testSuiteClient.listDatabases();
     // std::println(std::cerr, "{} - listDatabases - Results\n{}", __func__, rc.document.dump(4));
     //  Expect success.
     EXPECT_EQ(200, rc.statusCode);
@@ -439,7 +417,7 @@ TEST_F(CosmosClientSuite, listCollections)
 
     for (auto& db : rc.document["Databases"]) {
         std::println(std::cerr, "----- db `{}` :\n{}", db.value("id", ""), db.dump(2));
-        auto rc2 = cc.listCollections({.database = db.value("id", "")});
+        auto rc2 = testSuiteClient.listCollections({.database = db.value("id", "")});
         std::println(std::cerr, "{} - listCollections - Results\n{}", __func__, rc2.document.dump(4));
         // Expect success.
         EXPECT_EQ(200, rc2.statusCode);
@@ -452,25 +430,22 @@ TEST_F(CosmosClientSuite, listCollections)
 /// @brief Tests the listDocuments with a limit of 7 iterations
 TEST_F(CosmosClientSuite, listDocuments)
 {
-    siddiqsoft::CosmosClient               cc;
     siddiqsoft::CosmosIterableResponseType irt {};
     uint32_t                               totalDocs = 0;
     auto                                   iteration = 7; // max 7 times
 
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
-
-    auto rc = cc.listDatabases();
+    auto                                   rc        = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     EXPECT_NE("", rc.document.value("/Databases/0/id"_json_pointer, ""));
 
-    auto rc2 = cc.listCollections({.database = rc.document.value("/Databases/0/id"_json_pointer, "")});
+    auto rc2 = testSuiteClient.listCollections({.database = rc.document.value("/Databases/0/id"_json_pointer, "")});
     EXPECT_EQ(200, rc2.statusCode);
     EXPECT_NE("", rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""));
 
     do {
-        irt = cc.listDocuments({.database          = rc.document.value("/Databases/0/id"_json_pointer, ""),
-                                .collection        = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
-                                .continuationToken = irt.continuationToken});
+        irt = testSuiteClient.listDocuments({.database          = rc.document.value("/Databases/0/id"_json_pointer, ""),
+                                             .collection        = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
+                                             .continuationToken = irt.continuationToken});
         EXPECT_EQ(200, irt.statusCode);
         // We check against a collection that has multiple
         totalDocs += irt.document.value<uint32_t>("_count", 0);
@@ -486,30 +461,19 @@ TEST_F(CosmosClientSuite, listDocuments)
 /// @brief Invokes listDocuments without continuation
 TEST_F(CosmosClientSuite, listDocuments_top8)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    // Fail fast if the primary conection string is not present in the build environment
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient               cc;
     siddiqsoft::CosmosIterableResponseType irt {};
     uint32_t                               totalDocs = 0;
 
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
-    auto rc = cc.listDatabases();
+    auto                                   rc        = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
 
-    auto rc2 = cc.listCollections({.database = rc.document.value("/Databases/0/id"_json_pointer, "")});
+    auto rc2 = testSuiteClient.listCollections({.database = rc.document.value("/Databases/0/id"_json_pointer, "")});
     EXPECT_EQ(200, rc2.statusCode);
 
-    irt = cc.listDocuments({.database          = rc.document.value("/Databases/0/id"_json_pointer, ""),
-                            .collection        = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
-                            .continuationToken = irt.continuationToken});
+    irt = testSuiteClient.listDocuments({.database          = rc.document.value("/Databases/0/id"_json_pointer, ""),
+                                         .collection        = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
+                                         .continuationToken = irt.continuationToken});
     EXPECT_EQ(200, irt.statusCode);
     // We check against a collection that has multiple
     totalDocs += irt.document.value<uint32_t>("_count", 0);
@@ -523,29 +487,17 @@ TEST_F(CosmosClientSuite, listDocuments_top8)
 /// Requires the environment variables
 TEST_F(CosmosClientSuite, createDocument)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
     std::string pkId {};
 
-    // Fail fast if the primary conection string is not present in the build environment
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto        rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName = rc.document.value("/Databases/0/id"_json_pointer, "");
     EXPECT_FALSE(dbName.empty());
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     std::println(std::cerr, "{} - db: {}  Response..............\n{}", __func__, dbName, rc2);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
@@ -555,12 +507,13 @@ TEST_F(CosmosClientSuite, createDocument)
     pkId = "siddiqsoft.com";
 
     // Now, let us createDocument the document
-    auto rc3 = cc.createDocument({.database   = dbName,
-                                  .collection = collectionName,
-                                  .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
+    auto rc3 =
+            testSuiteClient.createDocument({.database   = dbName,
+                                            .collection = collectionName,
+                                            .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc3.statusCode);
 
-    auto rc4 = cc.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+    auto rc4 = testSuiteClient.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
     EXPECT_EQ(204, rc4);
 }
 
@@ -568,28 +521,17 @@ TEST_F(CosmosClientSuite, createDocument)
 /// @brief Test createDocument document with missing "id" field in the document
 TEST_F(CosmosClientSuite, createDocument_MissingId)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
     std::string pkId {};
 
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto        rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -597,37 +539,27 @@ TEST_F(CosmosClientSuite, createDocument_MissingId)
     id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
-    EXPECT_THROW(cc.createDocument({.database   = dbName,
-                                    .collection = collectionName,
-                                    .document = {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
+    EXPECT_THROW(testSuiteClient.createDocument(
+            {.database   = dbName,
+             .collection = collectionName,
+             .document   = {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
                  , std::invalid_argument);
 }
 
 /// @brief Test createDocument document with missing partition key field in the document
 TEST_F(CosmosClientSuite, createDocument_MissingPkId)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
     std::string pkId {};
 
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto        rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -635,83 +567,63 @@ TEST_F(CosmosClientSuite, createDocument_MissingPkId)
     id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
-    EXPECT_THROW(cc.createDocument({.database   = dbName,
-                                    .collection = collectionName,
-                                    .document = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
+    EXPECT_THROW(testSuiteClient.createDocument(
+            {.database   = dbName,
+             .collection = collectionName,
+             .document   = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
                  , std::invalid_argument);
 }
 
 /// @brief Test findDocument API
 TEST_F(CosmosClientSuite, findDocument)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
     std::string pkId {};
 
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto        rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
     // Now, let us createDocument the document
-    id       = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId     = "siddiqsoft.com";
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId = "siddiqsoft.com";
 
-    auto rc3 = cc.createDocument({.database   = dbName,
-                                  .collection = collectionName,
-                                  .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
+    auto rc3 =
+            testSuiteClient.createDocument({.database   = dbName,
+                                            .collection = collectionName,
+                                            .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc3.statusCode);
 
     // Find the document we just created
-    auto rc4 = cc.findDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+    auto rc4 = testSuiteClient.findDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
     EXPECT_EQ(200, rc4.statusCode);
     EXPECT_EQ(id, rc4.document.value("id", ""));
 
-    auto rc5 = cc.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+    auto rc5 = testSuiteClient.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
     EXPECT_EQ(204, rc5);
 }
 
 /// @brief Test upsertDocument API
 TEST_F(CosmosClientSuite, upsertDocument)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
     std::string pkId {};
 
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto        rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -720,7 +632,7 @@ TEST_F(CosmosClientSuite, upsertDocument)
     pkId = "siddiqsoft.com";
 
     // Create the document.. (this should be insert
-    auto rc4 = cc.upsertDocument(
+    auto rc4 = testSuiteClient.upsertDocument(
             {.database   = dbName,
              .collection = collectionName,
              .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "insert"}, {"source", "basic_tests.exe"}}});
@@ -728,7 +640,7 @@ TEST_F(CosmosClientSuite, upsertDocument)
     EXPECT_EQ("insert", rc4.document.value("upsert", ""));
 
     // Calling upsertDocument again updates the same document.
-    auto rc5 = cc.upsertDocument(
+    auto rc5 = testSuiteClient.upsertDocument(
             {.database   = dbName,
              .collection = collectionName,
              .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}}});
@@ -736,42 +648,31 @@ TEST_F(CosmosClientSuite, upsertDocument)
     EXPECT_EQ("update", rc5.document.value("upsert", ""));
 
     // And to check if we call createDocument on the same docId it should fail
-    auto rc6 = cc.createDocument(
+    auto rc6 = testSuiteClient.createDocument(
             {.database   = dbName,
              .collection = collectionName,
              .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(409, rc6.statusCode);
 
     // Remove the document
-    auto rc7 = cc.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+    auto rc7 = testSuiteClient.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
     EXPECT_EQ(204, rc7);
 }
 
 
 TEST_F(CosmosClientSuite, updateDocument)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string dbName {};
     std::string collectionName {};
     std::string id {};
     std::string pkId {};
 
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto        rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -780,7 +681,7 @@ TEST_F(CosmosClientSuite, updateDocument)
     pkId = "siddiqsoft.com";
 
     // Create the document.. (this should be insert
-    auto rc4 = cc.createDocument(
+    auto rc4 = testSuiteClient.createDocument(
             {.database   = dbName,
              .collection = collectionName,
              .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"mode", "create"}, {"source", "basic_tests.exe"}}});
@@ -791,18 +692,18 @@ TEST_F(CosmosClientSuite, updateDocument)
     rc4.document["mode"] = "update";
 
     // Calling upsertDocument again updates the same document.
-    auto rc5 = cc.updateDocument(
+    auto rc5 = testSuiteClient.updateDocument(
             {.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId, .document = rc4.document});
     EXPECT_EQ(200, rc5.statusCode);
     EXPECT_EQ("update", rc5.document.value("mode", ""));
 
     // And to check if we call createDocument on the same docId it should fail
-    auto rc6 = cc.findDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+    auto rc6 = testSuiteClient.findDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
     EXPECT_EQ(200, rc6.statusCode);
     EXPECT_EQ("update", rc6.document.value("mode", ""));
 
     // Remove the document
-    auto rc7 = cc.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+    auto rc7 = testSuiteClient.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
     EXPECT_EQ(204, rc7);
 }
 
@@ -810,10 +711,6 @@ TEST_F(CosmosClientSuite, updateDocument)
 /// @brief Test queryDocuments API
 TEST_F(CosmosClientSuite, queryDocument)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string              dbName {};
     std::string              collectionName {};
     std::vector<std::string> docIds {};
@@ -821,53 +718,45 @@ TEST_F(CosmosClientSuite, queryDocument)
     std::string              sourceId = std::format("{}-{}", getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
     constexpr auto           DOCS {5};
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    siddiqsoft::CosmosClient cc;
-
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
-    EXPECT_EQ(200, rc.statusCode);
-    dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
-
-    auto rc2 = cc.listCollections({.database = dbName});
-    EXPECT_EQ(200, rc2.statusCode);
-    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
-
     // We're going to createDocument DOCS documents
     for (auto i = 0; i < DOCS; i++) {
-        docIds.push_back(std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count()));
+        docIds.push_back(std::format("azure-cosmos-restcl.{}", i));
     }
 
+    EXPECT_EQ(DOCS, docIds.size());
+
     // The field "odd" will be used in our queryDocuments statement
+    std::println(std::cerr, "Creating {} documents in {}:{}...", docIds.size(), testDBName0, testCollectionNames[0]);
+
     for (auto i = 0; i < docIds.size(); i++) {
-        auto rc = cc.createDocument({.database   = dbName,
-                                     .collection = collectionName,
-                                     .document   = {{"id", docIds[i]},
-                                                    {"ttl", 360},
-                                                    {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                                    {"i", i},
-                                                    {"odd", !(i % 2 == 0)},
-                                                    {"source", sourceId}}});
+        auto rc =
+                testSuiteClient.createDocument({.database   = testDBName0,
+                                                .collection = testCollectionNames[0],
+                                                .document   = {{"id", docIds[i]},
+                                                               {"ttl", 360},
+                                                               {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                                               {"i", i},
+                                                               {"odd", !(i % 2 == 0)},
+                                                               {"source", sourceId}}});
         EXPECT_EQ(201, rc.statusCode);
     }
 
     EXPECT_EQ(DOCS, docIds.size()); // total
 
     // Wait a little bit..
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     siddiqsoft::CosmosIterableResponseType irt {};
     nlohmann::json                         allDocs = nlohmann::json::array();
     uint32_t                               allDocsCount {};
 
     // First, we queryDocuments for all items that match our criteria (source=__func__)
+    std::println(std::cerr, "Query documents in {}:{}...", testDBName0, testCollectionNames[0]);
+
     do {
-        irt = cc.queryDocuments(
-                {.database          = dbName,
-                 .collection        = collectionName,
+        irt = testSuiteClient.queryDocuments(
+                {.database          = testDBName0,
+                 .collection        = testCollectionNames[0],
                  .partitionKey      = "*",
                  .continuationToken = irt.continuationToken,
                  .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
@@ -884,8 +773,8 @@ TEST_F(CosmosClientSuite, queryDocument)
     } while (!irt.continuationToken.empty());
     EXPECT_EQ(DOCS, allDocsCount); // total
 
-#ifdef DEBUG
-    // std::cerr << allDocs.dump(4) << std::endl;
+#if defined(DEBUG0)
+    std::println(std::cerr, "{} - All Documents:\n{}", __func__, allDocs.dump(4));
 #endif
 
     auto matchCount = 0;
@@ -893,7 +782,7 @@ TEST_F(CosmosClientSuite, queryDocument)
         if (!document.is_null()) {
             auto& id = document.at("id");
             for (auto& i : docIds) {
-                std::print(std::cerr, "{} - {} == {}\n", __func__, i, id.dump());
+                std::print(std::cerr, "{} Match - {} == {}\n", __func__, i, id.dump());
                 matchCount += (i == id.dump());
             }
             // std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
@@ -909,11 +798,11 @@ TEST_F(CosmosClientSuite, queryDocument)
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
     do {
-        irt = cc.queryDocuments({.database        = dbName,
-                                 .collection      = collectionName,
-                                 .partitionKey    = "odd.siddiqsoft.com", // __pk
-                                 .queryStatement  = "SELECT * FROM c WHERE c.source=@v1",
-                                 .queryParameters = {{{"name", "@v1"}, {"value", sourceId}}}});
+        irt = testSuiteClient.queryDocuments({.database        = testDBName0,
+                                              .collection      = testCollectionNames[0],
+                                              .partitionKey    = "odd.siddiqsoft.com", // __pk
+                                              .queryStatement  = "SELECT * FROM c WHERE c.source=@v1",
+                                              .queryParameters = {{{"name", "@v1"}, {"value", sourceId}}}});
         EXPECT_EQ(200, irt.statusCode);
         if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
@@ -930,11 +819,11 @@ TEST_F(CosmosClientSuite, queryDocument)
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
     do {
-        irt = cc.queryDocuments({.database        = dbName,
-                                 .collection      = collectionName,
-                                 .partitionKey    = "even.siddiqsoft.com", // __pk
-                                 .queryStatement  = "SELECT * FROM c WHERE c.source=@v1",
-                                 .queryParameters = {{{"name", "@v1"}, {"value", sourceId}}}});
+        irt = testSuiteClient.queryDocuments({.database        = testDBName0,
+                                              .collection      = testCollectionNames[0],
+                                              .partitionKey    = "even.siddiqsoft.com", // __pk
+                                              .queryStatement  = "SELECT * FROM c WHERE c.source=@v1",
+                                              .queryParameters = {{{"name", "@v1"}, {"value", sourceId}}}});
         EXPECT_EQ(200, irt.statusCode);
         if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
@@ -949,22 +838,18 @@ TEST_F(CosmosClientSuite, queryDocument)
 
     // Remove the documents
     for (auto i = 0; i < docIds.size(); i++) {
-        auto rc = cc.removeDocument({.database     = dbName,
-                                     .collection   = collectionName,
-                                     .id           = docIds[i],
-                                     .partitionKey = (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"});
-        EXPECT_EQ(204, rc);
+        auto rc = testSuiteClient.removeDocument({.database     = testDBName0,
+                                                  .collection   = testCollectionNames[0],
+                                                  .id           = docIds[i],
+                                                  .partitionKey = (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"});
+        EXPECT_EQ(204, rc) << std::format("Remove documents `{}`: rc:{}\n", i, rc);
     }
 }
 
 
 TEST_F(CosmosClientSuite, createDocument_threads)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto ttx                      = std::chrono::system_clock::now();
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
+    auto                 ttx = std::chrono::system_clock::now();
     std::string          dbName {};
     std::string          collectionName {};
     std::string          pkId {"siddiqsoft.com"};
@@ -985,18 +870,12 @@ TEST_F(CosmosClientSuite, createDocument_threads)
                                  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - ttx));
 #endif
     });
-    siddiqsoft::CosmosClient cc;
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
-
-    auto rc = cc.listDatabases();
+    auto rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -1031,7 +910,7 @@ TEST_F(CosmosClientSuite, createDocument_threads)
                     for (auto i = 0; i < DOCS; i++) {
                         try {
                             // //std::cerr << std::format("{} Calling createDocument:{:02}...\n", tid, i);
-                            auto rc = cc.createDocument(
+                            auto rc = testSuiteClient.createDocument(
                                     {.database   = dbName,
                                      .collection = collectionName,
                                      .document   = {{"id",
@@ -1066,10 +945,10 @@ TEST_F(CosmosClientSuite, createDocument_threads)
 
                     // std::cerr << std::format("{}  Finally..removeDocument {} documents..\n", tid, docIds.size());
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = cc.removeDocument({.database     = dbName,
-                                                     .collection   = collectionName,
-                                                     .id           = docIds[i],
-                                                     .partitionKey = "siddiqsoft.com"});
+                        auto rc = testSuiteClient.removeDocument({.database     = dbName,
+                                                                  .collection   = collectionName,
+                                                                  .id           = docIds[i],
+                                                                  .partitionKey = "siddiqsoft.com"});
                         removeDocsCount += rc == 204;
                         // //std::cerr << std::format("{}  Finally..removed {} rc:{}\n", tid, docIds[i], rc);
                     }
@@ -1092,10 +971,6 @@ TEST_F(CosmosClientSuite, createDocument_threads)
 
 TEST_F(CosmosClientSuite, queryDocument_threads)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     std::string              dbName {};
     std::string              collectionName {};
     std::string              pkId {"siddiqsoft.com"};
@@ -1124,16 +999,12 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
 #endif
     });
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
-
-    auto rc = cc.listDatabases();
+    auto rc = testSuiteClient.listDatabases();
     EXPECT_EQ(200, rc.statusCode);
     dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
 
-    auto rc2 = cc.listCollections({.database = dbName});
+    auto rc2 = testSuiteClient.listCollections({.database = dbName});
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
@@ -1153,12 +1024,12 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     for (auto i = 0; i < DOCS; i++) {
                         try {
                             if (!(i % 2 == 0)) {
-                                auto rc = cc.createDocument(
+                                auto rc = testSuiteClient.createDocument(
                                         {.database   = dbName,
                                          .collection = collectionName,
                                          .document   = {{"id",
                                                          std::format("{}.{}.{}",
-                                                                   t,
+                                                                   tid,
                                                                    i,
                                                                    std::chrono::system_clock::now().time_since_epoch().count())},
                                                         {"ttl", 360},
@@ -1187,7 +1058,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     // Next we start queries
                     siddiqsoft::CosmosIterableResponseType irt {};
                     do {
-                        irt = cc.queryDocuments(
+                        irt = testSuiteClient.queryDocuments(
                                 {.database        = dbName,
                                  .collection      = collectionName,
                                  .partitionKey    = "odd.siddiqsoft.com", // __pk
@@ -1200,10 +1071,10 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     creatorsBarrier.arrive_and_wait();
 
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = cc.removeDocument({.database     = dbName,
-                                                     .collection   = collectionName,
-                                                     .id           = docIds[i],
-                                                     .partitionKey = "odd.siddiqsoft.com"});
+                        auto rc = testSuiteClient.removeDocument({.database     = dbName,
+                                                                  .collection   = collectionName,
+                                                                  .id           = docIds[i],
+                                                                  .partitionKey = "odd.siddiqsoft.com"});
                         oddRemoveDocsCount += rc == 204;
                     }
 
@@ -1216,7 +1087,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
 
     // Threadpool with workers sync on the barrier; this one creates and searches for "even" items
     std::vector<std::jthread> creatorsEven;
-    for (auto t = 0; t < threadCount; t++) {
+    for (auto th = 0; th < threadCount; th++) {
         creatorsEven.emplace_back(std::jthread(
                 [&](auto tid) {
                     std::vector<std::string> docIds {};
@@ -1229,12 +1100,12 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     for (auto i = 0; i < DOCS; i++) {
                         if ((i % 2 == 0)) {
                             try {
-                                auto rc = cc.createDocument(
+                                auto rc = testSuiteClient.createDocument(
                                         {.database   = dbName,
                                          .collection = collectionName,
                                          .document   = {{"id",
                                                          std::format("{}.{}.{}",
-                                                                   t,
+                                                                   tid,
                                                                    i,
                                                                    std::chrono::system_clock::now().time_since_epoch().count())},
                                                         {"ttl", 360},
@@ -1262,7 +1133,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     // Next we start queries
                     siddiqsoft::CosmosIterableResponseType irt {};
                     do {
-                        irt = cc.queryDocuments(
+                        irt = testSuiteClient.queryDocuments(
                                 {.database        = dbName,
                                  .collection      = collectionName,
                                  .partitionKey    = "even.siddiqsoft.com", // __pk
@@ -1274,17 +1145,17 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     creatorsBarrier.arrive_and_wait();
 
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = cc.removeDocument({.database     = dbName,
-                                                     .collection   = collectionName,
-                                                     .id           = docIds[i],
-                                                     .partitionKey = "even.siddiqsoft.com"});
+                        auto rc = testSuiteClient.removeDocument({.database     = dbName,
+                                                                  .collection   = collectionName,
+                                                                  .id           = docIds[i],
+                                                                  .partitionKey = "even.siddiqsoft.com"});
                         evenRemoveDocsCount += (204 == rc);
                     }
 
                     // Each thread hits this latch (decrementing the counter)
                     endLatch.count_down();
                 },
-                t));
+                th));
     }
 
     // This code will wait until the barrier has been released by all of the threads!
@@ -1544,7 +1415,7 @@ TEST_F(CosmosClientSuite, MoveConstruct)
     EXPECT_EQ(2, clients.size());
 }
 
-TEST_F(CosmosClientSuite, configure_multi)
+TEST(Validation, configure_multi)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -1568,17 +1439,17 @@ TEST_F(CosmosClientSuite, configure_multi)
 
     std::ranges::for_each(clients, [&](auto& cc) {
         // Check that we have read/write locations detected.
-        auto& currentConfig = cc.configuration();
+        auto& currentConfig = testSuiteClient.configuration();
 
-        EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
-        EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
+        EXPECT_TRUE(testSuiteClient.serviceSettings["writableLocations"].is_array());
+        EXPECT_TRUE(testSuiteClient.serviceSettings["readableLocations"].is_array());
 
         // Atleast one read location
-        EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
-        EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
+        EXPECT_LE(1, testSuiteClient.serviceSettings["readableLocations"].size());
+        EXPECT_LE(1, testSuiteClient.cnxn.current().ReadableUris.size());
         // Atleast one write location
-        EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
-        EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
+        EXPECT_LE(1, testSuiteClient.serviceSettings["writableLocations"].size());
+        EXPECT_LE(1, testSuiteClient.cnxn.current().WritableUris.size());
         passTest++;
     });
 
