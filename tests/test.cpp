@@ -151,7 +151,7 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        auto rc9 = TSdeleteDatabase(testDBName0);
+        //auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
 
@@ -725,8 +725,10 @@ TEST_F(CosmosClientSuite, queryDocument)
 
     EXPECT_EQ(DOCS, docIds.size());
 
-    // The field "odd" will be used in our queryDocuments statement
+// The field "odd" will be used in our queryDocuments statement
+#if defined(DEBUG0)
     std::println(std::cerr, "Creating {} documents in {}:{}...", docIds.size(), testDBName0, testCollectionNames[0]);
+#endif
 
     for (auto i = 0; i < docIds.size(); i++) {
         auto rc =
@@ -750,8 +752,10 @@ TEST_F(CosmosClientSuite, queryDocument)
     nlohmann::json                         allDocs = nlohmann::json::array();
     uint32_t                               allDocsCount {};
 
-    // First, we queryDocuments for all items that match our criteria (source=__func__)
+// First, we queryDocuments for all items that match our criteria (source=__func__)
+#if defined(DEBUG0)
     std::println(std::cerr, "Query documents in {}:{}...", testDBName0, testCollectionNames[0]);
+#endif
 
     do {
         irt = testSuiteClient.queryDocuments(
@@ -767,8 +771,6 @@ TEST_F(CosmosClientSuite, queryDocument)
             // Append to the current container
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
             allDocsCount += irt.document.value("_count", 0);
-            std::cerr << "Items: " << irt.document.value("_count", 0)
-                      << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
         }
     } while (!irt.continuationToken.empty());
     EXPECT_EQ(DOCS, allDocsCount); // total
@@ -780,14 +782,13 @@ TEST_F(CosmosClientSuite, queryDocument)
     auto matchCount = 0;
     for (auto& document : allDocs) {
         if (!document.is_null()) {
-            auto& id = document.at("id");
+            auto id = document.value("id", "");
             for (auto& i : docIds) {
-                std::print(std::cerr, "{} Match - {} == {}\n", __func__, i, id.dump());
-                matchCount += (i == id.dump());
+                if (id == i) {
+                    matchCount++;
+                    break;
+                }
             }
-            // std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
-            //     if (i == id) matchCount++;
-            // });
         }
     }
     EXPECT_EQ(DOCS, matchCount);
@@ -798,11 +799,12 @@ TEST_F(CosmosClientSuite, queryDocument)
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
     do {
+        std::println(std::cerr, " -- ODD Query: `SELECT * FROM c WHERE c.odd = {}`  pk:`odd.siddiqsoft.com`...", true);
         irt = testSuiteClient.queryDocuments({.database        = testDBName0,
                                               .collection      = testCollectionNames[0],
-                                              .partitionKey    = "odd.siddiqsoft.com", // __pk
-                                              .queryStatement  = "SELECT * FROM c WHERE c.source=@v1",
-                                              .queryParameters = {{{"name", "@v1"}, {"value", sourceId}}}});
+                                              .partitionKey    = "*", // __pk
+                                              .queryStatement  = "SELECT * FROM c WHERE c.odd = @v1",
+                                              .queryParameters = {{{"name", "@v1"}, {"value", true}}}});
         EXPECT_EQ(200, irt.statusCode);
         if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
@@ -810,7 +812,7 @@ TEST_F(CosmosClientSuite, queryDocument)
         std::cerr << "Odd Items: " << irt.document.value("_count", 0)
                   << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
     } while (!irt.continuationToken.empty());
-    EXPECT_EQ(2, allDocsCount); // odd
+    ASSERT_EQ(2, allDocsCount) << allDocs.dump(3);
 
     // Query with partition key "odd"; out of five, 3 should be even: 0, 2
     // Clear stuff..
@@ -821,9 +823,9 @@ TEST_F(CosmosClientSuite, queryDocument)
     do {
         irt = testSuiteClient.queryDocuments({.database        = testDBName0,
                                               .collection      = testCollectionNames[0],
-                                              .partitionKey    = "even.siddiqsoft.com", // __pk
-                                              .queryStatement  = "SELECT * FROM c WHERE c.source=@v1",
-                                              .queryParameters = {{{"name", "@v1"}, {"value", sourceId}}}});
+                                              .partitionKey    = "*", // __pk
+                                              .queryStatement  = "SELECT * FROM c WHERE c.odd=@v1",
+                                              .queryParameters = {{{"name", "@v1"}, {"value", false}}}});
         EXPECT_EQ(200, irt.statusCode);
         if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
@@ -831,7 +833,7 @@ TEST_F(CosmosClientSuite, queryDocument)
         std::cerr << "Even Items: " << irt.document.value("_count", 0)
                   << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
     } while (!irt.continuationToken.empty());
-    EXPECT_EQ(3, allDocsCount); // even
+    EXPECT_EQ(3, allDocsCount) << allDocs.dump(3); // even
 
     // Wait a little bit..
     std::this_thread::sleep_for(std::chrono::seconds(2));

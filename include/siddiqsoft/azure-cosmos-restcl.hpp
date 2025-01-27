@@ -1315,6 +1315,7 @@ namespace siddiqsoft
         /// @return CosmosIterableResponseType @see CosmosIterableResponseType for details on the sample multi-query.
         /// @see https://docs.microsoft.com/en-us/rest/api/cosmos-db/q
         /// @see https://docs.microsoft.com/en-us/azure/cosmos-db/sql/sql-query-getting-started
+        /// @see https://learn.microsoft.com/en-us/rest/api/cosmos-db/query-documents
         ///
         /// @remarks
         /// The response is paged so you will need to combine the results into
@@ -1356,7 +1357,7 @@ namespace siddiqsoft
                     {"x-ms-max-item-count", -1}, // -1: Let Cosmos figure out item count
                     {"x-ms-documentdb-isquery", "true"},
                     {"x-ms-version", config["apiVersion"]},
-                    {"Content-Type", "application/query+json"}};
+                    {"Content-Type", "application/query+json"}}; // The content type must be exactly as-is
 
             if (ctx.queryStatement.empty()) throw std::invalid_argument("Missing queryStatement");
 
@@ -1385,7 +1386,7 @@ namespace siddiqsoft
 
             return make_CosmosIterableResponseType(tt,
                                                    GetRESTClient({{"userAgent", CosmosClientUserAgentString},
-                                                                  {"trace", false},
+                                                                  {"trace", true},
                                                                   {"verifyPeer", 0L},
                                                                   {"freshConnect", false}})
                                                            ->send(req));
