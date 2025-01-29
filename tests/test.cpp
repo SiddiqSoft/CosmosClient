@@ -151,7 +151,7 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        //auto rc9 = TSdeleteDatabase(testDBName0);
+        // auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
 
@@ -800,19 +800,18 @@ TEST_F(CosmosClientSuite, queryDocument)
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
     do {
         std::println(std::cerr, " -- ODD Query: `SELECT * FROM c WHERE c.odd = {}`  pk:`odd.siddiqsoft.com`...", true);
-        irt = testSuiteClient.queryDocuments({.database        = testDBName0,
-                                              .collection      = testCollectionNames[0],
-                                              .partitionKey    = "*", // __pk
-                                              .queryStatement  = "SELECT * FROM c WHERE c.odd = @v1",
-                                              .queryParameters = {{{"name", "@v1"}, {"value", true}}}});
+        irt = testSuiteClient.queryDocuments(
+                {.database        = testDBName0,
+                 .collection      = testCollectionNames[0],
+                 .partitionKey    = "odd.siddiqsoft.com", // __pk
+                 .queryStatement  = "SELECT * FROM c WHERE c.__pk=@v1",
+                 .queryParameters = {{{"name", "@v1"}, {"value", "odd."}}}}); // the params is an array of name-value items
         EXPECT_EQ(200, irt.statusCode);
         if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
         allDocsCount += irt.document.value("_count", 0);
-        std::cerr << "Odd Items: " << irt.document.value("_count", 0)
-                  << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
     } while (!irt.continuationToken.empty());
-    ASSERT_EQ(2, allDocsCount) << allDocs.dump(3);
+    EXPECT_EQ(2, allDocsCount) << allDocs.dump(3);
 
     // Query with partition key "odd"; out of five, 3 should be even: 0, 2
     // Clear stuff..
@@ -830,8 +829,6 @@ TEST_F(CosmosClientSuite, queryDocument)
         if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
             allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
         allDocsCount += irt.document.value("_count", 0);
-        std::cerr << "Even Items: " << irt.document.value("_count", 0)
-                  << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(irt.ttx) << std::endl;
     } while (!irt.continuationToken.empty());
     EXPECT_EQ(3, allDocsCount) << allDocs.dump(3); // even
 
@@ -1417,22 +1414,17 @@ TEST_F(CosmosClientSuite, MoveConstruct)
     EXPECT_EQ(2, clients.size());
 }
 
-TEST(Validation, configure_multi)
+/**
+ * @brief This test requires we have a database with container otheriwse the locations properties will be empty!
+ *
+ */
+TEST_F(CosmosClientSuite, configure_multi)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-
     std::vector<siddiqsoft::CosmosClient> clients;
 
     for (auto i = 0; i < 4; i++) {
         clients.emplace_back(siddiqsoft::CosmosClient {})
-                .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+                .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
     }
 
     EXPECT_EQ(4, clients.size());

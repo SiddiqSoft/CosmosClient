@@ -372,19 +372,19 @@ namespace siddiqsoft
 
         crt.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(DEBUG0)
+#if defined(COSMOSCLIENT_TESTING_MODE)
             std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
 #endif
 
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 
-#if defined(DEBUG0)
+#if defined(COSMOSCLIENT_TESTING_MODE)
             std::println(std::cerr, "{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
-#if defined(DEBUG0)
+#if defined(COSMOSCLIENT_TESTING_MODE)
             std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
 #endif
             // Has value but not successful, return the code
@@ -525,6 +525,9 @@ namespace siddiqsoft
 
         crt.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
+#if defined(COSMOSCLIENT_TESTING_MODE)
+            std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
+#endif
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
             try {
@@ -532,14 +535,22 @@ namespace siddiqsoft
             }
             catch (...) {
             }
+
+#if defined(COSMOSCLIENT_TESTING_MODE)
+            std::println(std::cerr, "{} - CIRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
+#endif
         }
         else if (ret.has_value()) {
+#if defined(COSMOSCLIENT_TESTING_MODE)
+            std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
+#endif
             // Has value but not successful, return the code
             std::tie(crt.statusCode, std::ignore) = ret->status();
         }
         else {
             crt.statusCode = ret.error();
         }
+
         return std::move(crt);
     }
 
@@ -1355,17 +1366,18 @@ namespace siddiqsoft
                              cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", ctx.database, ctx.collection), ts)},
                     {"x-ms-date", ts},
                     {"x-ms-max-item-count", -1}, // -1: Let Cosmos figure out item count
-                    {"x-ms-documentdb-isquery", "true"},
+                    {"x-ms-documentdb-isquery", true},
                     {"x-ms-version", config["apiVersion"]},
+                    {"Accept", "application/json"},
                     {"Content-Type", "application/query+json"}}; // The content type must be exactly as-is
 
             if (ctx.queryStatement.empty()) throw std::invalid_argument("Missing queryStatement");
 
             if (ctx.partitionKey.starts_with("*")) {
                 // Special case query with partitioned data set.
-                headers["x-ms-documentdb-query-enablecrosspartition"] = "true";
+                headers["x-ms-documentdb-query-enablecrosspartition"] = true;
                 // This is required if the client does not provide partitionkey
-                headers["x-ms-query-enable-crosspartition"] = "true";
+                headers["x-ms-query-enable-crosspartition"] = true;
             }
             else if (!ctx.partitionKey.empty()) {
                 // Specific partition set by client.
@@ -1550,12 +1562,11 @@ static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const 
 
 /// @brief Serializer for the CosmosIterableResponseType
 template <>
-struct std::formatter<siddiqsoft::CosmosIterableResponseType> : std::formatter<std::basic_string<char>>
+struct std::formatter<siddiqsoft::CosmosIterableResponseType> : std::formatter<std::string>
 {
-    template <class FC>
-    auto format(const siddiqsoft::CosmosIterableResponseType& s, FC& ctx) const
+    auto format(const siddiqsoft::CosmosIterableResponseType& s, auto& ctx) const
     {
-        return std::formatter<std::basic_string<char>>::format(nlohmann::json(s).dump(), ctx);
+        return std::format_to(ctx.out(), "CIRT:- statusCode: {}, document: {}, ttx: {}  ctoken: {}", s.statusCode, s.document.dump(), s.ttx, s.continuationToken);
     }
 };
 
@@ -1566,7 +1577,7 @@ struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::stri
 {
     auto format(const siddiqsoft::CosmosResponseType& s, auto& ctx) const
     {
-        return std::format_to(ctx.out(), "statusCode: {}, document: {}, ttx: {}", s.statusCode, s.document.dump(), s.ttx);
+        return std::format_to(ctx.out(), "CRT:- statusCode: {}, document: {}, ttx: {}", s.statusCode, s.document.dump(), s.ttx);
     }
 };
 
