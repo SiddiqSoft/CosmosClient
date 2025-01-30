@@ -47,7 +47,7 @@
 #include <semaphore>
 
 #include "nlohmann/json.hpp"
-#include "../include/siddiqsoft/azure-cosmos-restcl.hpp"
+#include "../include/siddiqsoft/cosmoscl.hpp"
 
 /*
  * Required Environment Variables
@@ -62,7 +62,7 @@ static const std::string EMULATOR_CONNECTION_STRING =
 static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 static const std::string EMULATOR_ENDPOINT = "localhost:8081";
 
-class CosmosClient : public ::testing::Test
+class CosmosClientAsync : public ::testing::Test
 {
 public:
     static auto GetConnectionStrings() -> std::pair<std::string, std::string>
@@ -89,14 +89,14 @@ public:
     {
         siddiqsoft::CosmosClient cc;
 
-        cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+        cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
     }
 };
 
 /// @brief Example code
 /// Declare the instance, configure and createDocument a document with only three lines!
 /// The code here is based on configuration and dynamic fetching for the database, collection and regions.
-TEST_F(CosmosClientSuite, async_example)
+TEST_F(CosmosClientAsync, async_example)
 {
     std::atomic_bool passTest = false;
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
@@ -168,7 +168,7 @@ TEST_F(CosmosClientSuite, async_example)
 }
 
 
-TEST_F(CosmosClientSuite, async_listDatabases)
+TEST_F(CosmosClientAsync, async_listDatabases)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -191,7 +191,7 @@ TEST_F(CosmosClientSuite, async_listDatabases)
 }
 
 
-TEST_F(CosmosClientSuite, async_listCollections)
+TEST_F(CosmosClientAsync, async_listCollections)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -219,7 +219,7 @@ TEST_F(CosmosClientSuite, async_listCollections)
 }
 
 /// @brief Tests the listDocuments with a limit of 7 iterations
-TEST_F(CosmosClientSuite, async_listDocuments)
+TEST_F(CosmosClientAsync, async_listDocuments)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -253,7 +253,7 @@ TEST_F(CosmosClientSuite, async_listDocuments)
               .database   = rc.document.value("/Databases/0/id"_json_pointer, ""),
               .collection = rc2.document.value("/DocumentCollections/0/id"_json_pointer, ""),
               .onResponse = [&](auto const& ctx, auto const& resp) {
-                  totalDocs += resp.document.value<uint32_t>("_count", 0);
+                  totalDocs += resp.document.value("_count", 0);
                   --iteration;
                   std::cerr << std::format("....{:02} {}/{}...status:{}..current totalDocs: {:04}...ttx:{}\n",
                                            iteration,
@@ -272,7 +272,7 @@ TEST_F(CosmosClientSuite, async_listDocuments)
 
 
 /// @brief Test createDocument document with missing "id" field in the document
-TEST_F(CosmosClientSuite, async_createDocument_MissingId)
+TEST_F(CosmosClientAsync, async_createDocument_MissingId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -314,7 +314,7 @@ TEST_F(CosmosClientSuite, async_createDocument_MissingId)
 
 
 /// @brief Test createDocument document with missing partition key field in the document
-TEST_F(CosmosClientSuite, async_createDocument_MissingPkId)
+TEST_F(CosmosClientAsync, async_createDocument_MissingPkId)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -354,7 +354,7 @@ TEST_F(CosmosClientSuite, async_createDocument_MissingPkId)
 }
 
 
-TEST_F(CosmosClientSuite, async_nestedOps)
+TEST_F(CosmosClientAsync, async_nestedOps)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -470,23 +470,14 @@ TEST_F(CosmosClientSuite, async_nestedOps)
     passTest.wait(false);
 }
 
-TEST_F(CosmosClientSuite, async_discoverRegions)
+TEST_F(CosmosClientAsync, async_discoverRegions)
 {
     std::atomic_bool passTest = false;
-
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    std::string priConnStr = std::getenv("CCTEST_PRIMARY_CS");
-    std::string secConnStr = std::getenv("CCTEST_SECONDARY_CS");
-
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
     siddiqsoft::CosmosClient cc;
 
     // The configure calls the method discoverRegions
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
 
     // ASSERT_NO_THROW(cc.async(nlohmann::json {{"operation", "discoverRegions"}, {"source", __func__}},
     //                         [&](auto& resp) { passTest = true; }));
@@ -514,7 +505,7 @@ TEST_F(CosmosClientSuite, async_discoverRegions)
 }
 
 
-TEST_F(CosmosClientSuite, async_queryDocument)
+TEST_F(CosmosClientAsync, async_queryDocument)
 {
     // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
     // WARNING!
@@ -525,7 +516,7 @@ TEST_F(CosmosClientSuite, async_queryDocument)
     std::string              collectionName {};
     std::vector<std::string> docIds {};
     std::string              pkId {"siddiqsoft.com"};
-    std::string              sourceId = std::format("{}-{}", _getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
+    std::string              sourceId = std::format("{}-{}", getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
     constexpr auto           DOCS {5};
 
     ASSERT_FALSE(priConnStr.empty())
@@ -602,10 +593,13 @@ TEST_F(CosmosClientSuite, async_queryDocument)
     auto matchCount = 0;
     for (auto& document : allDocs) {
         if (!document.is_null()) {
-            auto& id = document.at("id");
-            std::for_each(docIds.begin(), docIds.end(), [&matchCount, &id](auto& i) {
-                if (i == id) matchCount++;
-            });
+            auto id = document.value("id", "");
+            for (auto& i : docIds) {
+                if (i == id) {
+                    matchCount++;
+                    break;
+                }
+            }
         }
     }
     EXPECT_EQ(DOCS, matchCount);

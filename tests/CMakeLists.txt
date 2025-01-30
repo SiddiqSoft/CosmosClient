@@ -34,14 +34,14 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
 
     # Our tests depend on this preprocessor definition during CI/test mode to enable
     # access to protected members.
-    add_compile_definitions(${TESTPROJ} PRIVATE COSMOSCLIENT_TESTING_MODE=1)
+    add_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
 
     # Dependencies
     #cpmaddpackage("gh:google/googletest#v1.15.2")
     CPMAddPackage("gh:google/googletest#7d76a231b0e29caf86e68d1df858308cd53b2a66")
     target_sources( ${TESTPROJ}
                     PRIVATE
-                    #${PROJECT_SOURCE_DIR}/tests/test_async.cpp
+                    ${PROJECT_SOURCE_DIR}/tests/test_async.cpp
                     ${PROJECT_SOURCE_DIR}/tests/test.cpp)
     # Link dependencies..
     target_link_libraries(${TESTPROJ} PRIVATE

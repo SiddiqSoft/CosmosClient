@@ -34,8 +34,8 @@
 
 #pragma once
 #include <type_traits>
-#ifndef AZURE_COSMOS_RESTCL_HPP
-#define AZURE_COSMOS_RESTCL_HPP
+#ifndef COSMOSCL_HPP
+#define COSMOSCL_HPP
 
 
 #include <string>
@@ -375,12 +375,12 @@ namespace siddiqsoft
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 
-#if defined(COSMOSCLIENT_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE)
             std::println(std::cerr, "{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
-#if defined(COSMOSCLIENT_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE)
             std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
 #endif
             // Has value but not successful, return the code
@@ -521,7 +521,7 @@ namespace siddiqsoft
 
         crt.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(COSMOSCLIENT_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE)
             std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
 #endif
             crt.statusCode = ret->statusCode();
@@ -532,12 +532,12 @@ namespace siddiqsoft
             catch (...) {
             }
 
-#if defined(COSMOSCLIENT_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE)
             std::println(std::cerr, "{} - CIRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
-#if defined(COSMOSCLIENT_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE)
             std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
 #endif
             // Has value but not successful, return the code
@@ -576,7 +576,7 @@ namespace siddiqsoft
     /// @see Documentation is here: https://docs.microsoft.com/en-us/rest/api/documentdb/documentdb-resource-uri-syntax-for-rest
     class CosmosClient
     {
-#if defined(COSMOSCLIENT_TESTING_MODE)
+#if defined(cosmoscl_TESTING_MODE)
     public:
 #else
     protected:
@@ -1149,29 +1149,29 @@ namespace siddiqsoft
         /// @see Example over at https://docs.microsoft.com/en-us/rest/api/documentdb/create-a-document
         CosmosResponseType createDocument(CosmosArgumentType const& ctx)
         {
-            timethis tt {};
+            timethis     tt {};
+            auto         ts        = DateUtils::RFC7231();
+            std::string& pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
+            auto         pkId      = ctx.document.value(pkKeyName, "");
 
             if (ctx.document.value("id", "").empty()) throw std::invalid_argument("create - I need the uniqueid of the document");
             if (!ctx.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
                 throw std::invalid_argument("create - I need the partitionId of the document");
 
-            auto         ts        = DateUtils::RFC7231();
-            std::string& pkKeyName = config.at("/partitionKeyNames/0"_json_pointer).get_ref<std::string&>();
-            auto         pkId      = ctx.document.value(pkKeyName, "");
 
-            auto         req       = rest_request<char> {
+            auto req = rest_request<char> {
                     HttpMethodType::METHOD_POST,
                     std::format("{}dbs/{}/colls/{}/docs", cnxn.current().currentWriteUri(), ctx.database, ctx.collection),
                     {{"Authorization",
-                                    EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
+                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key,
                                                          "POST",
                                                          "docs",
                                                          std::format("dbs/{}/colls/{}", ctx.database, ctx.collection),
                                                          ts)},
-                                   {"x-ms-date", ts},
-                                   {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
-                                   {"x-ms-version", config["apiVersion"]},
-                                   {"x-ms-cosmos-allow-tentative-writes", "true"}},
+                     {"x-ms-date", ts},
+                     {"x-ms-documentdb-partitionkey", nlohmann::json {pkId}},
+                     {"x-ms-version", config["apiVersion"]},
+                     {"x-ms-cosmos-allow-tentative-writes", "true"}},
                     ctx.document};
 
             return make_CosmosResponseType(tt,
@@ -1562,7 +1562,12 @@ struct std::formatter<siddiqsoft::CosmosIterableResponseType> : std::formatter<s
 {
     auto format(const siddiqsoft::CosmosIterableResponseType& s, auto& ctx) const
     {
-        return std::format_to(ctx.out(), "CIRT:- statusCode: {}, document: {}, ttx: {}  ctoken: {}", s.statusCode, s.document.dump(), s.ttx, s.continuationToken);
+        return std::format_to(ctx.out(),
+                              "CIRT:- statusCode: {}, document: {}, ttx: {}  ctoken: {}",
+                              s.statusCode,
+                              s.document.dump(),
+                              s.ttx,
+                              s.continuationToken);
     }
 };
 
@@ -1598,4 +1603,4 @@ struct std::formatter<siddiqsoft::CosmosArgumentType> : std::formatter<std::basi
     }
 };
 
-#endif // !AZURE_COSMOS_RESTCL_HPP
+#endif // !COSMOSCL_HPP
