@@ -464,7 +464,7 @@ TEST_F(CosmosClientAsync, async_queryDocument)
                            .database        = dbName,
                            .collection      = collectionName,
                            .partitionKey    = "*",
-                           .queryStatement  = "SELECT * FROM c WHERE contains(c.extra, @v1)",
+                           .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
                            .queryParameters = {{{"name", "@v1"}, {"value", "odd"}}},
                            .onResponse      = [&](auto const& ctx, auto const& resp) {
                                std::cerr << std::format("....2..{}\n", resp);
