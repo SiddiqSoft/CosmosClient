@@ -223,15 +223,16 @@ stages:
         script: |
           podman ps
           echo "Stop existing/running emulator if present.."
-          podman container stop linux-emulator
+          podman stop linux-emulator
           echo "Remove the container name.."
-          podman container remove linux-emulator
+          podman rm linux-emulator
           echo "Update/fetch emulator.."
           podman pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
           echo "Start the emulator as linux-emulator.."
           podman run \
               --publish 8081:8081 \
               --publish 1234:1234 \
+              --replace \
               --name linux-emulator \
               --detach \
               mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
@@ -259,9 +260,9 @@ stages:
         script: |
           podman ps
           echo "Stop the running emulator.."
-          podman container stop linux-emulator
+          podman stop linux-emulator
           echo "Remove the container name.."
-          podman container remove linux-emulator
+          podman remove linux-emulator
       condition: succeeded()
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'
