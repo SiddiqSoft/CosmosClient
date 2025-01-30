@@ -818,6 +818,9 @@ namespace siddiqsoft
             // We need to perform some basic validations otherwise we cannot expect to throw within the callback as it would be
             // inefficient to throw for such basic validations.
             switch (op.operation) {
+                case CosmosOperation::discoverRegions:
+                case CosmosOperation::listDatabases: break;
+
                 case CosmosOperation::createDatabase: {
                     if (op.database.empty()) throw std::invalid_argument("op.database required");
                 } break;
@@ -866,13 +869,13 @@ namespace siddiqsoft
                     break;
                 default:
                     throw std::invalid_argument(
-                            std::format("{} requires op.operation be valid: {}", __func__, std::to_underlying(op.operation)));
+                            std::format("{} requires op.operation be valid: {}", __func__, nlohmann::json(op.operation).dump()));
             }
 
             // Elementary checks..
             if (op.operation == CosmosOperation::notset)
                 throw std::invalid_argument(
-                        std::format("{} requires op.operation be valid: {}", __func__, std::to_underlying(op.operation)));
+                        std::format("{} requires op.operation be set: {}", __func__, std::to_underlying(op.operation)));
             if (!op.onResponse) throw std::invalid_argument("async requires op.onResponse be valid callback");
 
             // We can now queue the request..
@@ -1586,11 +1589,12 @@ struct std::formatter<siddiqsoft::CosmosResponseType> : std::formatter<std::stri
 template <>
 struct std::formatter<siddiqsoft::CosmosOperation> : std::formatter<std::underlying_type<siddiqsoft::CosmosOperation>>
 {
-    auto format(siddiqsoft::CosmosOperation co, auto& ctx) const
+    auto format(const siddiqsoft::CosmosOperation& co, auto& ctx) const
     {
         return std::format_to(ctx.out(), "{}", nlohmann::json(co).dump());
     }
 };
+
 
 /// @brief Serializer for the CosmosArgumentType
 template <>

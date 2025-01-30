@@ -23,7 +23,8 @@ static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU
 static const std::string EMULATOR_ENDPOINT = "localhost:8081";
 static const uint        SEED_DOCUMENT_COUNT {10};
 static std::string       testDBName                 = std::format("cosmoscl_test_DB{}", __COUNTER__);
-static std::string       testDBName0                = std::format("cosmoscl_test_DB0_{}", __COUNTER__);
+static std::string       testDBName0                = std::format("cosmoscl_DB_0");
+static std::string       testDBName1                = std::format("cosmoscl_DB_1");
 static std::vector<std::string> testCollectionNames = {std::format("cosmoscl_test_COLL{}", __COUNTER__),
                                                        std::format("cosmoscl_test_COLL{}", __COUNTER__),
                                                        std::format("cosmoscl_test_COLL{}", __COUNTER__)};

@@ -104,7 +104,7 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        auto rc9 = TSdeleteDatabase(testDBName0);
+        //auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
 

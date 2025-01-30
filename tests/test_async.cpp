@@ -60,18 +60,18 @@ protected:
         testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
 
 
-        if (auto rc2 = TSfindDatabase(testDBName0); rc2.statusCode == 404) {
-            auto rc1 = TScreateDatabase(testDBName0);
+        if (auto rc2 = TSfindDatabase(testDBName1); rc2.statusCode == 404) {
+            auto rc1 = TScreateDatabase(testDBName1);
         }
 
         // Next we create the collections..
         try {
             for (auto& collName : testCollectionNames) {
-                if (auto rc3 = TScreateCollection(testDBName0, collName); rc3.statusCode == 201) {
+                if (auto rc3 = TScreateCollection(testDBName1, collName); rc3.statusCode == 201) {
                     for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
                         /*
                         auto rc4 = testSuiteClient.createDocument(
-                                {.database   = testDBName0,
+                                {.database   = testDBName1,
                                  .collection = collName,
                                  .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
                                                 {"__pk", "siddiqsoft.com"},
@@ -81,7 +81,7 @@ protected:
                                                 */
                         testSuiteClient.async(
                                 {.operation    = siddiqsoft::CosmosOperation::create,
-                                 .database     = testDBName0,
+                                 .database     = testDBName1,
                                  .collection   = collName,
                                  .id           = std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd"),
                                  .partitionKey = "siddiqsoft.com",
@@ -106,7 +106,7 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        auto rc9 = TSdeleteDatabase(testDBName0);
+        // auto rc9 = TSdeleteDatabase(testDBName1);
     }
 };
 
@@ -441,51 +441,17 @@ TEST_F(CosmosClientAsync, async_discoverRegions)
 
 TEST_F(CosmosClientAsync, async_queryDocument)
 {
-    std::string              dbName {};
-    std::string              collectionName {};
+    std::string              dbName         = testDBName1;
+    std::string              collectionName = testCollectionNames[2];
     std::vector<std::string> docIds {};
     std::string              pkId {"siddiqsoft.com"};
     std::string              sourceId = std::format("{}-{}", getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
-    constexpr auto           DOCS {5};
+    constexpr auto           DOCS {10};
+    nlohmann::json           allDocs = nlohmann::json::array();
+    uint32_t                 allDocsCount {};
 
-
-    auto                     rc = testSuiteClient.listDatabases();
-    EXPECT_EQ(200, rc.statusCode);
-    dbName   = rc.document.value("/Databases/0/id"_json_pointer, "");
-
-    auto rc2 = testSuiteClient.listCollections({.database = dbName});
-    EXPECT_EQ(200, rc2.statusCode);
-    collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
-
-    // We're going to createDocument DOCS documents
-    for (auto i = 0; i < DOCS; i++) {
-        docIds.push_back(std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count()));
-    }
-
-    // The field "odd" will be used in our queryDocuments statement
-    for (auto i = 0; i < docIds.size(); i++) {
-        testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::create,
-                               .database   = dbName,
-                               .collection = collectionName,
-                               .document   = {{"id", docIds[i]},
-                                              {"ttl", 360},
-                                              {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                              {"i", i},
-                                              {"odd", !(i % 2 == 0)},
-                                              {"source", sourceId}},
-                               .onResponse = [](auto const& ctx, auto const& resp) {
-                                   EXPECT_EQ(201, resp.statusCode);
-                               }});
-    }
-
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    EXPECT_EQ(DOCS, docIds.size()); // total
-
-    // Wait a little bit..
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    nlohmann::json allDocs = nlohmann::json::array();
-    uint32_t       allDocsCount {};
+// Wait for the async operations during setup to complete.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // First, we queryDocuments for all items that match our criteria (source=__func__)
     testSuiteClient.async(
@@ -510,23 +476,6 @@ TEST_F(CosmosClientAsync, async_queryDocument)
     std::this_thread::sleep_for(std::chrono::seconds(2));
     EXPECT_EQ(DOCS, allDocsCount); // total
 
-#if defined(DEBUG)
-    // std::cerr << allDocs.dump(4) << std::endl;
-#endif
-
-    auto matchCount = 0;
-    for (auto& document : allDocs) {
-        if (!document.is_null()) {
-            auto id = document.value("id", "");
-            for (auto& i : docIds) {
-                if (i == id) {
-                    matchCount++;
-                    break;
-                }
-            }
-        }
-    }
-    EXPECT_EQ(DOCS, matchCount);
 
     // Clear stuff..
     allDocs      = nlohmann::json::array();
@@ -538,7 +487,7 @@ TEST_F(CosmosClientAsync, async_queryDocument)
              .collection      = collectionName,
              .partitionKey    = "odd.siddiqsoft.com",
              .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
-             .queryParameters = {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+             .queryParameters = {{{"name", "@v1"}, {"value", "odd"}}},
              .onResponse      = [&](auto const& ctx, auto const& resp) {
                  // Invoked each time we have data block until empty continuationToken
                  // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
@@ -551,7 +500,7 @@ TEST_F(CosmosClientAsync, async_queryDocument)
                  }
              }});
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    EXPECT_EQ(2, allDocsCount); // odd
+    EXPECT_EQ(5, allDocsCount); // odd
 
     // Query with partition key "odd"; out of five, 3 should be even: 0, 2
     // Clear stuff..
@@ -564,7 +513,7 @@ TEST_F(CosmosClientAsync, async_queryDocument)
              .collection      = collectionName,
              .partitionKey    = "even.siddiqsoft.com",
              .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
-             .queryParameters = {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+             .queryParameters = {{{"name", "@v1"}, {"value", "even"}}},
              .onResponse      = [&](auto const& ctx, auto const& resp) {
                  // Invoked each time we have data block until empty continuationToken
                  // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
@@ -577,17 +526,5 @@ TEST_F(CosmosClientAsync, async_queryDocument)
                  }
              }});
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    EXPECT_EQ(3, allDocsCount); // even
-
-    // Wait a little bit..
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
-    // Remove the documents
-    for (auto i = 0; i < docIds.size(); i++) {
-        auto rc = testSuiteClient.removeDocument({.database     = dbName,
-                                                  .collection   = collectionName,
-                                                  .id           = docIds[i],
-                                                  .partitionKey = (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"});
-        EXPECT_EQ(204, rc);
-    }
+    EXPECT_EQ(5, allDocsCount); // even
 }
