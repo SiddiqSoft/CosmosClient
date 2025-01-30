@@ -146,22 +146,24 @@ protected:
                                  .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
                                                 {"__pk", "siddiqsoft.com"},
                                                 {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
-                                                {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
+                                                {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" :
+                        "odd")}}});
                                                 */
-                        cc.async({.operation    = siddiqsoft::CosmosOperation::create,
-                                  .database     = testDBName0,
-                                  .collection   = collName,
-                                  .id           = std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd"),
-                                  .partitionKey = pkId,
-                                  .document     = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                   {"ttl", 1360},
-                                                   {"__pk", "siddiqsoft.com"},
-                                                   {"func", __func__},
-                                                   {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}},
-                                  .onResponse   = [&](siddiqsoft::CosmosArgumentType const& ctx,
-                                                    siddiqsoft::CosmosResponseType const& resp) {
-                                      std::cerr << std::format("Completed create: {}\n", resp);
-                                  }});
+                        testSuiteClient.async(
+                                {.operation    = siddiqsoft::CosmosOperation::create,
+                                 .database     = testDBName0,
+                                 .collection   = collName,
+                                 .id           = std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd"),
+                                 .partitionKey = "siddiqsoft.com",
+                                 .document     = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                                                  {"ttl", 1360},
+                                                  {"__pk", "siddiqsoft.com"},
+                                                  {"func", __func__},
+                                                  {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}},
+                                 .onResponse   = [&](siddiqsoft::CosmosArgumentType const& ctx,
+                                                   siddiqsoft::CosmosResponseType const& resp) {
+                                     std::cerr << std::format("Completed create: {}\n", resp);
+                                 }});
                     }
                 }
             }
