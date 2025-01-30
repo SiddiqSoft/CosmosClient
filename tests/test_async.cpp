@@ -69,17 +69,16 @@ protected:
             for (auto& collName : testCollectionNames) {
                 if (auto rc3 = TScreateCollection(testDBName1, collName); rc3.statusCode == 201) {
                     for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
-                        /*
-                        auto rc4 = testSuiteClient.createDocument(
-                                {.database   = testDBName1,
-                                 .collection = collName,
-                                 .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                {"__pk", "siddiqsoft.com"},
-                                                {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
-                                                {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" :
-                        "odd")}}});
-                                                */
-                        testSuiteClient.async(
+                        auto rc4 =
+                                testSuiteClient.createDocument({.database   = testDBName1,
+                                                                .collection = collName,
+                                                                .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                                                                               {"__pk", (i % 2) == 0 ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                                                               {"func", __func__},
+                                                                               {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
+                                                                               {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
+
+                        /*testSuiteClient.async(
                                 {.operation    = siddiqsoft::CosmosOperation::create,
                                  .database     = testDBName1,
                                  .collection   = collName,
@@ -89,11 +88,10 @@ protected:
                                                   {"ttl", 1360},
                                                   {"__pk", "siddiqsoft.com"},
                                                   {"func", __func__},
-                                                  {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}},
-                                 .onResponse   = [&](siddiqsoft::CosmosArgumentType const& ctx,
-                                                   siddiqsoft::CosmosResponseType const& resp) {
-                                     std::cerr << std::format("Completed create: {}\n", resp);
-                                 }});
+                                                  {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" :
+                           "odd")}}, .onResponse   = [&](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType
+                           const& resp) { std::cerr << std::format("Completed create: {}\n", resp);
+                                 }});*/
                     }
                 }
             }
@@ -121,54 +119,45 @@ TEST_F(CosmosClientAsync, async_example)
     siddiqsoft::CosmosClient cc;
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
 
-    cc.async(
-            {.operation  = siddiqsoft::CosmosOperation::listDatabases,
-             .onResponse = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
-                 std::cerr << std::format("Completed listDatabases: {}\n", resp);
+    cc.async({.operation  = siddiqsoft::CosmosOperation::listDatabases,
+              .onResponse = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
+                  std::cerr << std::format("Completed listDatabases: {}\n", resp);
 
-                 auto dbName = resp.document.value("/Databases/0/id"_json_pointer, "");
-                 testSuiteClient.async(
-                         {.operation  = siddiqsoft::CosmosOperation::listCollections,
-                          .database   = dbName,
-                          .onResponse = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx,
-                                                         siddiqsoft::CosmosResponseType const& resp) {
-                              std::cerr << std::format("Completed listCollections: {}\n", resp);
+                  auto dbName = resp.document.value("/Databases/0/id"_json_pointer, "");
+                  testSuiteClient.async(
+                          {.operation  = siddiqsoft::CosmosOperation::listCollections,
+                           .database   = dbName,
+                           .onResponse = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
+                               std::cerr << std::format("Completed listCollections: {}\n", resp);
 
-                              auto collectionName = resp.document.value("/DocumentCollections/0/id"_json_pointer, "");
-                              auto id             = std::format("azure-cosmos-restcl.{}",
-                                                    std::chrono::system_clock().now().time_since_epoch().count());
-                              auto pkId           = "siddiqsoft.com";
+                               auto collectionName = resp.document.value("/DocumentCollections/0/id"_json_pointer, "");
+                               auto id             = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+                               auto pkId           = "siddiqsoft.com";
 
-                              testSuiteClient.async(
-                                      {.operation    = siddiqsoft::CosmosOperation::create,
-                                       .database     = ctx.database,
-                                       .collection   = collectionName,
-                                       .id           = id,
-                                       .partitionKey = pkId,
-                                       .document     = {{"id", id},
-                                                        {"ttl", 360},
-                                                        {"__pk", pkId},
-                                                        {"func", __func__},
-                                                        {"source", "basic_tests.exe"}},
-                                       .onResponse   = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx,
-                                                                      siddiqsoft::CosmosResponseType const& resp) {
-                                           std::cerr << std::format("Completed create: {}\n", resp);
-                                           // Remove the document
-                                           testSuiteClient.async(
-                                                   {.operation    = siddiqsoft::CosmosOperation::remove,
-                                                      .database     = ctx.database,
-                                                      .collection   = ctx.collection,
-                                                      .id           = resp.document.value("id", ctx.id),
-                                                      .partitionKey = ctx.partitionKey,
-                                                      .onResponse   = [&cc, &passTest](auto const& ctx, auto const& resp) {
-                                                        std::cerr << std::format("Completed removeDocument: {}\n", resp);
-                                                        // Document should be removed.
-                                                        passTest = true;
-                                                        passTest.notify_all();
-                                                    }});
-                                       }});
-                          }});
-             }});
+                               testSuiteClient.async(
+                                       {.operation    = siddiqsoft::CosmosOperation::create,
+                                        .database     = ctx.database,
+                                        .collection   = collectionName,
+                                        .id           = id,
+                                        .partitionKey = pkId,
+                                        .document     = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"func", __func__}, {"source", "basic_tests.exe"}},
+                                        .onResponse   = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
+                                            std::cerr << std::format("Completed create: {}\n", resp);
+                                            // Remove the document
+                                            testSuiteClient.async({.operation    = siddiqsoft::CosmosOperation::remove,
+                                                                     .database     = ctx.database,
+                                                                     .collection   = ctx.collection,
+                                                                     .id           = resp.document.value("id", ctx.id),
+                                                                     .partitionKey = ctx.partitionKey,
+                                                                     .onResponse   = [&cc, &passTest](auto const& ctx, auto const& resp) {
+                                                                       std::cerr << std::format("Completed removeDocument: {}\n", resp);
+                                                                       // Document should be removed.
+                                                                       passTest = true;
+                                                                       passTest.notify_all();
+                                                                   }});
+                                        }});
+                           }});
+              }});
 
     // Holds until the test completes
     passTest.wait(false);
@@ -182,8 +171,7 @@ TEST_F(CosmosClientAsync, async_example)
 
 TEST_F(CosmosClientAsync, async_listDatabases)
 {
-    testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::listDatabases,
-                           .onResponse = [](auto const& req, const siddiqsoft::CosmosResponseType& resp) {
+    testSuiteClient.async({.operation = siddiqsoft::CosmosOperation::listDatabases, .onResponse = [](auto const& req, const siddiqsoft::CosmosResponseType& resp) {
                                // Expect success.
                                EXPECT_EQ(200, resp.statusCode);
                            }});
@@ -192,8 +180,7 @@ TEST_F(CosmosClientAsync, async_listDatabases)
 
 TEST_F(CosmosClientAsync, async_listCollections)
 {
-    testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::listDatabases,
-                           .onResponse = [&](auto const& req, const siddiqsoft::CosmosResponseType& resp) {
+    testSuiteClient.async({.operation = siddiqsoft::CosmosOperation::listDatabases, .onResponse = [&](auto const& req, const siddiqsoft::CosmosResponseType& resp) {
                                // Expect success.
                                EXPECT_EQ(200, resp.statusCode);
                                testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::listCollections,
@@ -294,12 +281,11 @@ TEST_F(CosmosClientAsync, async_createDocument_MissingPkId)
     id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
-    EXPECT_THROW(
-            testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::create,
-                                   .database   = dbName,
-                                   .collection = collectionName,
-                                   .document   = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
-            , std::invalid_argument);
+    EXPECT_THROW(testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::create,
+                                        .database   = dbName,
+                                        .collection = collectionName,
+                                        .document   = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
+                 , std::invalid_argument);
 }
 
 
@@ -312,101 +298,94 @@ TEST_F(CosmosClientAsync, async_nestedOps)
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}}));
 
     // First we get the first database from the connection string..
-    cc.async(
-            {.operation  = siddiqsoft::CosmosOperation::listDatabases,
-             .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                 std::cerr << std::format("....0..{}\n", ctx);
-                 EXPECT_EQ(200, resp.statusCode);
-                 // Find out the first collection's name..
-                 cc.async(
-                         {.operation  = siddiqsoft::CosmosOperation::listCollections,
-                          .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
-                          .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                              std::cerr << std::format("....1..{}\n", ctx);
-                              EXPECT_EQ(200, resp.statusCode);
-                              // Create a document..
-                              cc.async(
-                                      {.operation    = siddiqsoft::CosmosOperation::create,
-                                       .database     = ctx.database,
-                                       .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
-                                       .partitionKey = "siddiqsoft.com",
-                                       .document     = {{"id",
-                                                         std::format("azure-cosmos-restcl.{}",
-                                                                 std::chrono::system_clock().now().time_since_epoch().count())},
-                                                        {"ttl", 1360},
-                                                        {"__pk", "siddiqsoft.com"},
-                                                        {"mode", "create"},
-                                                        {"source", "basic_tests.exe"}},
-                                       .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                                           std::cerr << std::format("....2..{}\n", ctx);
-                                           EXPECT_EQ(201, resp.statusCode);
-                                           EXPECT_EQ("create", resp.document.value("mode", ""));
+    auto thisUniqueDocId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    cc.async({.operation = siddiqsoft::CosmosOperation::listDatabases, .onResponse = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                  std::cerr << std::format("....0..id:{}..{}\n", thisUniqueDocId, ctx);
+                  EXPECT_EQ(200, resp.statusCode);
+                  // Find out the first collection's name..
+                  cc.async({.operation  = siddiqsoft::CosmosOperation::listCollections,
+                            .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
+                            .onResponse = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                                std::cerr << std::format("....1..id:{}..{}\n", thisUniqueDocId, ctx);
+                                EXPECT_EQ(200, resp.statusCode);
+                                // Create a document..
+                                cc.async({.operation    = siddiqsoft::CosmosOperation::create,
+                                          .database     = ctx.database,
+                                          .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
+                                          .partitionKey = "siddiqsoft.com",
+                                          .document     = {{"id", thisUniqueDocId},
+                                                           {"ttl", 1360},
+                                                           {"__pk", "siddiqsoft.com"},
+                                                           {"mode", "create-new"},
+                                                           {"source", "basic_tests.exe"}},
+                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                                              std::cerr << std::format("....2..id:{}..{}\n", resp.document.value("id", ""), ctx);
+                                              EXPECT_EQ(201, resp.statusCode);
+                                              EXPECT_EQ(thisUniqueDocId, resp.document.value("id", ""));
+                                              EXPECT_EQ("create-new", resp.document.value("mode", ""));
 
-                                           // Now we upsert..
-                                           auto newDocument    = resp.document;
-                                           newDocument["mode"] = "upsert";
-                                           cc.async(
-                                                   {.operation    = siddiqsoft::CosmosOperation::upsert,
-                                                      .database     = ctx.database,
-                                                      .collection   = ctx.collection,
-                                                      .id           = ctx.id,
-                                                      .partitionKey = ctx.partitionKey,
-                                                      .document     = newDocument,
-                                                      .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                                                        std::cerr << std::format("....3..{}\n", ctx);
-                                                        EXPECT_EQ(200, resp.statusCode);
-                                                        EXPECT_EQ("upsert", resp.document.value("mode", ""));
-                                                        // Now, we update the just upsert'd document..
-                                                        auto newDocument    = resp.document;
-                                                        newDocument["mode"] = "update";
-                                                        cc.async(
-                                                                {.operation    = siddiqsoft::CosmosOperation::update,
-                                                                     .database     = ctx.database,
-                                                                     .collection   = ctx.collection,
-                                                                     .id           = resp.document["id"],
-                                                                     .partitionKey = ctx.partitionKey,
-                                                                     .document     = newDocument,
-                                                                     .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                                                                     std::cerr << std::format("4..{}\n", ctx);
-                                                                     EXPECT_EQ(200, resp.statusCode);
-                                                                     EXPECT_EQ("update", resp.document.value("mode", ""));
-                                                                     // Now, we should "find" this document
-                                                                     cc.async(
-                                                                             {.operation    = siddiqsoft::CosmosOperation::find,
-                                                                                  .database     = ctx.database,
-                                                                                  .collection   = ctx.collection,
-                                                                                  .id           = ctx.id,
-                                                                                  .partitionKey = ctx.partitionKey,
-                                                                                  .onResponse   = [&cc, &passTest](const auto& ctx,
-                                                                                                             const auto& resp) {
-                                                                                  std::cerr << std::format("5..{}\n", ctx);
-                                                                                  EXPECT_EQ(200, resp.statusCode);
-                                                                                  EXPECT_EQ("update",
-                                                                                            resp.document.value("mode", ""));
-                                                                                  // Finally, remove this document.
-                                                                                  cc.async(
-                                                                                          {.operation = siddiqsoft::
-                                                                                                   CosmosOperation::remove,
-                                                                                                 .database     = ctx.database,
-                                                                                                 .collection   = ctx.collection,
-                                                                                                 .id           = ctx.id,
-                                                                                                 .partitionKey = ctx.partitionKey,
-                                                                                                 .onResponse   = [&cc, &passTest](
-                                                                                                                 const auto& ctx,
-                                                                                                                 const auto& resp) {
-                                                                                               std::cerr << std::format("6..{}\n",
-                                                                                                                        ctx);
-                                                                                               EXPECT_EQ(204, resp.statusCode);
-                                                                                               // Finished!
-                                                                                               passTest = true;
-                                                                                               passTest.notify_all();
-                                                                                           }});
-                                                                              }});
-                                                                 }});
-                                                    }});
-                                       }});
-                          }});
-             }});
+                                              // Now we upsert..
+                                              auto newDocument        = resp.document;
+                                              newDocument["mode"]     = "upsert";
+                                              newDocument["upsert-d"] = thisUniqueDocId;
+                                              cc.async({.operation    = siddiqsoft::CosmosOperation::upsert,
+                                                          .database     = ctx.database,
+                                                          .collection   = ctx.collection,
+                                                          .id           = resp.document.value("id", ""),
+                                                          .partitionKey = ctx.partitionKey,
+                                                          .document     = newDocument,
+                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                                                            std::cerr << std::format("....3..id:{}..{}\n", resp.document.value("id", ""), ctx);
+                                                            ASSERT_EQ(201, resp.statusCode);
+                                                            EXPECT_EQ(thisUniqueDocId, resp.document.value("id", ""));
+                                                            EXPECT_EQ("upsert", resp.document.value("mode", ""));
+                                                            EXPECT_EQ(thisUniqueDocId, resp.document.value("upsert-d", ""));
+                                                            // Now, we update the just upsert'd document..
+                                                            auto newDocument    = resp.document;
+                                                            newDocument["mode"] = "update";
+                                                            cc.async({.operation    = siddiqsoft::CosmosOperation::update,
+                                                                          .database     = ctx.database,
+                                                                          .collection   = ctx.collection,
+                                                                          .id           = resp.document["id"],
+                                                                          .partitionKey = ctx.partitionKey,
+                                                                          .document     = newDocument,
+                                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                                                                          std::cerr << std::format("....4..id:{}..{}\n", resp.document.value("id", ""), ctx);
+                                                                          EXPECT_EQ(200, resp.statusCode);
+                                                                          EXPECT_EQ("update", resp.document.value("mode", ""));
+                                                                          // Now, we should "find" this document
+                                                                          cc.async({.operation    = siddiqsoft::CosmosOperation::find,
+                                                                                          .database     = ctx.database,
+                                                                                          .collection   = ctx.collection,
+                                                                                          .id           = ctx.id,
+                                                                                          .partitionKey = ctx.partitionKey,
+                                                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx,
+                                                                                                                                     const auto& resp) {
+                                                                                        std::cerr << std::format("..5..id:{}..{}\n", thisUniqueDocId, ctx);
+                                                                                        ASSERT_EQ(200, resp.statusCode);
+                                                                                        EXPECT_EQ(thisUniqueDocId, resp.document.value("id", ""));
+                                                                                        ASSERT_EQ("update", resp.document.value("mode", ""));
+                                                                                        // Finally, remove this document.
+                                                                                        cc.async({.operation    = siddiqsoft::CosmosOperation::remove,
+                                                                                                          .database     = ctx.database,
+                                                                                                          .collection   = ctx.collection,
+                                                                                                          .id           = ctx.id,
+                                                                                                          .partitionKey = ctx.partitionKey,
+                                                                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](
+                                                                                                                        const auto& ctx, const auto& resp) {
+                                                                                                      std::cerr << std::format(
+                                                                                                              "....6..id:{}..{}\n", thisUniqueDocId, ctx);
+                                                                                                      EXPECT_EQ(204, resp.statusCode);
+                                                                                                      // Finished!
+                                                                                                      passTest = true;
+                                                                                                      passTest.notify_all();
+                                                                                                  }});
+                                                                                    }});
+                                                                      }});
+                                                        }});
+                                          }});
+                            }});
+              }});
     // Caution: this will hang forever if there is any error
     passTest.wait(false);
 }
@@ -415,8 +394,7 @@ TEST_F(CosmosClientAsync, async_discoverRegions)
 {
     std::atomic_bool passTest = false;
 
-    testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::discoverRegions,
-                           .onResponse = [&passTest](auto const& ctx, auto const& resp) {
+    testSuiteClient.async({.operation = siddiqsoft::CosmosOperation::discoverRegions, .onResponse = [&passTest](auto const& ctx, auto const& resp) {
                                std::cerr << "Invoked from the dispatcher!" << std::endl;
                                passTest = true;
                                passTest.notify_all();
@@ -450,28 +428,29 @@ TEST_F(CosmosClientAsync, async_queryDocument)
     nlohmann::json           allDocs = nlohmann::json::array();
     uint32_t                 allDocsCount {};
 
-// Wait for the async operations during setup to complete.
+    // Wait for the async operations during setup to complete.
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // First, we queryDocuments for all items that match our criteria (source=__func__)
-    testSuiteClient.async(
-            {.operation       = siddiqsoft::CosmosOperation::query,
-             .database        = dbName,
-             .collection      = collectionName,
-             .partitionKey    = "*",
-             .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
-             .queryParameters = {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
-             .onResponse      = [&](auto const& ctx, auto const& resp) {
-                 // Invoked each time we have data block until empty continuationToken
-                 // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
-                 if (200 == resp.statusCode && resp.document.contains("Documents") && !resp.document.at("Documents").is_null()) {
-                     // Append to the current container
-                     allDocs.insert(allDocs.end(), resp.document["Documents"].begin(), resp.document["Documents"].end());
-                     allDocsCount += resp.document.value("_count", 0);
-                     std::cerr << "Items: " << resp.document.value("_count", 0)
-                               << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx) << std::endl;
-                 }
-             }});
+    testSuiteClient.async({.operation       = siddiqsoft::CosmosOperation::query,
+                           .database        = dbName,
+                           .collection      = collectionName,
+                           .partitionKey    = "*",
+                           .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
+                           .queryParameters = {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}},
+                           .onResponse      = [&](auto const& ctx, auto const& resp) {
+                               std::cerr << std::format("....1..{}\n", resp);
+                               EXPECT_EQ(200, resp.statusCode);
+                               // Invoked each time we have data block until empty continuationToken
+                               // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
+                               if (200 == resp.statusCode && resp.document.contains("Documents") && !resp.document.at("Documents").is_null()) {
+                                   // Append to the current container
+                                   allDocs.insert(allDocs.end(), resp.document["Documents"].begin(), resp.document["Documents"].end());
+                                   allDocsCount += resp.document.value("_count", 0);
+                                   std::cerr << "Items: " << resp.document.value("_count", 0)
+                                             << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx) << std::endl;
+                               }
+                           }});
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
     EXPECT_EQ(DOCS, allDocsCount); // total
@@ -481,25 +460,26 @@ TEST_F(CosmosClientAsync, async_queryDocument)
     allDocs      = nlohmann::json::array();
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
-    testSuiteClient.async(
-            {.operation       = siddiqsoft::CosmosOperation::query,
-             .database        = dbName,
-             .collection      = collectionName,
-             .partitionKey    = "odd.siddiqsoft.com",
-             .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
-             .queryParameters = {{{"name", "@v1"}, {"value", "odd"}}},
-             .onResponse      = [&](auto const& ctx, auto const& resp) {
-                 // Invoked each time we have data block until empty continuationToken
-                 // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
-                 if (200 == resp.statusCode && resp.document.contains("Documents") && !resp.document.at("Documents").is_null()) {
-                     // Append to the current container
-                     allDocs.insert(allDocs.end(), resp.document["Documents"].begin(), resp.document["Documents"].end());
-                     allDocsCount += resp.document.value("_count", 0);
-                     std::cerr << "ODD Items: " << resp.document.value("_count", 0)
-                               << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx) << std::endl;
-                 }
-             }});
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    testSuiteClient.async({.operation       = siddiqsoft::CosmosOperation::query,
+                           .database        = dbName,
+                           .collection      = collectionName,
+                           .partitionKey    = "*",
+                           .queryStatement  = "SELECT * FROM c WHERE contains(c.extra, @v1)",
+                           .queryParameters = {{{"name", "@v1"}, {"value", "odd"}}},
+                           .onResponse      = [&](auto const& ctx, auto const& resp) {
+                               std::cerr << std::format("....2..{}\n", resp);
+                               EXPECT_EQ(200, resp.statusCode);
+                               // Invoked each time we have data block until empty continuationToken
+                               // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
+                               if (200 == resp.statusCode && resp.document.contains("Documents") && !resp.document.at("Documents").is_null()) {
+                                   // Append to the current container
+                                   allDocs.insert(allDocs.end(), resp.document["Documents"].begin(), resp.document["Documents"].end());
+                                   allDocsCount += resp.document.value("_count", 0);
+                                   std::cerr << "ODD Items: " << resp.document.value("_count", 0)
+                                             << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx) << std::endl;
+                               }
+                           }});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     EXPECT_EQ(5, allDocsCount); // odd
 
     // Query with partition key "odd"; out of five, 3 should be even: 0, 2
@@ -507,24 +487,25 @@ TEST_F(CosmosClientAsync, async_queryDocument)
     allDocs      = nlohmann::json::array();
     allDocsCount = 0;
     // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
-    testSuiteClient.async(
-            {.operation       = siddiqsoft::CosmosOperation::query,
-             .database        = dbName,
-             .collection      = collectionName,
-             .partitionKey    = "even.siddiqsoft.com",
-             .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
-             .queryParameters = {{{"name", "@v1"}, {"value", "even"}}},
-             .onResponse      = [&](auto const& ctx, auto const& resp) {
-                 // Invoked each time we have data block until empty continuationToken
-                 // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
-                 if (200 == resp.statusCode && resp.document.contains("Documents") && !resp.document.at("Documents").is_null()) {
-                     // Append to the current container
-                     allDocs.insert(allDocs.end(), resp.document["Documents"].begin(), resp.document["Documents"].end());
-                     allDocsCount += resp.document.value("_count", 0);
-                     std::cerr << "EVEN Items: " << resp.document.value("_count", 0)
-                               << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx) << std::endl;
-                 }
-             }});
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    testSuiteClient.async({.operation       = siddiqsoft::CosmosOperation::query,
+                           .database        = dbName,
+                           .collection      = collectionName,
+                           .partitionKey    = "*",
+                           .queryStatement  = "SELECT * FROM c WHERE contains(c.source, @v1)",
+                           .queryParameters = {{{"name", "@v1"}, {"value", "even"}}},
+                           .onResponse      = [&](auto const& ctx, auto const& resp) {
+                               std::cerr << std::format("....3..{}\n", resp);
+                               EXPECT_EQ(200, resp.statusCode);
+                               // Invoked each time we have data block until empty continuationToken
+                               // We do not need to perform re-query as the lib will perform these for us and invoke this callback!
+                               if (200 == resp.statusCode && resp.document.contains("Documents") && !resp.document.at("Documents").is_null()) {
+                                   // Append to the current container
+                                   allDocs.insert(allDocs.end(), resp.document["Documents"].begin(), resp.document["Documents"].end());
+                                   allDocsCount += resp.document.value("_count", 0);
+                                   std::cerr << "EVEN Items: " << resp.document.value("_count", 0)
+                                             << "  Result ttx:" << std::chrono::duration_cast<std::chrono::milliseconds>(resp.ttx) << std::endl;
+                               }
+                           }});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     EXPECT_EQ(5, allDocsCount); // even
 }

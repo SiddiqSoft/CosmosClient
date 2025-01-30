@@ -104,10 +104,9 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        //auto rc9 = TSdeleteDatabase(testDBName0);
+        // auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
-
 
 
 TEST(Validation, checkEmulatorInfo)
@@ -726,8 +725,7 @@ TEST_F(CosmosClientSuite, queryDocument_even)
 /// @brief Test queryDocuments API
 TEST_F(CosmosClientSuite, queryDocument_Full)
 {
-    std::string              dbName {};
-    std::string              collectionName {};
+    auto                     funcId = std::format("queryDocument_Full-{}", __COUNTER__);
     std::vector<std::string> docIds {};
     std::string              pkId {"siddiqsoft.com"};
     std::string              sourceId = std::format("{}-{}", getpid(), siddiqsoft::CosmosClient::CosmosClientUserAgentString);
@@ -735,7 +733,7 @@ TEST_F(CosmosClientSuite, queryDocument_Full)
 
     // We're going to createDocument DOCS documents
     for (auto i = 0; i < DOCS; i++) {
-        docIds.push_back(std::format("azure-cosmos-restcl.{}", i));
+        docIds.push_back(std::format("{}.{:0X}", funcId, i));
     }
 
     EXPECT_EQ(DOCS, docIds.size());
@@ -750,10 +748,11 @@ TEST_F(CosmosClientSuite, queryDocument_Full)
                 {.database   = testDBName0,
                  .collection = testCollectionNames[0],
                  .document   = {{"id", docIds[i]},
-                                {"ttl", 3600},
+                                {"ttl", 1360},
                                 {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
                                 {"oddeven", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
                                 {"i", i},
+                                {"func", funcId},
                                 {"odd", !(i % 2 == 0)},
                                 {"source", sourceId}}});
         EXPECT_EQ(201, rc.statusCode);
@@ -778,8 +777,8 @@ TEST_F(CosmosClientSuite, queryDocument_Full)
                                               .collection        = testCollectionNames[0],
                                               .partitionKey      = "*",
                                               .continuationToken = irt.continuationToken,
-                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
-                                              .queryParameters   = {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}}});
+                                              .queryStatement    = "SELECT * FROM c WHERE c.func = @v1",
+                                              .queryParameters   = {{{"name", "@v1"}, {"value", funcId}}}});
         EXPECT_EQ(200, irt.statusCode);
         if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
             // Append to the current container
