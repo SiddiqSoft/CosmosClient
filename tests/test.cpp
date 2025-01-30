@@ -67,31 +67,15 @@ protected:
             for (auto& collName : testCollectionNames) {
                 if (auto rc3 = TScreateCollection(testDBName0, collName); rc3.statusCode == 201) {
                     for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
-                        /*
-                        auto rc4 = testSuiteClient.createDocument(
-                                {.database   = testDBName0,
-                                 .collection = collName,
-                                 .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                {"__pk", "siddiqsoft.com"},
-                                                {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
-                                                {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" :
-                        "odd")}}});
-                                                */
-                        testSuiteClient.async(
-                                {.operation    = siddiqsoft::CosmosOperation::create,
-                                 .database     = testDBName0,
-                                 .collection   = collName,
-                                 .id           = std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd"),
-                                 .partitionKey = "siddiqsoft.com",
-                                 .document     = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                  {"ttl", 1360},
-                                                  {"__pk", "siddiqsoft.com"},
-                                                  {"func", __func__},
-                                                  {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}},
-                                 .onResponse   = [&](siddiqsoft::CosmosArgumentType const& ctx,
-                                                   siddiqsoft::CosmosResponseType const& resp) {
-                                     std::cerr << std::format("Completed create: {}\n", resp);
-                                 }});
+                        auto rc4 =
+                                testSuiteClient.createDocument({.database   = testDBName0,
+                                                                .collection = collName,
+                                                                .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                                                                               {"ttl", 1360},
+                                                                               {"__pk", "siddiqsoft.com"},
+                                                                               {"func", __func__},
+                                                                               {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
+                                                                               {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
                     }
                 }
             }
@@ -104,7 +88,7 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        // auto rc9 = TSdeleteDatabase(testDBName0);
+        auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
 
@@ -112,10 +96,8 @@ protected:
 TEST(Validation, checkEmulatorInfo)
 {
     auto [priConnStr, secConnStr] = GetConnectionStrings();
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
-    ASSERT_FALSE(secConnStr.empty())
-            << "Missing environment variable CCTEST_SECONDARY_CS; Set it to Secondary Connection string from Azure portal.";
+    ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    ASSERT_FALSE(secConnStr.empty()) << "Missing environment variable CCTEST_SECONDARY_CS; Set it to Secondary Connection string from Azure portal.";
 }
 
 
@@ -184,21 +166,18 @@ TEST_F(CosmosClientSuite, example1)
             auto id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
             auto pkId = "siddiqsoft.com";
 
-            if (auto rc3 = testSuiteClient.createDocument(
-                        {.database   = dbName,
-                         .collection = collectionName,
-                         .document =
-                                 {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"func", __func__}, {"source", "basic_tests.exe"}}});
+            if (auto rc3 =
+                        testSuiteClient.createDocument({.database   = dbName,
+                                                        .collection = collectionName,
+                                                        .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"func", __func__}, {"source", "basic_tests.exe"}}});
                 201 == rc3.statusCode)
             {
                 // ...do something
                 // ...useful with cDoc..
 
                 // Remove the just created document..
-                auto rc4 = testSuiteClient.removeDocument({.database     = dbName,
-                                                           .collection   = collectionName,
-                                                           .id           = rc3.document.value("id", id),
-                                                           .partitionKey = pkId});
+                auto rc4 = testSuiteClient.removeDocument(
+                        {.database = dbName, .collection = collectionName, .id = rc3.document.value("id", id), .partitionKey = pkId});
                 EXPECT_EQ(204, rc4);
             }
         }
@@ -250,8 +229,7 @@ TEST(Validation, configure_1)
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
     auto [priConnStr, secConnStr] = GetConnectionStrings();
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
     siddiqsoft::CosmosClient cc;
 
@@ -282,8 +260,7 @@ TEST(Validation, discoverRegions)
     // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
     auto [priConnStr, secConnStr] = GetConnectionStrings();
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
     siddiqsoft::CosmosClient cc;
 
@@ -320,8 +297,7 @@ TEST(Validation, discoverRegions_BadPrimary)
                                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 
 
-    ASSERT_FALSE(priConnStr.empty())
-            << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
 
     siddiqsoft::CosmosClient cc;
 
@@ -461,10 +437,8 @@ TEST_F(CosmosClientSuite, createDocument)
     pkId = "siddiqsoft.com";
 
     // Now, let us createDocument the document
-    auto rc3 =
-            testSuiteClient.createDocument({.database   = dbName,
-                                            .collection = collectionName,
-                                            .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
+    auto rc3 = testSuiteClient.createDocument(
+            {.database = dbName, .collection = collectionName, .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc3.statusCode);
 
     auto rc4 = testSuiteClient.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
@@ -494,9 +468,7 @@ TEST_F(CosmosClientSuite, createDocument_MissingId)
     pkId = "siddiqsoft.com";
 
     EXPECT_THROW(testSuiteClient.createDocument(
-            {.database   = dbName,
-             .collection = collectionName,
-             .document   = {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
+            {.database = dbName, .collection = collectionName, .document = {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
                  , std::invalid_argument);
 }
 
@@ -522,9 +494,7 @@ TEST_F(CosmosClientSuite, createDocument_MissingPkId)
     pkId = "siddiqsoft.com";
 
     EXPECT_THROW(testSuiteClient.createDocument(
-            {.database   = dbName,
-             .collection = collectionName,
-             .document   = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
+            {.database = dbName, .collection = collectionName, .document = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}});
                  , std::invalid_argument);
 }
 
@@ -546,13 +516,11 @@ TEST_F(CosmosClientSuite, findDocument)
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
     // Now, let us createDocument the document
-    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
-    pkId = "siddiqsoft.com";
+    id       = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    pkId     = "siddiqsoft.com";
 
-    auto rc3 =
-            testSuiteClient.createDocument({.database   = dbName,
-                                            .collection = collectionName,
-                                            .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
+    auto rc3 = testSuiteClient.createDocument(
+            {.database = dbName, .collection = collectionName, .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc3.statusCode);
 
     // Find the document we just created
@@ -586,26 +554,23 @@ TEST_F(CosmosClientSuite, upsertDocument)
     pkId = "siddiqsoft.com";
 
     // Create the document.. (this should be insert
-    auto rc4 = testSuiteClient.upsertDocument(
-            {.database   = dbName,
-             .collection = collectionName,
-             .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "insert"}, {"source", "basic_tests.exe"}}});
+    auto rc4 = testSuiteClient.upsertDocument({.database   = dbName,
+                                               .collection = collectionName,
+                                               .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "insert"}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc4.statusCode);
     EXPECT_EQ("insert", rc4.document.value("upsert", ""));
 
     // Calling upsertDocument again updates the same document.
-    auto rc5 = testSuiteClient.upsertDocument(
-            {.database   = dbName,
-             .collection = collectionName,
-             .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}}});
+    auto rc5 = testSuiteClient.upsertDocument({.database   = dbName,
+                                               .collection = collectionName,
+                                               .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc5.statusCode);
     EXPECT_EQ("update", rc5.document.value("upsert", ""));
 
     // And to check if we call createDocument on the same docId it should fail
-    auto rc6 = testSuiteClient.createDocument(
-            {.database   = dbName,
-             .collection = collectionName,
-             .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}}});
+    auto rc6 = testSuiteClient.createDocument({.database   = dbName,
+                                               .collection = collectionName,
+                                               .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "FAIL"}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(409, rc6.statusCode);
 
     // Remove the document
@@ -635,10 +600,9 @@ TEST_F(CosmosClientSuite, updateDocument)
     pkId = "siddiqsoft.com";
 
     // Create the document.. (this should be insert
-    auto rc4 = testSuiteClient.createDocument(
-            {.database   = dbName,
-             .collection = collectionName,
-             .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"mode", "create"}, {"source", "basic_tests.exe"}}});
+    auto rc4 = testSuiteClient.createDocument({.database   = dbName,
+                                               .collection = collectionName,
+                                               .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"mode", "create"}, {"source", "basic_tests.exe"}}});
     EXPECT_EQ(201, rc4.statusCode);
     EXPECT_EQ("create", rc4.document.value("mode", ""));
 
@@ -646,8 +610,7 @@ TEST_F(CosmosClientSuite, updateDocument)
     rc4.document["mode"] = "update";
 
     // Calling upsertDocument again updates the same document.
-    auto rc5 = testSuiteClient.updateDocument(
-            {.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId, .document = rc4.document});
+    auto rc5 = testSuiteClient.updateDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId, .document = rc4.document});
     EXPECT_EQ(200, rc5.statusCode);
     EXPECT_EQ("update", rc5.document.value("mode", ""));
 
@@ -744,17 +707,16 @@ TEST_F(CosmosClientSuite, queryDocument_Full)
 #endif
 
     for (auto i = 0; i < docIds.size(); i++) {
-        auto rc = testSuiteClient.createDocument(
-                {.database   = testDBName0,
-                 .collection = testCollectionNames[0],
-                 .document   = {{"id", docIds[i]},
-                                {"ttl", 1360},
-                                {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                {"oddeven", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                {"i", i},
-                                {"func", funcId},
-                                {"odd", !(i % 2 == 0)},
-                                {"source", sourceId}}});
+        auto rc = testSuiteClient.createDocument({.database   = testDBName0,
+                                                  .collection = testCollectionNames[0],
+                                                  .document   = {{"id", docIds[i]},
+                                                                 {"ttl", 1360},
+                                                                 {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                                                 {"oddeven", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                                                 {"i", i},
+                                                                 {"func", funcId},
+                                                                 {"odd", !(i % 2 == 0)},
+                                                                 {"source", sourceId}}});
         EXPECT_EQ(201, rc.statusCode);
     }
 
@@ -883,11 +845,7 @@ TEST_F(CosmosClientSuite, createDocument_threads)
                             auto rc = testSuiteClient.createDocument(
                                     {.database   = dbName,
                                      .collection = collectionName,
-                                     .document   = {{"id",
-                                                     std::format("{}.{}.{}",
-                                                               tid,
-                                                               i,
-                                                               std::chrono::system_clock::now().time_since_epoch().count())},
+                                     .document   = {{"id", std::format("{}.{}.{}", tid, i, std::chrono::system_clock::now().time_since_epoch().count())},
                                                     {"ttl", 360},
                                                     {"__pk", "siddiqsoft.com"},
                                                     {"i", i},
@@ -915,10 +873,8 @@ TEST_F(CosmosClientSuite, createDocument_threads)
 
                     // std::cerr << std::format("{}  Finally..removeDocument {} documents..\n", tid, docIds.size());
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = testSuiteClient.removeDocument({.database     = dbName,
-                                                                  .collection   = collectionName,
-                                                                  .id           = docIds[i],
-                                                                  .partitionKey = "siddiqsoft.com"});
+                        auto rc = testSuiteClient.removeDocument(
+                                {.database = dbName, .collection = collectionName, .id = docIds[i], .partitionKey = "siddiqsoft.com"});
                         removeDocsCount += rc == 204;
                         // //std::cerr << std::format("{}  Finally..removed {} rc:{}\n", tid, docIds[i], rc);
                     }
@@ -992,11 +948,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                                 auto rc = testSuiteClient.createDocument(
                                         {.database   = dbName,
                                          .collection = collectionName,
-                                         .document   = {{"id",
-                                                         std::format("{}.{}.{}",
-                                                                   tid,
-                                                                   i,
-                                                                   std::chrono::system_clock::now().time_since_epoch().count())},
+                                         .document   = {{"id", std::format("{}.{}.{}", tid, i, std::chrono::system_clock::now().time_since_epoch().count())},
                                                         {"ttl", 1360},
                                                         {"__pk", "odd.siddiqsoft.com"},
                                                         {"i", i},
@@ -1023,13 +975,12 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     // Next we start queries
                     siddiqsoft::CosmosIterableResponseType irt {};
                     do {
-                        irt = testSuiteClient.queryDocuments(
-                                {.database          = dbName,
-                                 .collection        = collectionName,
-                                 .partitionKey      = "odd.siddiqsoft.com", // __pk
-                                 .continuationToken = irt.continuationToken,
-                                 .queryStatement    = "SELECT * FROM c WHERE c.source=@v1 and c.tid=@v2",
-                                 .queryParameters   = {{{"name", "@v2"}, {"value", tid}}, {{"name", "@v1"}, {"value", sourceId}}}});
+                        irt = testSuiteClient.queryDocuments({.database          = dbName,
+                                                              .collection        = collectionName,
+                                                              .partitionKey      = "odd.siddiqsoft.com", // __pk
+                                                              .continuationToken = irt.continuationToken,
+                                                              .queryStatement    = "SELECT * FROM c WHERE c.source=@v1 and c.tid=@v2",
+                                                              .queryParameters   = {{{"name", "@v2"}, {"value", tid}}, {{"name", "@v1"}, {"value", sourceId}}}});
                         oddQueryDocsCount += irt.document.value("_count", 0);
                     } while (!irt.continuationToken.empty());
 
@@ -1037,10 +988,8 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     creatorsBarrier.arrive_and_wait();
 
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = testSuiteClient.removeDocument({.database     = dbName,
-                                                                  .collection   = collectionName,
-                                                                  .id           = docIds[i],
-                                                                  .partitionKey = "odd.siddiqsoft.com"});
+                        auto rc = testSuiteClient.removeDocument(
+                                {.database = dbName, .collection = collectionName, .id = docIds[i], .partitionKey = "odd.siddiqsoft.com"});
                         oddRemoveDocsCount += rc == 204;
                     }
 
@@ -1069,11 +1018,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                                 auto rc = testSuiteClient.createDocument(
                                         {.database   = dbName,
                                          .collection = collectionName,
-                                         .document   = {{"id",
-                                                         std::format("{}.{}.{}",
-                                                                   tid,
-                                                                   i,
-                                                                   std::chrono::system_clock::now().time_since_epoch().count())},
+                                         .document   = {{"id", std::format("{}.{}.{}", tid, i, std::chrono::system_clock::now().time_since_epoch().count())},
                                                         {"ttl", 1360},
                                                         {"__pk", "even.siddiqsoft.com"},
                                                         {"i", i},
@@ -1099,22 +1044,19 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
                     // Next we start queries
                     siddiqsoft::CosmosIterableResponseType irt {};
                     do {
-                        irt = testSuiteClient.queryDocuments(
-                                {.database        = dbName,
-                                 .collection      = collectionName,
-                                 .partitionKey    = "even.siddiqsoft.com", // __pk
-                                 .queryStatement  = "SELECT * FROM c WHERE c.source=@v1 and c.tid=@v2",
-                                 .queryParameters = {{{"name", "@v2"}, {"value", tid}}, {{"name", "@v1"}, {"value", sourceId}}}});
+                        irt = testSuiteClient.queryDocuments({.database        = dbName,
+                                                              .collection      = collectionName,
+                                                              .partitionKey    = "even.siddiqsoft.com", // __pk
+                                                              .queryStatement  = "SELECT * FROM c WHERE c.source=@v1 and c.tid=@v2",
+                                                              .queryParameters = {{{"name", "@v2"}, {"value", tid}}, {{"name", "@v1"}, {"value", sourceId}}}});
                         evenQueryDocsCount += irt.document.value("_count", 0);
                     } while (!irt.continuationToken.empty());
 
                     creatorsBarrier.arrive_and_wait();
 
                     for (auto i = 0; i < docIds.size(); i++) {
-                        auto rc = testSuiteClient.removeDocument({.database     = dbName,
-                                                                  .collection   = collectionName,
-                                                                  .id           = docIds[i],
-                                                                  .partitionKey = "even.siddiqsoft.com"});
+                        auto rc = testSuiteClient.removeDocument(
+                                {.database = dbName, .collection = collectionName, .id = docIds[i], .partitionKey = "even.siddiqsoft.com"});
                         evenRemoveDocsCount += (204 == rc);
                     }
 

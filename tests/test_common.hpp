@@ -16,15 +16,14 @@
  * Runs on MacOS (Apple Silicon)
  * https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
  */
-static const std::string EMULATOR_CONNECTION_STRING =
-        "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/"
-        "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
-static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-static const std::string EMULATOR_ENDPOINT = "localhost:8081";
-static const uint        SEED_DOCUMENT_COUNT {10};
-static std::string       testDBName                 = std::format("cosmoscl_test_DB{}", __COUNTER__);
-static std::string       testDBName0                = std::format("cosmoscl_DB_0");
-static std::string       testDBName1                = std::format("cosmoscl_DB_1");
+static const std::string        EMULATOR_CONNECTION_STRING = "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/"
+                                                             "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
+static const std::string        EMULATOR_KEY               = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+static const std::string        EMULATOR_ENDPOINT          = "localhost:8081";
+static const uint               SEED_DOCUMENT_COUNT {10};
+static std::string              testDBName          = std::format("cosmoscl_test_DB{}", __COUNTER__);
+static std::string              testDBName0         = std::format("cosmoscl_DB_0");
+static std::string              testDBName1         = std::format("cosmoscl_DB_1");
 static std::vector<std::string> testCollectionNames = {std::format("cosmoscl_test_COLL{}", __COUNTER__),
                                                        std::format("cosmoscl_test_COLL{}", __COUNTER__),
                                                        std::format("cosmoscl_test_COLL{}", __COUNTER__)};
@@ -71,9 +70,8 @@ static auto TScreateCollection(const std::string& dbName, const std::string& col
 
 static auto TScreateDocument(const std::string& dbName, const std::string& collName, const std::string& docName)
 {
-    return testSuiteClient.createDocument({.database   = dbName,
-                                           .collection = collName,
-                                           .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
+    return testSuiteClient.createDocument(
+            {.database = dbName, .collection = collName, .document = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
 }
 
 #pragma endregion
