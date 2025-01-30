@@ -372,10 +372,6 @@ namespace siddiqsoft
 
         crt.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(COSMOSCLIENT_TESTING_MODE)
-            std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
-#endif
-
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 

@@ -138,7 +138,13 @@ protected:
             for (auto& collName : testCollectionNames) {
                 if (auto rc3 = TScreateCollection(testDBName0, collName); rc3.statusCode == 201) {
                     for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
-                        auto rc4 = TScreateDocument(testDBName0, collName, testDocName0 + std::to_string(i));
+                        auto rc4 = testSuiteClient.createDocument(
+                                {.database   = testDBName0,
+                                 .collection = collName,
+                                 .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                                                {"__pk", "siddiqsoft.com"},
+                                                {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
+                                                {"source", __func__}}});
                     }
                 }
             }
@@ -708,8 +714,74 @@ TEST_F(CosmosClientSuite, updateDocument)
 }
 
 
+TEST_F(CosmosClientSuite, queryDocument_odd)
+{
+    std::string                            dbName {};
+    std::string                            collectionName {};
+    std::vector<std::string>               docIds {};
+    std::string                            pkId {"siddiqsoft.com"};
+    siddiqsoft::CosmosIterableResponseType irt {};
+    nlohmann::json                         allDocs = nlohmann::json::array();
+    uint32_t                               allDocsCount {};
+
+// First, we queryDocuments for all items that match our criteria (source=__func__)
+#if defined(DEBUG0)
+    std::println(std::cerr, "Query documents in {}:{}...", testDBName0, testCollectionNames[0]);
+#endif
+
+    do {
+        irt = testSuiteClient.queryDocuments({.database          = testDBName0,
+                                              .collection        = testCollectionNames[0],
+                                              .partitionKey      = "*",
+                                              .continuationToken = irt.continuationToken,
+                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.extra, @v1)",
+                                              .queryParameters   = {{{"name", "@v1"}, {"value", "odd"}}}});
+        ASSERT_EQ(200, irt.statusCode);
+        if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
+            // Append to the current container
+            allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
+            allDocsCount += irt.document.value("_count", 0);
+        }
+    } while (!irt.continuationToken.empty());
+    EXPECT_EQ(5, allDocsCount); // total
+}
+
+
+TEST_F(CosmosClientSuite, queryDocument_even)
+{
+    std::string                            dbName {};
+    std::string                            collectionName {};
+    std::vector<std::string>               docIds {};
+    std::string                            pkId {"siddiqsoft.com"};
+    siddiqsoft::CosmosIterableResponseType irt {};
+    nlohmann::json                         allDocs = nlohmann::json::array();
+    uint32_t                               allDocsCount {};
+
+// First, we queryDocuments for all items that match our criteria (source=__func__)
+#if defined(DEBUG0)
+    std::println(std::cerr, "Query documents in {}:{}...", testDBName0, testCollectionNames[0]);
+#endif
+
+    do {
+        irt = testSuiteClient.queryDocuments({.database          = testDBName0,
+                                              .collection        = testCollectionNames[0],
+                                              .partitionKey      = "*",
+                                              .continuationToken = irt.continuationToken,
+                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.extra, @v1)",
+                                              .queryParameters   = {{{"name", "@v1"}, {"value", "even"}}}});
+        ASSERT_EQ(200, irt.statusCode);
+        if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
+            // Append to the current container
+            allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
+            allDocsCount += irt.document.value("_count", 0);
+        }
+    } while (!irt.continuationToken.empty());
+    EXPECT_EQ(5, allDocsCount); // total
+}
+
+
 /// @brief Test queryDocuments API
-TEST_F(CosmosClientSuite, queryDocument)
+TEST_F(CosmosClientSuite, queryDocument_Full)
 {
     std::string              dbName {};
     std::string              collectionName {};
@@ -731,15 +803,16 @@ TEST_F(CosmosClientSuite, queryDocument)
 #endif
 
     for (auto i = 0; i < docIds.size(); i++) {
-        auto rc =
-                testSuiteClient.createDocument({.database   = testDBName0,
-                                                .collection = testCollectionNames[0],
-                                                .document   = {{"id", docIds[i]},
-                                                               {"ttl", 360},
-                                                               {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                                               {"i", i},
-                                                               {"odd", !(i % 2 == 0)},
-                                                               {"source", sourceId}}});
+        auto rc = testSuiteClient.createDocument(
+                {.database   = testDBName0,
+                 .collection = testCollectionNames[0],
+                 .document   = {{"id", docIds[i]},
+                                {"ttl", 3600},
+                                {"__pk", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                {"oddeven", (i % 2 == 0) ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                {"i", i},
+                                {"odd", !(i % 2 == 0)},
+                                {"source", sourceId}}});
         EXPECT_EQ(201, rc.statusCode);
     }
 
@@ -758,14 +831,12 @@ TEST_F(CosmosClientSuite, queryDocument)
 #endif
 
     do {
-        irt = testSuiteClient.queryDocuments(
-                {.database          = testDBName0,
-                 .collection        = testCollectionNames[0],
-                 .partitionKey      = "*",
-                 .continuationToken = irt.continuationToken,
-                 .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
-                 .queryParameters   = {{{"name", "@v1"},
-                                        {"value", std::format("{}-", getpid())}}}}); // the params is an array of name-value items
+        irt = testSuiteClient.queryDocuments({.database          = testDBName0,
+                                              .collection        = testCollectionNames[0],
+                                              .partitionKey      = "*",
+                                              .continuationToken = irt.continuationToken,
+                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
+                                              .queryParameters   = {{{"name", "@v1"}, {"value", std::format("{}-", getpid())}}}});
         EXPECT_EQ(200, irt.statusCode);
         if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
             // Append to the current container
@@ -792,48 +863,6 @@ TEST_F(CosmosClientSuite, queryDocument)
         }
     }
     EXPECT_EQ(DOCS, matchCount);
-
-    // Clear stuff..
-    irt.continuationToken.clear();
-    allDocs      = nlohmann::json::array();
-    allDocsCount = 0;
-    // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
-    do {
-        std::println(std::cerr, " -- ODD Query: `SELECT * FROM c WHERE c.odd = {}`  pk:`odd.siddiqsoft.com`...", true);
-        irt = testSuiteClient.queryDocuments(
-                {.database        = testDBName0,
-                 .collection      = testCollectionNames[0],
-                 .partitionKey    = "odd.siddiqsoft.com", // __pk
-                 .queryStatement  = "SELECT * FROM c WHERE c.__pk=@v1",
-                 .queryParameters = {{{"name", "@v1"}, {"value", "odd."}}}}); // the params is an array of name-value items
-        EXPECT_EQ(200, irt.statusCode);
-        if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
-            allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
-        allDocsCount += irt.document.value("_count", 0);
-    } while (!irt.continuationToken.empty());
-    EXPECT_EQ(2, allDocsCount) << allDocs.dump(3);
-
-    // Query with partition key "odd"; out of five, 3 should be even: 0, 2
-    // Clear stuff..
-    irt.continuationToken.clear();
-    allDocs      = nlohmann::json::array();
-    allDocsCount = 0;
-    // Query with partition key "odd"; out of five, 2 should be odd: 1, 3
-    do {
-        irt = testSuiteClient.queryDocuments({.database        = testDBName0,
-                                              .collection      = testCollectionNames[0],
-                                              .partitionKey    = "*", // __pk
-                                              .queryStatement  = "SELECT * FROM c WHERE c.odd=@v1",
-                                              .queryParameters = {{{"name", "@v1"}, {"value", false}}}});
-        EXPECT_EQ(200, irt.statusCode);
-        if (irt.document.contains("Documents") && !irt.document.at("Documents").is_null())
-            allDocs.insert(allDocs.end(), irt.document["Documents"].begin(), irt.document["Documents"].end());
-        allDocsCount += irt.document.value("_count", 0);
-    } while (!irt.continuationToken.empty());
-    EXPECT_EQ(3, allDocsCount) << allDocs.dump(3); // even
-
-    // Wait a little bit..
-    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // Remove the documents
     for (auto i = 0; i < docIds.size(); i++) {
