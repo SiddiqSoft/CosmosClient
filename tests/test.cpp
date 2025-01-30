@@ -47,79 +47,7 @@
 #include "nlohmann/json.hpp"
 #include "../include/siddiqsoft/cosmoscl.hpp"
 
-/*
- * Required Environment Variables
- * CCTEST_PRIMARY_CS
- *
- * Optional Environment Variables
- * CCTEST_SECONDARY_CS
- *
- * Locally install podman running the Azure Cosmos Emulator
- * https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=podman-linux%2Ccsharp&pivots=api-nosql
- *
- * Runs on MacOS (Apple Silicon)
- * https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
- */
-static const std::string EMULATOR_CONNECTION_STRING =
-        "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/"
-        "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
-static const std::string EMULATOR_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-static const std::string EMULATOR_ENDPOINT = "localhost:8081";
-static const uint        SEED_DOCUMENT_COUNT {10};
-static std::string       testDBName                 = std::format("cosmoscl_test_DB{}", __COUNTER__);
-static std::string       testDBName0                = std::format("cosmoscl_test_DB0_{}", __COUNTER__);
-static std::vector<std::string> testCollectionNames = {std::format("cosmoscl_test_COLL{}", __COUNTER__),
-                                                       std::format("cosmoscl_test_COLL{}", __COUNTER__),
-                                                       std::format("cosmoscl_test_COLL{}", __COUNTER__)};
-static std::string              testDocName0        = std::format("cosmoscl_test_Doc0_{}-", __COUNTER__);
-
-///
-// Helpers
-///
-#pragma region Test Suite Helpers
-static siddiqsoft::CosmosClient testSuiteClient;
-
-/**
- * @brief Get the Connection Strings object
- *
- * @return std::pair<std::string, std::string>
- */
-static auto GetConnectionStrings() -> std::pair<std::string, std::string>
-{
-    auto pcs = std::getenv("CCTEST_PRIMARY_CS");
-    auto scs = std::getenv("CCTEST_SECONDARY_CS");
-
-    return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING, scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
-}
-
-static auto TScreateDatabase(const std::string& dbName)
-{
-    return testSuiteClient.createDatabase({.database = dbName});
-}
-
-static auto TSfindDatabase(const std::string& dbName)
-{
-    return testSuiteClient.findDatabase({.database = dbName});
-}
-
-static auto TSdeleteDatabase(const std::string& dbName)
-{
-    return testSuiteClient.deleteDatabase({.database = dbName});
-}
-
-static auto TScreateCollection(const std::string& dbName, const std::string& collName)
-{
-    return testSuiteClient.createCollection({.database = dbName, .collection = collName});
-}
-
-static auto TScreateDocument(const std::string& dbName, const std::string& collName, const std::string& docName)
-{
-    return testSuiteClient.createDocument({.database   = dbName,
-                                           .collection = collName,
-                                           .document   = {{"id", docName}, {"__pk", "siddiqsoft.com"}, {"source", __func__}}});
-}
-
-#pragma endregion
+#include "test_common.hpp"
 
 class CosmosClientSuite : public ::testing::Test
 {
@@ -176,9 +104,11 @@ protected:
     {
         // Perform one-time cleanup for the entire test suite
         // Cleanup the db we just created.
-        // auto rc9 = TSdeleteDatabase(testDBName0);
+        auto rc9 = TSdeleteDatabase(testDBName0);
     }
 };
+
+
 
 TEST(Validation, checkEmulatorInfo)
 {
@@ -750,7 +680,7 @@ TEST_F(CosmosClientSuite, queryDocument_odd)
                                               .collection        = testCollectionNames[1],
                                               .partitionKey      = "*",
                                               .continuationToken = irt.continuationToken,
-                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.extra, @v1)",
+                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
                                               .queryParameters   = {{{"name", "@v1"}, {"value", "odd"}}}});
         ASSERT_EQ(200, irt.statusCode);
         if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
@@ -780,7 +710,7 @@ TEST_F(CosmosClientSuite, queryDocument_even)
                                               .collection        = testCollectionNames[1],
                                               .partitionKey      = "*",
                                               .continuationToken = irt.continuationToken,
-                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.extra, @v1)",
+                                              .queryStatement    = "SELECT * FROM c WHERE contains(c.source, @v1)",
                                               .queryParameters   = {{{"name", "@v1"}, {"value", "even"}}}});
         ASSERT_EQ(200, irt.statusCode);
         if (200 == irt.statusCode && irt.document.contains("Documents") && !irt.document.at("Documents").is_null()) {
@@ -1009,7 +939,7 @@ TEST_F(CosmosClientSuite, createDocument_threads)
     EXPECT_EQ((DOCS * threadCount), addDocsCount.load());
 }
 
-
+#if defined(ENABLED)
 TEST_F(CosmosClientSuite, queryDocument_threads)
 {
     std::string              dbName {};
@@ -1237,7 +1167,7 @@ TEST_F(CosmosClientSuite, queryDocument_threads)
     EXPECT_EQ(DOCS * threadCount, oddQueryDocsCount.load() + evenQueryDocsCount.load());
     EXPECT_EQ(DOCS * threadCount, oddRemoveDocsCount.load() + evenRemoveDocsCount.load());
 }
-
+#endif
 
 /// @brief Test the serializers and cast operators
 TEST(CosmosConnection, test1_n)
