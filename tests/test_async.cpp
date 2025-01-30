@@ -315,14 +315,14 @@ TEST_F(CosmosClientAsync, async_nestedOps)
     cc.async(
             {.operation  = siddiqsoft::CosmosOperation::listDatabases,
              .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                 std::cerr << std::format("0..{}\n", ctx);
+                 std::cerr << std::format("....0..{}\n", ctx);
                  EXPECT_EQ(200, resp.statusCode);
                  // Find out the first collection's name..
                  cc.async(
                          {.operation  = siddiqsoft::CosmosOperation::listCollections,
                           .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
                           .onResponse = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                              std::cerr << std::format("1..{}\n", ctx);
+                              std::cerr << std::format("....1..{}\n", ctx);
                               EXPECT_EQ(200, resp.statusCode);
                               // Create a document..
                               cc.async(
@@ -333,12 +333,12 @@ TEST_F(CosmosClientAsync, async_nestedOps)
                                        .document     = {{"id",
                                                          std::format("azure-cosmos-restcl.{}",
                                                                  std::chrono::system_clock().now().time_since_epoch().count())},
-                                                        {"ttl", 360},
+                                                        {"ttl", 1360},
                                                         {"__pk", "siddiqsoft.com"},
                                                         {"mode", "create"},
                                                         {"source", "basic_tests.exe"}},
                                        .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                                           std::cerr << std::format("2..{}\n", ctx);
+                                           std::cerr << std::format("....2..{}\n", ctx);
                                            EXPECT_EQ(201, resp.statusCode);
                                            EXPECT_EQ("create", resp.document.value("mode", ""));
 
@@ -353,7 +353,7 @@ TEST_F(CosmosClientAsync, async_nestedOps)
                                                       .partitionKey = ctx.partitionKey,
                                                       .document     = newDocument,
                                                       .onResponse   = [&cc, &passTest](const auto& ctx, const auto& resp) {
-                                                        std::cerr << std::format("3..{}\n", ctx);
+                                                        std::cerr << std::format("....3..{}\n", ctx);
                                                         EXPECT_EQ(200, resp.statusCode);
                                                         EXPECT_EQ("upsert", resp.document.value("mode", ""));
                                                         // Now, we update the just upsert'd document..
