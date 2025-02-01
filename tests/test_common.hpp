@@ -20,7 +20,7 @@ static const std::string        EMULATOR_CONNECTION_STRING = "AccountEndpoint=ht
                                                              "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
 static const std::string        EMULATOR_KEY               = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 static const std::string        EMULATOR_ENDPOINT          = "localhost:8081";
-static const uint               SEED_DOCUMENT_COUNT {10};
+static const int                SEED_DOCUMENT_COUNT {10};
 static std::string              testDBName          = std::format("cosmoscl_test_DB{}", __COUNTER__);
 static std::string              testDBName0         = std::format("cosmoscl_DB_0");
 static std::string              testDBName1         = std::format("cosmoscl_DB_1");
