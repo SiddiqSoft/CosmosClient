@@ -16,7 +16,7 @@
  * Runs on MacOS (Apple Silicon)
  * https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
  */
-static const std::string        EMULATOR_CONNECTION_STRING = "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/"
+static const std::string        EMULATOR_CONNECTION_STRING = "AccountEndpoint=http://127.0.0.1:8081/;AccountKey=C2y6yDjf5/"
                                                              "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
 static const std::string        EMULATOR_KEY               = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 static const std::string        EMULATOR_ENDPOINT          = "localhost:8081";
