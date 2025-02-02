@@ -73,12 +73,7 @@ stages:
     - task: DockerInstaller@0
       inputs:
         dockerVersion: '17.09.0-ce'
-    
-    - task: Docker@2
-      inputs:
-        command: 'start'
-        arguments: '--publish 8081:8081 --name linux-emulator --detach'
-        container: 'mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview'
+  
     - task: CmdLine@2
       displayName: 'Install and Start Azure CosmosDB emulator'
       inputs:
