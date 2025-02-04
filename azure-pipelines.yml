@@ -64,12 +64,6 @@ stages:
       inputs:
         cmakeArgs: '--preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
-    - task: CMake@1
-      displayName: 'CMake Build $(cmake.preset)'
-      inputs:
-        cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-      condition: succeeded()
     - task: DockerInstaller@0
       inputs:
         dockerVersion: '17.09.0-ce'
@@ -93,6 +87,12 @@ stages:
           docker run --publish 8081:8081 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
           echo "Check container status.."
           docker ps
+      condition: succeeded()
+    - task: CMake@1
+      displayName: 'CMake Build $(cmake.preset)'
+      inputs:
+        cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
@@ -210,6 +210,34 @@ stages:
       inputs:
         useConfigFile: true
         configFilePath: 'GitVersion.yml'
+    - task: Bash@3
+      displayName: 'Install CosmosDB emulator'
+      inputs:
+        targetType: 'inline'
+        script: |
+            podman ps
+            echo "Stop existing/running emulator if present.."
+            podman stop linux-emulator
+            echo "Remove the container name.."
+            podman rm linux-emulator
+            echo "Update/fetch emulator.."
+            podman pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+      condition: succeeded()
+    - task: Bash@3
+      displayName: 'Start Azure CosmosDB emulator'
+      inputs:
+        targetType: 'inline'
+        script: |
+            echo "Start the emulator as linux-emulator.."
+            podman run \
+                --publish 8081:8081 \
+                --replace \
+                --name linux-emulator \
+                --detach \
+                mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+            echo "Check status of the existing/running containers.."
+            podman ps
+      condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Configure $(cmake.preset)'
       inputs:
@@ -220,34 +248,6 @@ stages:
       inputs:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
-      condition: succeeded()
-    - task: Bash@3
-      displayName: 'Install CosmosDB emulator'
-      inputs:
-        targetType: 'inline'
-        script: |
-          podman ps
-          echo "Stop existing/running emulator if present.."
-          podman stop linux-emulator
-          echo "Remove the container name.."
-          podman rm linux-emulator
-          echo "Update/fetch emulator.."
-          podman pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
-      condition: succeeded()
-    - task: Bash@3
-      displayName: 'Start Azure CosmosDB emulator'
-      inputs:
-        targetType: 'inline'
-        script: |
-          echo "Start the emulator as linux-emulator.."
-          podman run \
-              --publish 8081:8081 \
-              --replace \
-              --name linux-emulator \
-              --detach \
-              mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
-          echo "Check status of the existing/running containers.."
-          podman ps
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
