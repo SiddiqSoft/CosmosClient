@@ -73,9 +73,8 @@ stages:
     - task: DockerInstaller@0
       inputs:
         dockerVersion: '17.09.0-ce'
-  
     - task: CmdLine@2
-      displayName: 'Install and Start Azure CosmosDB emulator'
+      displayName: 'Install Azure CosmosDB emulator'
       inputs:
         script: |
           docker ps
@@ -85,12 +84,15 @@ stages:
           docker container remove linux-emulator
           echo "Update/fetch emulator.."
           docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+      condition: succeeded()
+    - task: CmdLine@2
+      displayName: 'Start Azure CosmosDB emulator'
+      inputs:
+        script: |
           echo "Start the emulator as linux-emulator.."
-          docker run \
-              --publish 8081:8081 \
-              --publish 1234:1234 \
-              --name linux-emulator \
-              --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          docker run --publish 8081:8081 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          echo "Check container status.."
+          docker ps
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
@@ -107,6 +109,8 @@ stages:
           docker container stop linux-emulator
           echo "Remove the container name.."
           docker container remove linux-emulator
+          echo "Check the run status of containers.."
+          docker ps
       condition: succeeded()
     - task: PublishTestResults@2
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
@@ -218,7 +222,7 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
     - task: Bash@3
-      displayName: 'Install and Start Azure CosmosDB emulator'
+      displayName: 'Install CosmosDB emulator'
       inputs:
         targetType: 'inline'
         script: |
@@ -229,14 +233,21 @@ stages:
           podman rm linux-emulator
           echo "Update/fetch emulator.."
           podman pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+      condition: succeeded()
+    - task: Bash@3
+      displayName: 'Start Azure CosmosDB emulator'
+      inputs:
+        targetType: 'inline'
+        script: |
           echo "Start the emulator as linux-emulator.."
           podman run \
               --publish 8081:8081 \
-              --publish 1234:1234 \
               --replace \
               --name linux-emulator \
               --detach \
               mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          echo "Check status of the existing/running containers.."
+          podman ps
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
