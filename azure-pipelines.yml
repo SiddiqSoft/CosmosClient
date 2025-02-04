@@ -237,6 +237,7 @@ stages:
             podman ps
             echo "Check status of the existing/running containers..3/3"
             podman ps
+            echo "Check if the endpoint 8081 is listening.."
             curl http://localhost:8081
       condition: succeeded()
     - task: CMake@1
