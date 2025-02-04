@@ -237,6 +237,7 @@ stages:
             podman ps
             echo "Check status of the existing/running containers..3/3"
             podman ps
+            curl http://localhost:8081
       condition: succeeded()
     - task: CMake@1
       displayName: 'CMake Configure $(cmake.preset)'
