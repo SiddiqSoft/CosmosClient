@@ -72,7 +72,7 @@ stages:
       inputs:
         script: |
           echo "Start the emulator as linux-emulator.."
-          docker run --pull=missing --publish 8081:8081 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          docker run --publish 8081:8081 --name linux-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
           echo "Check container status.."
           docker ps
       condition: succeeded()
@@ -95,8 +95,6 @@ stages:
           docker ps
           echo "Stop the running emulator.."
           docker container stop linux-emulator
-          echo "Remove the container name.."
-          docker container remove linux-emulator
           echo "Check the run status of containers.."
           docker ps
       #condition: succeeded()
