@@ -71,6 +71,8 @@ stages:
       displayName: 'Start Azure CosmosDB emulator'
       inputs:
         script: |
+          docker container stop linux-emulator
+          docker container remove linux-emulator
           echo "Start the emulator as linux-emulator.."
           docker run --publish 8081:8081 --name linux-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
           echo "Check container status.."
