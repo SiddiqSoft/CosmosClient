@@ -197,19 +197,6 @@ stages:
         useConfigFile: true
         configFilePath: 'GitVersion.yml'
     - task: Bash@3
-      displayName: 'Install CosmosDB emulator'
-      inputs:
-        targetType: 'inline'
-        script: |
-            docker ps
-            echo "Stop existing/running emulator if present.."
-            docker stop linux-emulator
-            echo "Remove the container name.."
-            docker rm linux-emulator
-            echo "Update/fetch emulator.."
-            docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
-      condition: succeeded()
-    - task: Bash@3
       displayName: 'Start Azure CosmosDB emulator'
       inputs:
         targetType: 'inline'
@@ -231,14 +218,6 @@ stages:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GitVersion.MajorMinorPatch)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
-    - task: CMake@1
-      displayName: 'CMake Tests $(cmake.preset)'
-      env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
-      inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose'
-      condition: succeeded()
-      continueOnError: true
     - task: CMake@1
       displayName: 'CTest Coverage $(cmake.preset) (Linux only)'
       env:
