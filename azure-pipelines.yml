@@ -229,12 +229,7 @@ stages:
         targetType: 'inline'
         script: |
             echo "Start the emulator as linux-emulator.."
-            podman run \
-                --publish 8081:8081 \
-                --replace \
-                --name linux-emulator \
-                --detach \
-                mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+            podman run -d --rm --p 8081:8081/tcp --name linux-emulator mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
             echo "Check status of the existing/running containers.."
             podman ps
       condition: succeeded()
