@@ -68,18 +68,6 @@ stages:
       inputs:
         dockerVersion: '17.09.0-ce'
     - task: CmdLine@2
-      displayName: 'Install Azure CosmosDB emulator'
-      inputs:
-        script: |
-          docker ps
-          echo "Stop existing/running emulator if present.."
-          docker container stop linux-emulator
-          echo "Remove the container name.."
-          docker container remove linux-emulator
-          echo "Update/fetch emulator.."
-          docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
-      condition: succeeded()
-    - task: CmdLine@2
       displayName: 'Start Azure CosmosDB emulator'
       inputs:
         script: |
@@ -111,7 +99,7 @@ stages:
           docker container remove linux-emulator
           echo "Check the run status of containers.."
           docker ps
-      condition: succeeded()
+      #condition: succeeded()
     - task: PublishTestResults@2
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
       inputs:
@@ -269,8 +257,6 @@ stages:
           docker ps
           echo "Stop the running emulator.."
           docker stop linux-emulator
-          echo "Remove the container name.."
-          docker remove linux-emulator
       condition: succeeded()
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'
