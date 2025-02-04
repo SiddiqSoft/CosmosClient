@@ -215,13 +215,13 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-            podman ps
+            docker ps
             echo "Stop existing/running emulator if present.."
-            podman stop linux-emulator
+            docker stop linux-emulator
             echo "Remove the container name.."
-            podman rm linux-emulator
+            docker rm linux-emulator
             echo "Update/fetch emulator.."
-            podman pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+            docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
       condition: succeeded()
     - task: Bash@3
       displayName: 'Start Azure CosmosDB emulator'
@@ -229,14 +229,14 @@ stages:
         targetType: 'inline'
         script: |
             echo "Start the emulator as linux-emulator.."
-            echo "podman run -d --rm -p=8081:8081/tcp --name=linux-emulator mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview"
-            podman run --pull=missing -d --rm -p=8081:8081/tcp --name=linux-emulator mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview            
+            echo "docker run -d --rm -p=8081:8081/tcp --name=linux-emulator mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview"
+            docker run --pull=missing -d --rm -p=8081:8081/tcp --name=linux-emulator mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview            
             echo "Check status of the existing/running containers..1/3"
-            podman ps
+            docker ps
             echo "Check status of the existing/running containers..2/3"
-            podman ps
+            docker ps
             echo "Check status of the existing/running containers..3/3"
-            podman ps
+            docker ps
             echo "Check if the endpoint 8081 is listening.."
             curl http://localhost:8081
       condition: succeeded()
@@ -272,11 +272,11 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-          podman ps
+          docker ps
           echo "Stop the running emulator.."
-          podman stop linux-emulator
+          docker stop linux-emulator
           echo "Remove the container name.."
-          podman remove linux-emulator
+          docker remove linux-emulator
       condition: succeeded()
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'

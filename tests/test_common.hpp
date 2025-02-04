@@ -10,8 +10,8 @@
  * Optional Environment Variables
  * CCTEST_SECONDARY_CS
  *
- * Locally install podman running the Azure Cosmos Emulator
- * https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=podman-linux%2Ccsharp&pivots=api-nosql
+ * Locally install docker running the Azure Cosmos Emulator
+ * https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql
  *
  * Runs on MacOS (Apple Silicon)
  * https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
