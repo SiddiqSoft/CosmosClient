@@ -74,9 +74,9 @@ stages:
           echo "Stop   : docker container stop linux-emulator ........."
           docker container stop linux-emulator
           echo "Remove : docker container remove linux-emulator ......."
-          docker container rm linux-emulator
+          docker container rm --force linux-emulator
           echo "Start the emulator as linux-emulator.."
-          docker run --publish 8081:8081 --name linux-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          docker run --publish 8081:8081 --name linux-emulator --network=host --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
           echo "Check container status.."
           docker ps
       condition: succeeded()
@@ -208,9 +208,9 @@ stages:
           echo "Stop   : docker container stop linux-emulator ........."
           docker container stop linux-emulator
           echo "Remove : docker container remove linux-emulator ......."
-          docker container rm linux-emulator
+          docker container rm --force linux-emulator
           echo "Start the emulator as linux-emulator.."
-          docker run --publish 8081:8081 --name linux-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          docker run --publish 8081:8081 --name linux-emulator --network=host --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
           echo "Check container status.."
           docker ps
       condition: succeeded()
