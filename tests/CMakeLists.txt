@@ -32,6 +32,22 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
         add_compile_definitions(${TESTPROJ} PRIVATE DEBUG=1 _DEBUG=1)
     endif()
 
+    # On macOS with Homebrew LLVM, the CURL::libcurl imported target adds the Xcode SDK
+    # include path (-isystem .../MacOSX.sdk/usr/include) which conflicts with LLVM's own
+    # libc++ headers. The SDK's C headers get found before LLVM's stddef.h wrapper,
+    # causing "unknown type name 'size_t'" errors.
+    # Fix: Tell CMake that the SDK include path is an implicit system directory so it
+    # won't be emitted as an explicit -isystem flag on the command line.
+    if(CMAKE_CXX_COMPILER_ID MATCHES [Cc][Ll][Aa][Nn][Gg] AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        execute_process(
+            COMMAND xcrun --show-sdk-path
+            OUTPUT_VARIABLE _sdk_path
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(_sdk_path AND EXISTS "${_sdk_path}/usr/include")
+            list(APPEND CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${_sdk_path}/usr/include")
+        endif()
+    endif()
+
     # Our tests depend on this preprocessor definition during CI/test mode to enable
     # access to protected members.
     add_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
