@@ -283,7 +283,7 @@ namespace siddiqsoft
         /// @return Reference to the current active Connection Primary/Secondary
         const CosmosEndpoint& current() const
         {
-            return (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) ? std::ref(Secondary) : std::ref(Primary);
+            return (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) ? Secondary : Primary;
         }
 
 
@@ -816,6 +816,7 @@ namespace siddiqsoft
 
                 case CosmosOperation::listDocuments:
                     if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    [[fallthrough]];
                 case CosmosOperation::listCollections:
                     if (op.database.empty()) throw std::invalid_argument("op.database required");
                     break;
@@ -851,12 +852,10 @@ namespace siddiqsoft
                     if (op.id.empty()) throw std::invalid_argument("op.id required");
                     if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
                     break;
+                case CosmosOperation::notset:
                 default: throw std::invalid_argument(std::format("{} requires op.operation be valid: {}", __func__, nlohmann::json(op.operation).dump()));
             }
 
-            // Elementary checks..
-            if (op.operation == CosmosOperation::notset)
-                throw std::invalid_argument(std::format("{} requires op.operation be set: {}", __func__, std::to_underlying(op.operation)));
             if (!op.onResponse) throw std::invalid_argument("async requires op.onResponse be valid callback");
 
             // We can now queue the request..
@@ -946,7 +945,7 @@ namespace siddiqsoft
              */
             auto req = rest_request<char> {
                     HttpMethodType::METHOD_GET,
-                    std::format("{}dbs/{}", cnxn.current().currentWriteUri(), ctx.database),
+                    std::format("{}dbs/{}", cnxn.current().currentReadUri(), ctx.database),
                     {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "dbs", std::format("dbs/{}", ctx.database), ts)},
                      {"x-ms-date", ts},
                      {"x-ms-session-token", ts},
@@ -1334,7 +1333,7 @@ namespace siddiqsoft
 
             siddiqsoft::rest_request<char> req {
                     HttpMethodType::METHOD_GET,
-                    std::format("{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentWriteUri(), ctx.database, ctx.collection, ctx.id),
+                    std::format("{}dbs/{}/colls/{}/docs/{}", cnxn.current().currentReadUri(), ctx.database, ctx.collection, ctx.id),
                     {{"Authorization",
                       EncryptionUtils::CosmosToken<char>(
                               cnxn.current().Key, "GET", "docs", std::format("dbs/{}/colls/{}/docs/{}", ctx.database, ctx.collection, ctx.id), ts)},

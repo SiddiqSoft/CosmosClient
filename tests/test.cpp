@@ -220,7 +220,7 @@ TEST(Validation, configure_check_json)
 /// The `serviceSettings` contains information about the service as reported by call to discoverRegions
 /// Here we perform a configure and check the responses obtained from the Azure service.
 ///
-/// NOTE: The `serviceSettings` is protected and this test declares the macro `azcosmoscl_TESTING_MODE`
+/// NOTE: The `serviceSettings` is protected and this test declares the macro `cosmoscl_TESTING_MODE`
 /// to enable public access during testing stage only.
 TEST(Validation, configure_1)
 {
@@ -239,7 +239,7 @@ TEST(Validation, configure_1)
     auto& currentConfig = cc.configuration();
     std::print(std::cerr, "{} - Contents of current configuration\n{}", __func__, currentConfig.dump(2));
 
-#if defined(azcosmoscl_TESTING_MODE)
+#if defined(cosmoscl_TESTING_MODE)
     EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
     EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
 
@@ -1342,17 +1342,17 @@ TEST_F(CosmosClientSuite, configure_multi)
 
     std::ranges::for_each(clients, [&](auto& cc) {
         // Check that we have read/write locations detected.
-        auto& currentConfig = testSuiteClient.configuration();
+        auto& currentConfig = cc.configuration();
 
-        EXPECT_TRUE(testSuiteClient.serviceSettings["writableLocations"].is_array());
-        EXPECT_TRUE(testSuiteClient.serviceSettings["readableLocations"].is_array());
+        EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
+        EXPECT_TRUE(cc.serviceSettings["readableLocations"].is_array());
 
         // Atleast one read location
-        EXPECT_LE(1, testSuiteClient.serviceSettings["readableLocations"].size());
-        EXPECT_LE(1, testSuiteClient.cnxn.current().ReadableUris.size());
+        EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
+        EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
         // Atleast one write location
-        EXPECT_LE(1, testSuiteClient.serviceSettings["writableLocations"].size());
-        EXPECT_LE(1, testSuiteClient.cnxn.current().WritableUris.size());
+        EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
+        EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
         passTest++;
     });
 

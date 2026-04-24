@@ -29,7 +29,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
 
     if( CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
         message(STATUS "  Setting DEBUG macro..")
-        add_compile_definitions(${TESTPROJ} PRIVATE DEBUG=1 _DEBUG=1)
+        target_compile_definitions(${TESTPROJ} PRIVATE DEBUG=1 _DEBUG=1)
     endif()
 
     # On macOS with Homebrew LLVM, the CURL::libcurl imported target adds the Xcode SDK
@@ -50,7 +50,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
 
     # Our tests depend on this preprocessor definition during CI/test mode to enable
     # access to protected members.
-    add_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
+    target_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
 
     # Dependencies
     #cpmaddpackage("gh:google/googletest#v1.15.2")
