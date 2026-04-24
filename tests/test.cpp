@@ -1128,7 +1128,7 @@ TEST(CosmosConnection, test1_n)
     EXPECT_EQ("U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=", cd.Primary.EncodedKey);
     // std::cerr << "Primary Key....." << cd.Primary.EncodedKey << std::endl;
 
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host);
     // std::cerr << "Primary.host...." << ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host << std::endl;
 
     // std::cerr << "Uri............." << cd.Primary.BaseUri << std::endl;
@@ -1245,13 +1245,13 @@ TEST(CosmosEndpoint, test1_n)
     // std::cerr << "std::format.Uri." << std::format("{}", cs.BaseUri) << std::endl;
     // std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
 
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
     cs.rotateReadUri();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
 
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
     cs.rotateWriteUri();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
 
     auto info = nlohmann::json(cs);
     EXPECT_EQ(6, info.size());
@@ -1275,8 +1275,8 @@ TEST(CosmosEndpoint, test2_n)
               ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;",
               std::string(cs));
 
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
 
     // Feed some readlocations and writelocations
     cs.ReadableUris.push_back("https://YOURDBNAME-r1.documents.azure.com:10/"_Uri);
@@ -1291,25 +1291,25 @@ TEST(CosmosEndpoint, test2_n)
     // std::cerr << "string.operator." << std::string(cs.BaseUri) << std::endl;
 
     // Test readable uris..
-    EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
     cs.rotateReadUri();
-    EXPECT_EQ("YOURDBNAME-r2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname-r2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
     cs.rotateReadUri();
-    EXPECT_EQ("YOURDBNAME-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname-r1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
 
     // Test writable uris..
-    EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
     cs.rotateWriteUri();
-    EXPECT_EQ("YOURDBNAME-w2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname-w2.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
     cs.rotateWriteUri();
-    EXPECT_EQ("YOURDBNAME-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname-w1.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
 
     // If we exhaust the reads..
     cs.ReadableUris.clear();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentReadUri()}.authority.host);
 
     cs.WritableUris.clear();
-    EXPECT_EQ("YOURDBNAME.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
+    EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cs.currentWriteUri()}.authority.host);
 }
 
 

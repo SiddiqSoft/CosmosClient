@@ -33,9 +33,10 @@
  */
 
 #pragma once
-#include <type_traits>
 #ifndef COSMOSCL_HPP
 #define COSMOSCL_HPP
+
+#include <type_traits>
 
 
 #include <string>
@@ -322,7 +323,7 @@ namespace siddiqsoft
         dest["currentConnectionId"] = src.CurrentConnectionId;
         dest["primary"]             = src.Primary;
         dest["secondary"]           = src.Secondary;
-        dest["currentConnection"]   = const_cast<CosmosConnection&>(src).current();
+        dest["currentConnection"]   = src.current();
     }
 #pragma endregion
 
@@ -343,8 +344,8 @@ namespace siddiqsoft
         std::chrono::microseconds ttx {};
 
         /// @brief Checks if the response is successful based on the HTTP status code
-        /// @return true iff the statusCode < 300
-        inline bool success() const { return statusCode < 300; }
+        /// @return true iff the statusCode is in the range [200, 300)
+        inline bool success() const { return statusCode >= 200 && statusCode < 300; }
     };
 
     /// @brief Serializer for CosmosResponseType
@@ -358,7 +359,7 @@ namespace siddiqsoft
     }
 
 
-    [[nodiscard]] static auto make_CosmosResponseType(timethis& tt, const std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosResponseType
+    [[nodiscard]] static auto make_CosmosResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosResponseType
     {
         CosmosResponseType crt;
 
@@ -382,12 +383,13 @@ namespace siddiqsoft
             crt.statusCode = ret.error();
         }
 
-        return std::move(crt);
+        return crt;
     }
 
     /// @brief Azure Cosmos Operations
     enum class CosmosOperation
     {
+        notset = 0,
         createDatabase,
         createCollection,
         discoverRegions,
@@ -399,8 +401,7 @@ namespace siddiqsoft
         update,
         remove,
         find,
-        query,
-        notset = 0
+        query
     };
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CosmosOperation,
@@ -505,7 +506,7 @@ namespace siddiqsoft
         std::string continuationToken;
     };
 
-    [[nodiscard]] static auto make_CosmosIterableResponseType(timethis& tt, const std::expected<siddiqsoft::rest_response<char>, int>&& ret)
+    [[nodiscard]] static auto make_CosmosIterableResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret)
             -> CosmosIterableResponseType
     {
         CosmosIterableResponseType crt;
@@ -538,7 +539,7 @@ namespace siddiqsoft
             crt.statusCode = ret.error();
         }
 
-        return std::move(crt);
+        return crt;
     }
 
 
@@ -1261,7 +1262,6 @@ namespace siddiqsoft
         {
             timethis       tt {};
             auto           ts    = DateUtils::RFC7231();
-            auto           count = 0;
             nlohmann::json headers {
                     {"Authorization",
                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", ctx.database, ctx.collection), ts)},
