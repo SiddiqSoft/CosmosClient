@@ -54,6 +54,11 @@
 class CosmosClientAsync : public ::testing::Test
 {
 protected:
+    void SetUp() override
+    {
+        if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+    }
+
     static void SetUpTestCase()
     {
         // Perform one-time setup for the entire test suite

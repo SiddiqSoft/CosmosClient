@@ -52,6 +52,11 @@
 class CosmosClientSuite : public ::testing::Test
 {
 protected:
+    void SetUp() override
+    {
+        if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+    }
+
     static void SetUpTestCase()
     {
         // Perform one-time setup for the entire test suite
@@ -230,6 +235,7 @@ TEST(Validation, configure_1)
     auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
 
     siddiqsoft::CosmosClient cc;
 
@@ -261,6 +267,7 @@ TEST(Validation, discoverRegions)
     auto [priConnStr, secConnStr] = GetConnectionStrings();
 
     ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
+    if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
 
     siddiqsoft::CosmosClient cc;
 
@@ -293,6 +300,8 @@ TEST(Validation, discoverRegions_BadPrimary)
 {
     // Fake/Bad connection string!
     auto [priConnStr, secConnStr] = GetConnectionStrings();
+    if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+
     priConnStr                    = "AccountEndpoint=https://localhost:4043/"
                                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 

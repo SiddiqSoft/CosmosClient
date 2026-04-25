@@ -3,6 +3,8 @@
 #ifndef cosmoscl_test_common_hpp
 #define cosmoscl_test_common_hpp
 
+#include <optional>
+
 /*
  * Required Environment Variables
  * CCTEST_PRIMARY_CS
@@ -46,6 +48,20 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
     auto scs = std::getenv("CCTEST_SECONDARY_CS");
 
     return std::make_pair(pcs ? std::string(pcs) : EMULATOR_CONNECTION_STRING, scs ? std::string(scs) : EMULATOR_CONNECTION_STRING);
+}
+
+/// @brief Quick connectivity probe: attempts discoverRegions on a throwaway client.
+/// @return true when the Cosmos service (emulator or cloud) is reachable.
+static bool IsCosmosReachable()
+{
+    static std::optional<bool> cached;
+    if (cached.has_value()) return *cached;
+
+    siddiqsoft::CosmosClient probe;
+    probe.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+    auto rc = probe.discoverRegions();
+    cached  = (rc.statusCode == 200);
+    return *cached;
 }
 
 static auto TScreateDatabase(const std::string& dbName)
