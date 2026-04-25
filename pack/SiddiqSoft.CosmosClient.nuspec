@@ -23,7 +23,7 @@
 		<copyright>Copyright (c) 2021 Siddiq Software LLC</copyright>
 		<!-- Dependencies -->
 		<dependencies>
-			<dependency id="nlohmann.json" version="3.11"/>
+			<dependency id="nlohmann.json" version="3.12"/>
 			<dependency id="SiddiqSoft.asynchrony" version="2.1.0"/>
 			<dependency id="SiddiqSoft.AzureCppUtils" version="3.2.0"/>
 			<dependency id="SiddiqSoft.format-helpers" version="1.0"/>

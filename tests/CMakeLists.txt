@@ -53,8 +53,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     target_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
 
     # Dependencies
-    #cpmaddpackage("gh:google/googletest#v1.15.2")
-    CPMAddPackage("gh:google/googletest#7d76a231b0e29caf86e68d1df858308cd53b2a66")
+    CPMAddPackage("gh:google/googletest#v1.17.0")
     target_sources( ${TESTPROJ}
                     PRIVATE
                     ${PROJECT_SOURCE_DIR}/tests/test_async.cpp

@@ -61,8 +61,10 @@ protected:
 
     static void SetUpTestCase()
     {
+        // Ensure connectivity (may start mock server)
+        IsCosmosReachable();
         // Perform one-time setup for the entire test suite
-        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
 
         if (auto rc2 = TSfindDatabase(testDBName1); rc2.statusCode == 404) {
@@ -122,7 +124,7 @@ TEST_F(CosmosClientAsync, async_example)
     std::atomic_bool         passTest = false;
 
     siddiqsoft::CosmosClient cc;
-    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+    cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
     cc.async({.operation  = siddiqsoft::CosmosOperation::listDatabases,
               .onResponse = [&cc, &passTest](siddiqsoft::CosmosArgumentType const& ctx, siddiqsoft::CosmosResponseType const& resp) {
@@ -300,7 +302,7 @@ TEST_F(CosmosClientAsync, async_nestedOps)
 
     siddiqsoft::CosmosClient cc;
 
-    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}}));
+    EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}}));
 
     // First we get the first database from the connection string..
     auto thisUniqueDocId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());

@@ -59,8 +59,10 @@ protected:
 
     static void SetUpTestCase()
     {
+        // Ensure connectivity (may start mock server)
+        IsCosmosReachable();
         // Perform one-time setup for the entire test suite
-        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
 
         if (auto rc2 = TSfindDatabase(testDBName0); rc2.statusCode == 404) {
@@ -229,13 +231,10 @@ TEST(Validation, configure_check_json)
 /// to enable public access during testing stage only.
 TEST(Validation, configure_1)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
     if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+
+    auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
+    ASSERT_FALSE(priConnStr.empty());
 
     siddiqsoft::CosmosClient cc;
 
@@ -261,13 +260,10 @@ TEST(Validation, configure_1)
 
 TEST(Validation, discoverRegions)
 {
-    // These are pulled from Azure Pipelines mapped as secret variables into the following environment variables.
-    // WARNING!
-    // DO NOT DISPLAY the contents as they will expose the secrets in the Azure pipeline logs!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
-
-    ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
     if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+
+    auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
+    ASSERT_FALSE(priConnStr.empty());
 
     siddiqsoft::CosmosClient cc;
 
@@ -298,9 +294,11 @@ TEST(Validation, discoverRegions)
 
 TEST(Validation, discoverRegions_BadPrimary)
 {
-    // Fake/Bad connection string!
-    auto [priConnStr, secConnStr] = GetConnectionStrings();
     if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+
+    // Fake/Bad connection string for primary; secondary uses the active (working) connection
+    auto [_, secConnStr] = GetActiveConnectionStrings();
+    auto priConnStr      = std::string {};
 
     priConnStr                    = "AccountEndpoint=https://localhost:4043/"
                                     ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
@@ -1342,7 +1340,7 @@ TEST_F(CosmosClientSuite, configure_multi)
 
     for (auto i = 0; i < 4; i++) {
         clients.emplace_back(siddiqsoft::CosmosClient {})
-                .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
+                .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
     }
 
     EXPECT_EQ(4, clients.size());
