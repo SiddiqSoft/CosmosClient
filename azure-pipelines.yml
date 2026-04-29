@@ -159,7 +159,6 @@ stages:
       clean: all
     pool:
       name: Default
-      vmImage:
       demands:
         - Agent.OS -equals Linux
     strategy:
