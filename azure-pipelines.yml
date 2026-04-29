@@ -65,7 +65,7 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)'
     - task: DockerInstaller@0
       inputs:
-        dockerVersion: '17.09.0-ce'
+        dockerVersion: '27.0.0'
     - task: CmdLine@2
       displayName: 'Start Azure CosmosDB emulator'
       inputs:
@@ -75,7 +75,7 @@ stages:
           echo "Remove : docker container remove linux-emulator ......."
           docker container rm --force linux-emulator
           echo "Start the emulator as linux-emulator.."
-          docker run --publish 8081:8081 --name linux-emulator --network=host --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          docker run --publish 8081:8081 --name linux-emulator --network=host --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
           echo "Check container status.."
           docker ps
       condition: succeeded()
@@ -209,7 +209,7 @@ stages:
           echo "Remove : docker container remove linux-emulator ......."
           docker container rm --force linux-emulator
           echo "Start the emulator as linux-emulator.."
-          docker run --publish 8081:8081 --name linux-emulator --network=host --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+          docker run --publish 8081:8081 --name linux-emulator --network=host --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
           echo "Check container status.."
           docker ps
       condition: succeeded()
