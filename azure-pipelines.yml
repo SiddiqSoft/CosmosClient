@@ -137,9 +137,10 @@ stages:
         addChangeLog: false
         assetUploadMode: 'replace'
       condition: and(succeeded(), eq(variables['BuildType'], 'Release'), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')), startsWith(variables['Agent.OS'], 'Windows'))
-#   ##################################################################################################### #### ## #
-#   #### Job buildLinux ################################################################################# #### ## #
-#   ##################################################################################################### #### ## #
+
+  ###################################################################################################### #### ## #
+  ##### Job buildLinux ################################################################################# #### ## #
+  ###################################################################################################### #### ## #
   - job: buildLinux
     displayName: 'Build and Test Linux'
     workspace:
@@ -170,21 +171,25 @@ stages:
           cmake.preset: 'Linux-Clang-$(BuildType)'
           cmakeExtraArgs: 
           MSBuildConfiguration: Release
+    
     steps:
     - checkout: self
       fetchDepth: 0
       name: step1
+    
     - task: gitversion-setup@4
       displayName: 'Install GitVersion..'
       inputs:
         versionSpec: '6.x'
         preferLatestVersion: true
+    
     - task: gitversion-execute@4
       displayName: 'Determine Version..'
       name: version_step
       inputs:
         useConfigFile: true
         configFilePath: 'GitVersion.yml'
+    
     - task: Bash@3
       displayName: 'Start Azure CosmosDB emulator'
       inputs:
@@ -199,17 +204,20 @@ stages:
           echo "Check container status.."
           docker ps
       condition: succeeded()
+    
     - task: CMake@1
       displayName: 'CMake Configure $(cmake.preset)'
       inputs:
         cmakeArgs: '--preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
+    
     - task: CMake@1
       displayName: 'CMake Build $(cmake.preset)'
       inputs:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
+    
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
       env:
@@ -218,14 +226,16 @@ stages:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose'
       condition: and(succeeded(), eq(variables['BuildType'], 'Release'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
+    
     - task: CMake@1
       displayName: 'CTest Test Coverage $(cmake.preset) (Linux only)'
       env:
         "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose -T Test -T Coverage'
-      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
+      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
+    
     - task: Bash@3
       displayName: 'Stop Azure CosmosDB emulator'
       inputs:
@@ -235,6 +245,7 @@ stages:
           echo "Stop the running emulator.."
           docker stop linux-emulator
       condition: succeeded()
+    
     - task: CmdLine@2
       displayName: 'Coverage collection (Linux builds Only)'
       inputs:
@@ -243,6 +254,7 @@ stages:
           gcovr --delete --root $(System.DefaultWorkingDirectory)/ --print-summary --xml-pretty --xml $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/coverage.xml $(System.DefaultWorkingDirectory)/build/$(cmake.preset)  --filter='$(System.DefaultWorkingDirectory)/include/*' --filter='$(System.DefaultWorkingDirectory)/tests/*' --gcov-executable 'llvm-cov gcov'
         workingDirectory: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)'
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
+    
     - task: PublishTestResults@2
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
       inputs:
@@ -252,6 +264,7 @@ stages:
         buildConfiguration: '$(BuildType)'
       continueOnError: false
       condition: succeeded()
+    
     - task: PublishCodeCoverageResults@2
       displayName: 'Publish Coverage Results (Linux builds)'
       inputs:
