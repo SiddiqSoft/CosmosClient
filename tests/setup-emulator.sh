@@ -27,7 +27,6 @@ $CONTAINER_RUNTIME run \
         --publish 10250-10255:10250-10255 \
         --name=linux-emulator \
         --rm \
-        --network=host \
         --detach \
         mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
 
@@ -37,4 +36,8 @@ sleep 10
 echo "Checking container status..."
 $CONTAINER_RUNTIME ps | grep linux-emulator || echo "Warning: Container may not be running"
 
-echo "Azure Cosmos DB Emulator is ready on https://localhost:8081"
+if curl -fsI https://localhost:8081 > /dev/null; then
+  echo "Azure Cosmos DB Emulator is ready on https://localhost:8081"
+else
+  echo "Azure Cosmos DB Emulator is NOT ready"
+fi
