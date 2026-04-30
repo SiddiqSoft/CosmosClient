@@ -66,8 +66,6 @@ stages:
       displayName: 'Start Azure CosmosDB Emulator (Windows native)'
       inputs:
         script: |
-          echo "Waiting for emulator to start..."
-          timeout /t 30
           echo "Emulator should be running on https://localhost:8081"
       condition: succeeded()
     - task: CMake@1
