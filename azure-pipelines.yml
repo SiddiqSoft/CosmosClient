@@ -66,6 +66,10 @@ stages:
       displayName: 'Start Azure CosmosDB Emulator (Windows native)'
       inputs:
         script: |
+          echo "Starting Azure Cosmos DB Emulator..."
+          "C:\Program Files\Azure Cosmos DB Emulator\CosmosDB.Emulator.exe" /NoUI /NoExplorer
+          echo "Waiting for emulator to start..."
+          timeout /t 30
           echo "Emulator should be running on https://localhost:8081"
       condition: succeeded()
     - task: CMake@1
@@ -84,7 +88,9 @@ stages:
       displayName: 'Stop Azure CosmosDB emulator'
       inputs:
         script: |
-          echo "Emulator NOT stopped"
+          echo "Stopping Azure Cosmos DB Emulator..."
+          taskkill /IM CosmosDB.Emulator.exe /F
+          echo "Emulator stopped"
       condition: always()
     - task: PublishTestResults@2
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
@@ -191,16 +197,8 @@ stages:
     - task: Bash@3
       displayName: 'Start Azure CosmosDB emulator'
       inputs:
-        targetType: 'inline'
-        script: |
-          echo "Stop   : docker container stop linux-emulator ........."
-          docker container stop linux-emulator
-          echo "Remove : docker container remove linux-emulator ......."
-          docker container rm --force linux-emulator
-          echo "Start the emulator as linux-emulator.."
-          docker run --publish 8081:8081 --name linux-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
-          echo "Check container status.."
-          docker ps
+        targetType: 'filePath'
+        filePath: '$(System.DefaultWorkingDirectory)/tests/setup-emulator.sh'
       condition: succeeded()
     
     - task: CMake@1
