@@ -19,7 +19,8 @@ echo "Removing any existing linux-emulator container..."
 $CONTAINER_RUNTIME container rm linux-emulator 2>/dev/null || true
 
 echo "Pulling latest Azure Cosmos DB Emulator image..."
-$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+#$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
 
 echo "Starting Azure Cosmos DB Emulator..."
 $CONTAINER_RUNTIME run \
@@ -36,6 +37,7 @@ sleep 10
 echo "Checking container status..."
 $CONTAINER_RUNTIME ps | grep linux-emulator || echo "Warning: Container may not be running"
 
+sleep 10
 if curl -fsI https://localhost:8081 > /dev/null; then
   echo "Azure Cosmos DB Emulator is ready on https://localhost:8081"
 else
