@@ -66,8 +66,6 @@ stages:
       displayName: 'Start Azure CosmosDB Emulator (Windows native)'
       inputs:
         script: |
-          echo "Starting Windows native Azure Cosmos DB Emulator..."
-          powershell -Command "Start-Process -FilePath 'C:\Program Files\Azure Cosmos DB Emulator\CosmosDB.Emulator.exe' -WindowStyle Hidden -ArgumentList '/DisableRIO'"
           echo "Waiting for emulator to start..."
           timeout /t 30
           echo "Emulator should be running on https://localhost:8081"
@@ -88,9 +86,7 @@ stages:
       displayName: 'Stop Azure CosmosDB emulator'
       inputs:
         script: |
-          echo "Stopping Windows native Azure Cosmos DB Emulator..."
-          taskkill /IM CosmosDB.Emulator.exe /F
-          echo "Emulator stopped"
+          echo "Emulator NOT stopped"
       condition: always()
     - task: PublishTestResults@2
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
