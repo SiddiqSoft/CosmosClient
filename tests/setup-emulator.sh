@@ -19,8 +19,8 @@ echo "Removing any existing linux-emulator container..."
 $CONTAINER_RUNTIME container rm linux-emulator 2>/dev/null || true
 
 echo "Pulling latest Azure Cosmos DB Emulator image..."
-#$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
-$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+echo "The version vnext-EN20260331 support arm64"
+$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
 
 echo "Starting Azure Cosmos DB Emulator..."
 $CONTAINER_RUNTIME run \
