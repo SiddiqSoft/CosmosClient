@@ -77,12 +77,12 @@ protected:
                         auto rc4 =
                                 testSuiteClient.createDocument({.database   = testDBName0,
                                                                 .collection = collName,
-                                                                .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                                               {"ttl", 1360},
-                                                                               {"__pk", "siddiqsoft.com"},
-                                                                               {"func", __func__},
-                                                                               {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
-                                                                               {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
+                                                                .document = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                                                                             {"ttl", 1360},
+                                                                             {"__pk", "siddiqsoft.com"},
+                                                                             {"func", __func__},
+                                                                             {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
+                                                                             {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
                     }
                 }
             }
@@ -300,8 +300,8 @@ TEST(Validation, discoverRegions_BadPrimary)
     auto [_, secConnStr] = GetActiveConnectionStrings();
     auto priConnStr      = std::string {};
 
-    priConnStr                    = "AccountEndpoint=https://localhost:4043/"
-                                    ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
+    priConnStr           = "AccountEndpoint=https://localhost:4043/"
+                           ";AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
 
 
     ASSERT_FALSE(priConnStr.empty()) << "Missing environment variable CCTEST_PRIMARY_CS; Set it to Primary Connection string from Azure portal.";
@@ -1338,6 +1338,7 @@ TEST_F(CosmosClientSuite, configure_multi)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
 
+    std::cerr << "Setting up the clients..\n";
     for (auto i = 0; i < 4; i++) {
         clients.emplace_back(siddiqsoft::CosmosClient {})
                 .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
@@ -1347,6 +1348,7 @@ TEST_F(CosmosClientSuite, configure_multi)
 
     std::atomic_uint passTest {0};
 
+    std::cerr << "Setting up the clients..configuring..\n";
     std::ranges::for_each(clients, [&](auto& cc) {
         // Check that we have read/write locations detected.
         auto& currentConfig = cc.configuration();
@@ -1362,6 +1364,8 @@ TEST_F(CosmosClientSuite, configure_multi)
         EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
         passTest++;
     });
+
+    std::cerr << "Completed.\n";
 
     EXPECT_EQ(4, passTest.load());
 }

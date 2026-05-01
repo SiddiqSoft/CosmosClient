@@ -79,11 +79,11 @@ protected:
                         auto rc4 =
                                 testSuiteClient.createDocument({.database   = testDBName1,
                                                                 .collection = collName,
-                                                                .document   = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                                               {"__pk", (i % 2) == 0 ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
-                                                                               {"func", __func__},
-                                                                               {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
-                                                                               {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
+                                                                .document = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                                                                             {"__pk", (i % 2) == 0 ? "even.siddiqsoft.com" : "odd.siddiqsoft.com"},
+                                                                             {"func", __func__},
+                                                                             {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
+                                                                             {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
 
                         /*testSuiteClient.async(
                                 {.operation    = siddiqsoft::CosmosOperation::create,
@@ -152,11 +152,11 @@ TEST_F(CosmosClientAsync, async_example)
                                             std::cerr << std::format("Completed create: {}\n", resp);
                                             // Remove the document
                                             testSuiteClient.async({.operation    = siddiqsoft::CosmosOperation::remove,
-                                                                     .database     = ctx.database,
-                                                                     .collection   = ctx.collection,
-                                                                     .id           = resp.document.value("id", ctx.id),
-                                                                     .partitionKey = ctx.partitionKey,
-                                                                     .onResponse   = [&cc, &passTest](auto const& ctx, auto const& resp) {
+                                                                   .database     = ctx.database,
+                                                                   .collection   = ctx.collection,
+                                                                   .id           = resp.document.value("id", ctx.id),
+                                                                   .partitionKey = ctx.partitionKey,
+                                                                   .onResponse   = [&cc, &passTest](auto const& ctx, auto const& resp) {
                                                                        std::cerr << std::format("Completed removeDocument: {}\n", resp);
                                                                        // Document should be removed.
                                                                        passTest = true;
@@ -192,9 +192,7 @@ TEST_F(CosmosClientAsync, async_listCollections)
                                EXPECT_EQ(200, resp.statusCode);
                                testSuiteClient.async({.operation  = siddiqsoft::CosmosOperation::listCollections,
                                                       .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
-                                                      .onResponse = [](auto const&, auto const& resp) {
-                                                          EXPECT_EQ(200, resp.statusCode);
-                                                      }});
+                                                      .onResponse = [](auto const&, auto const& resp) { EXPECT_EQ(200, resp.statusCode); }});
                            }});
 }
 
@@ -306,6 +304,7 @@ TEST_F(CosmosClientAsync, async_nestedOps)
 
     // First we get the first database from the connection string..
     auto thisUniqueDocId = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    std::cerr << std::format("....1..id:{}..\n", thisUniqueDocId);
     cc.async({.operation = siddiqsoft::CosmosOperation::listDatabases, .onResponse = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
                   std::cerr << std::format("....0..id:{}..{}\n", thisUniqueDocId, ctx);
                   EXPECT_EQ(200, resp.statusCode);
@@ -313,9 +312,9 @@ TEST_F(CosmosClientAsync, async_nestedOps)
                   cc.async({.operation  = siddiqsoft::CosmosOperation::listCollections,
                             .database   = resp.document.value("/Databases/0/id"_json_pointer, ""),
                             .onResponse = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
-                                std::cerr << std::format("....1..id:{}..{}\n", thisUniqueDocId, ctx);
+                                std::cerr << std::format("....1..id:{}.create.{}\n", thisUniqueDocId, ctx);
                                 EXPECT_EQ(200, resp.statusCode);
-                                // Create a document..
+                                // Create a document.. thisUniqueDocId
                                 cc.async({.operation    = siddiqsoft::CosmosOperation::create,
                                           .database     = ctx.database,
                                           .collection   = resp.document.value("/DocumentCollections/0/id"_json_pointer, ""),
@@ -326,7 +325,7 @@ TEST_F(CosmosClientAsync, async_nestedOps)
                                                            {"mode", "create-new"},
                                                            {"source", "basic_tests.exe"}},
                                           .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
-                                              std::cerr << std::format("....2..id:{}..{}\n", resp.document.value("id", ""), ctx);
+                                              std::cerr << std::format("....2..id:{}.created-ok.{}\n", resp.document.value("id", ""), ctx);
                                               EXPECT_EQ(201, resp.statusCode);
                                               EXPECT_EQ(thisUniqueDocId, resp.document.value("id", ""));
                                               EXPECT_EQ("create-new", resp.document.value("mode", ""));
@@ -336,14 +335,15 @@ TEST_F(CosmosClientAsync, async_nestedOps)
                                               newDocument["mode"]     = "upsert";
                                               newDocument["upsert-d"] = thisUniqueDocId;
                                               cc.async({.operation    = siddiqsoft::CosmosOperation::upsert,
-                                                          .database     = ctx.database,
-                                                          .collection   = ctx.collection,
-                                                          .id           = resp.document.value("id", ""),
-                                                          .partitionKey = ctx.partitionKey,
-                                                          .document     = newDocument,
-                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
-                                                            std::cerr << std::format("....3..id:{}..{}\n", resp.document.value("id", ""), ctx);
-                                                            ASSERT_EQ(201, resp.statusCode);
+                                                        .database     = ctx.database,
+                                                        .collection   = ctx.collection,
+                                                        .id           = resp.document.value("id", ""),
+                                                        .partitionKey = ctx.partitionKey,
+                                                        .document     = newDocument,
+                                                        .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                                                            std::cerr
+                                                                    << std::format("....3..id:{}.upsert..update-existing.{}\n", resp.document.value("id", ""), ctx);
+                                                            ASSERT_EQ(200, resp.statusCode); // 200 = updated existing document!
                                                             EXPECT_EQ(thisUniqueDocId, resp.document.value("id", ""));
                                                             EXPECT_EQ("upsert", resp.document.value("mode", ""));
                                                             EXPECT_EQ(thisUniqueDocId, resp.document.value("upsert-d", ""));
@@ -351,37 +351,37 @@ TEST_F(CosmosClientAsync, async_nestedOps)
                                                             auto newDocument    = resp.document;
                                                             newDocument["mode"] = "update";
                                                             cc.async({.operation    = siddiqsoft::CosmosOperation::update,
-                                                                          .database     = ctx.database,
-                                                                          .collection   = ctx.collection,
-                                                                          .id           = resp.document["id"],
-                                                                          .partitionKey = ctx.partitionKey,
-                                                                          .document     = newDocument,
-                                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
-                                                                          std::cerr << std::format("....4..id:{}..{}\n", resp.document.value("id", ""), ctx);
+                                                                      .database     = ctx.database,
+                                                                      .collection   = ctx.collection,
+                                                                      .id           = resp.document["id"],
+                                                                      .partitionKey = ctx.partitionKey,
+                                                                      .document     = newDocument,
+                                                                      .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx, const auto& resp) {
+                                                                          std::cerr << std::format("....4..id:{}.update.{}\n", resp.document.value("id", ""), ctx);
                                                                           EXPECT_EQ(200, resp.statusCode);
                                                                           EXPECT_EQ("update", resp.document.value("mode", ""));
                                                                           // Now, we should "find" this document
                                                                           cc.async({.operation    = siddiqsoft::CosmosOperation::find,
-                                                                                          .database     = ctx.database,
-                                                                                          .collection   = ctx.collection,
-                                                                                          .id           = ctx.id,
-                                                                                          .partitionKey = ctx.partitionKey,
-                                                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx,
-                                                                                                                                     const auto& resp) {
+                                                                                    .database     = ctx.database,
+                                                                                    .collection   = ctx.collection,
+                                                                                    .id           = ctx.id,
+                                                                                    .partitionKey = ctx.partitionKey,
+                                                                                    .onResponse   = [&cc, &passTest, &thisUniqueDocId](const auto& ctx,
+                                                                                                                                       const auto& resp) {
                                                                                         std::cerr << std::format("..5..id:{}..{}\n", thisUniqueDocId, ctx);
                                                                                         ASSERT_EQ(200, resp.statusCode);
                                                                                         EXPECT_EQ(thisUniqueDocId, resp.document.value("id", ""));
                                                                                         ASSERT_EQ("update", resp.document.value("mode", ""));
                                                                                         // Finally, remove this document.
                                                                                         cc.async({.operation    = siddiqsoft::CosmosOperation::remove,
-                                                                                                          .database     = ctx.database,
-                                                                                                          .collection   = ctx.collection,
-                                                                                                          .id           = ctx.id,
-                                                                                                          .partitionKey = ctx.partitionKey,
-                                                                                                          .onResponse   = [&cc, &passTest, &thisUniqueDocId](
-                                                                                                                        const auto& ctx, const auto& resp) {
+                                                                                                  .database     = ctx.database,
+                                                                                                  .collection   = ctx.collection,
+                                                                                                  .id           = ctx.id,
+                                                                                                  .partitionKey = ctx.partitionKey,
+                                                                                                  .onResponse   = [&cc, &passTest, &thisUniqueDocId](
+                                                                                                                          const auto& ctx, const auto& resp) {
                                                                                                       std::cerr << std::format(
-                                                                                                              "....6..id:{}..{}\n", thisUniqueDocId, ctx);
+                                                                                                              "....6..id:{}.remove.{}\n", thisUniqueDocId, ctx);
                                                                                                       EXPECT_EQ(204, resp.statusCode);
                                                                                                       // Finished!
                                                                                                       passTest = true;
