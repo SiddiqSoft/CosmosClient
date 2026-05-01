@@ -52,7 +52,7 @@ set( CMAKE_CXX_EXTENSIONS Off)
 # Dependencies
 CPMAddPackage("gh:nlohmann/json#v3.12.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE nlohmann_json::nlohmann_json)
-CPMAddPackage("gh:SiddiqSoft/SplitUri#3.0.0")
+CPMAddPackage("gh:SiddiqSoft/SplitUri#3.0.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE SplitUri::SplitUri)
 CPMAddPackage("gh:siddiqsoft/StringHelpers#1.2.2")
 target_link_libraries(${PROJECT_NAME} INTERFACE StringHelpers::StringHelpers)
@@ -60,7 +60,7 @@ CPMAddPackage("gh:SiddiqSoft/AzureCppUtils#3.2.5")
 target_link_libraries(${PROJECT_NAME} INTERFACE AzureCppUtils::AzureCppUtils)
 CPMAddPackage("gh:SiddiqSoft/string2map#2.5.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE string2map::string2map)
-CPMAddPackage("gh:SiddiqSoft/RunOnEnd#1.4.2.0")
+CPMAddPackage("gh:SiddiqSoft/RunOnEnd#1.4.2")
 target_link_libraries(${PROJECT_NAME} INTERFACE RunOnEnd::RunOnEnd)
 
 CPMAddPackage("gh:SiddiqSoft/asynchrony#2.1.1")
@@ -68,7 +68,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE asynchrony::asynchrony)
 CPMAddPackage("gh:SiddiqSoft/timethis#2.1.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/restcl#2.0.3")
+CPMAddPackage("gh:SiddiqSoft/restcl#2.1.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 
 
