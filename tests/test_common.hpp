@@ -22,10 +22,10 @@
  * The emulator must be started before running tests (use setup-emulator.sh).
  */
 
-static const std::string EMULATOR_CONNECTION_STRING = "AccountEndpoint=http://127.0.0.1:8081/;AccountKey=C2y6yDjf5/"
-                                                      "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
-static const std::string EMULATOR_KEY               = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-static const std::string EMULATOR_ENDPOINT          = "localhost:8081";
+static const std::string        EMULATOR_CONNECTION_STRING = "AccountEndpoint=http://127.0.0.1:8081/;AccountKey=C2y6yDjf5/"
+                                                             "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
+static const std::string        EMULATOR_KEY               = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+static const std::string        EMULATOR_ENDPOINT          = "localhost:8081";
 
 static const int                SEED_DOCUMENT_COUNT {10};
 static std::string              testDBName          = std::format("cosmoscl_test_DB{}", __COUNTER__);
@@ -59,10 +59,12 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 
     if (pcs) {
         // User provided explicit connection strings
+        std::print(std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}\n", pcs, scs);
         return std::make_pair(std::string(pcs), scs ? std::string(scs) : std::string(pcs));
     }
 
     // No env vars set — use emulator connection string
+    std::print(std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}\n", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
     return std::make_pair(EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
 }
 
@@ -74,20 +76,20 @@ static bool IsCosmosReachable()
     if (cached.has_value()) return *cached;
 
     std::print(std::cerr, "IsCosmosReachable: Attempting to connect to Cosmos DB (emulator or cloud)...\n");
-    
+
     // Try to connect with retries
     for (int attempt = 0; attempt < 5; ++attempt) {
         siddiqsoft::CosmosClient probe;
         probe.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
         auto rc = probe.discoverRegions();
         std::print(std::cerr, "IsCosmosReachable: discoverRegions attempt {} returned status code: {}\n", attempt + 1, rc.statusCode);
-        
+
         if (rc.statusCode == 200) {
             std::print(std::cerr, "IsCosmosReachable: Successfully connected to Cosmos DB\n");
             cached = true;
             return true;
         }
-        
+
         if (attempt < 4) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
