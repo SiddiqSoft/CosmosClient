@@ -1,20 +1,14 @@
 if(${${PROJECT_NAME}_BUILD_TESTS})
-    set(TESTPROJ ${PROJECT_NAME}_tests)
-
     set( CMAKE_CXX_STANDARD 23)
     set( CMAKE_CXX_STANDARD_REQUIRED On)
     set( CMAKE_CXX_EXTENSIONS Off)
     
-    add_executable(${TESTPROJ})
-
-    target_compile_features(${TESTPROJ} PRIVATE cxx_std_23)
-    target_compile_options( ${TESTPROJ}
-                            PRIVATE
-                            $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest> )
-    target_compile_options( ${TESTPROJ}
-                            PRIVATE
-                            $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library> )
-
+    # Common compiler configuration
+    set(COMMON_COMPILE_OPTIONS
+        $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>
+        $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library>
+    )
+    
     # ASAN only for Debug builds on Linux (coverage profiling removed)
     if(((CMAKE_CXX_COMPILER_ID MATCHES [Cc][Ll][Aa][Nn][Gg]) 
         OR (CMAKE_CXX_COMPILER_ID MATCHES [Gg][Nn][Uu]))
@@ -29,7 +23,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
 
     if( CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
         message(STATUS "  Setting DEBUG macro..")
-        target_compile_definitions(${TESTPROJ} PRIVATE DEBUG=1 _DEBUG=1)
+        set(DEBUG_DEFS DEBUG=1 _DEBUG=1)
     endif()
 
     # On macOS with Homebrew LLVM, the CURL::libcurl imported target adds the Xcode SDK
@@ -48,19 +42,28 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
         endif()
     endif()
 
-    # Our tests depend on this preprocessor definition during CI/test mode to enable
-    # access to protected members.
-    target_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
-
     # Dependencies
     CPMAddPackage("gh:google/googletest#v1.17.0")
-    target_sources( ${TESTPROJ}
-                    PRIVATE
-                    ${PROJECT_SOURCE_DIR}/tests/test_async.cpp
-                    ${PROJECT_SOURCE_DIR}/tests/test.cpp
-                    ${PROJECT_SOURCE_DIR}/tests/test_comprehensive_cosmos_api.cpp)
-    # Link dependencies..
-    target_link_libraries(${TESTPROJ} PRIVATE
+    
+    # ============================================================================
+    # Unified Test Executable: testall.cpp
+    # ============================================================================
+    # This single executable contains all integration tests with shared setup/teardown
+    # Tests are organized by category:
+    # - Validation tests (no emulator required)
+    # - Connection tests (no emulator required)
+    # - Endpoint tests (no emulator required)
+    # - Integration tests (requires emulator)
+    
+    set(TEST_ALL_TARGET ${PROJECT_NAME}_tests)
+    add_executable(${TEST_ALL_TARGET})
+    
+    target_compile_features(${TEST_ALL_TARGET} PRIVATE cxx_std_23)
+    target_compile_options(${TEST_ALL_TARGET} PRIVATE ${COMMON_COMPILE_OPTIONS})
+    target_compile_definitions(${TEST_ALL_TARGET} PRIVATE cosmoscl_TESTING_MODE=1 ${DEBUG_DEFS})
+    
+    target_sources(${TEST_ALL_TARGET} PRIVATE ${PROJECT_SOURCE_DIR}/tests/testall.cpp)
+    target_link_libraries(${TEST_ALL_TARGET} PRIVATE
             GTest::gtest_main
             nlohmann_json::nlohmann_json
             restcl::restcl
@@ -71,10 +74,28 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
             asynchrony::asynchrony
             AzureCppUtils::AzureCppUtils
             StringHelpers::StringHelpers)
-
-    include(GoogleTest)
-    gtest_discover_tests(${TESTPROJ} XML_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/tests/results")
-
+    
+    # ============================================================================
+    # CTest Configuration
+    # ============================================================================
     include(CTest)
+    
+    # Add single test entry - all tests run in one process with shared setup/teardown
+    add_test(
+        NAME ${TEST_ALL_TARGET}
+        COMMAND ${TEST_ALL_TARGET} --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    
+    # Set timeout for the entire test suite
+    set_tests_properties(${TEST_ALL_TARGET} PROPERTIES TIMEOUT 1800)
+    
+    # Configure CTest to run tests sequentially (single process)
+    set(CTEST_PARALLEL_LEVEL 1 CACHE STRING "Number of parallel test jobs (1 = sequential)")
+    
     message(STATUS "  Finished configuring for ${PROJECT_NAME} -- ${PROJECT_NAME}_BUILD_TESTS = ${${PROJECT_NAME}_BUILD_TESTS}")
+    message(STATUS "  CTest configured to run ALL tests in a single process:")
+    message(STATUS "    - ${TEST_ALL_TARGET} (unified integration tests)")
+    message(STATUS "  SetUpTestCase/TearDownTestCase run once for all tests")
+    message(STATUS "  Total test timeout: 1800 seconds (30 minutes)")
 endif()

@@ -32,6 +32,7 @@ stages:
       name: Default
       demands:
         - Agent.OS -equals Windows_NT
+        - docker
     strategy:
       matrix:
         Debug:
@@ -82,7 +83,7 @@ stages:
     - task: CMake@1
       displayName: 'CMake Tests $(cmake.preset)'
       inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure'
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose'
       continueOnError: true
       condition: succeeded()
     - task: CmdLine@2
@@ -216,20 +217,20 @@ stages:
       condition: succeeded()
     
     - task: CMake@1
-      displayName: 'CMake Tests $(cmake.preset)'
+      displayName: 'CMake Tests $(cmake.preset) - Release'
       env:
         "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose'
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose'
       condition: and(succeeded(), eq(variables['BuildType'], 'Release'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
     
     - task: CMake@1
-      displayName: 'CTest Test Coverage $(cmake.preset) (Linux only)'
+      displayName: 'CMake Tests $(cmake.preset) - Debug with Coverage'
       env:
         "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure --verbose -T Test -T Coverage'
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose -T Test -T Coverage'
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
     

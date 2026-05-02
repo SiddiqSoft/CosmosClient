@@ -78,5 +78,10 @@ target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 if(${${PROJECT_NAME}_BUILD_TESTS} AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests" AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests" )
     message(STATUS "${PROJECT_NAME} - Asked to build tests.. ${PROJECT_NAME}_BUILD_TESTS = ${${PROJECT_NAME}_BUILD_TESTS}")
     enable_testing()
+    
+    # Configure CTest for sequential test execution
+    include(CTest)
+    set(CTEST_PARALLEL_LEVEL 1 CACHE STRING "Number of parallel test jobs (1 = sequential)")
+    
     add_subdirectory(tests)
 endif()
