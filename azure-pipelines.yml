@@ -81,7 +81,9 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
     - task: CMake@1
-      displayName: 'CMake Tests $(cmake.preset)'
+      displayName: 'CMake Tests $(cmake.preset) - Unified Test Suite'
+      env:
+        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose'
       continueOnError: true
@@ -95,12 +97,13 @@ stages:
           echo "Emulator stopped"
       condition: always()
     - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results'
+      displayName: 'Publish $(BuildType) Test Results - Unified Suite'
       inputs:
           testResultsFormat: 'JUnit'
-          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/*.xml'
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/*_test_detail.xml'
           mergeTestResults: true
           buildConfiguration: '$(BuildType)'
+          testRunTitle: 'Unified Integration Tests ($(BuildType))'
       continueOnError: true
       condition: succeeded()
     - task: NuGetToolInstaller@1
@@ -254,12 +257,13 @@ stages:
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
     
     - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results'
+      displayName: 'Publish $(BuildType) Test Results - Unified Suite'
       inputs:
         testResultsFormat: 'JUnit'
-        testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/*.xml'
+        testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/*_test_detail.xml'
         mergeTestResults: true
         buildConfiguration: '$(BuildType)'
+        testRunTitle: 'Unified Integration Tests ($(BuildType))'
       continueOnError: false
       condition: succeeded()
     
