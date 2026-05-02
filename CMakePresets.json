@@ -10,7 +10,7 @@
             "hidden": true,
             "generator": "Ninja",
             "environment": {
-                "CTEST_PARALLEL_LEVEL": "0",
+                "CTEST_PARALLEL_LEVEL": "1",
                 "CMAKE_COLOR_DIAGNOSTICS": "1"
             },
             "cacheVariables": {
