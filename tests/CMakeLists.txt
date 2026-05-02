@@ -45,6 +45,9 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     # Dependencies
     CPMAddPackage("gh:google/googletest#v1.17.0")
     
+    # Ensure test results directory exists
+    file(MAKE_DIRECTORY "${PROJECT_SOURCE_DIR}/tests/results")
+    
     # ============================================================================
     # Unified Test Executable: testall.cpp
     # ============================================================================
@@ -62,7 +65,15 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     target_compile_options(${TEST_ALL_TARGET} PRIVATE ${COMMON_COMPILE_OPTIONS})
     target_compile_definitions(${TEST_ALL_TARGET} PRIVATE cosmoscl_TESTING_MODE=1 ${DEBUG_DEFS})
     
-    target_sources(${TEST_ALL_TARGET} PRIVATE ${PROJECT_SOURCE_DIR}/tests/testall.cpp)
+    target_sources(${TEST_ALL_TARGET} PRIVATE 
+        ${PROJECT_SOURCE_DIR}/tests/testall.cpp
+    )
+    
+    target_include_directories(${TEST_ALL_TARGET} PRIVATE
+        ${PROJECT_SOURCE_DIR}/tests
+        ${PROJECT_SOURCE_DIR}/include
+    )
+    
     target_link_libraries(${TEST_ALL_TARGET} PRIVATE
             GTest::gtest_main
             nlohmann_json::nlohmann_json
@@ -80,10 +91,21 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     # ============================================================================
     include(CTest)
     
+    # Determine output file name based on preset or build type
+    if(DEFINED CMAKE_BUILD_TYPE)
+        if(CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
+            set(TEST_OUTPUT_NAME "debug_test_detail.xml")
+        else()
+            set(TEST_OUTPUT_NAME "release_test_detail.xml")
+        endif()
+    else()
+        set(TEST_OUTPUT_NAME "test_detail.xml")
+    endif()
+    
     # Add single test entry - all tests run in one process with shared setup/teardown
     add_test(
         NAME ${TEST_ALL_TARGET}
-        COMMAND ${TEST_ALL_TARGET} --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/
+        COMMAND ${TEST_ALL_TARGET} --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/${TEST_OUTPUT_NAME}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
     
@@ -98,4 +120,5 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     message(STATUS "    - ${TEST_ALL_TARGET} (unified integration tests)")
     message(STATUS "  SetUpTestCase/TearDownTestCase run once for all tests")
     message(STATUS "  Total test timeout: 1800 seconds (30 minutes)")
+    message(STATUS "  Test output: ${PROJECT_SOURCE_DIR}/tests/results/${TEST_OUTPUT_NAME}")
 endif()
