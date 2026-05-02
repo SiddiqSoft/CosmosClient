@@ -64,45 +64,83 @@ protected:
 
     static void SetUpTestCase()
     {
-        IsCosmosReachable();
+        if (!IsCosmosReachable()) {
+            std::print(std::cerr, "SetUpTestCase: Cosmos service is not reachable, skipping setup\n");
+            return;
+        }
+
+        std::print(std::cerr, "SetUpTestCase: Configuring test suite client...\n");
         testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
-        // Create test database
-        if (auto rc = TSfindDatabase(testDBName0); rc.statusCode == 404) {
-            TScreateDatabase(testDBName0);
+        // Clean up any existing test database from previous runs
+        std::print(std::cerr, "SetUpTestCase: Cleaning up existing database '{}' if it exists...\n", testDBName0);
+        auto deleteRc = TSdeleteDatabase(testDBName0);
+        if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
+            std::print(std::cerr, "SetUpTestCase: Database cleanup completed (status: {})\n", deleteRc.statusCode);
+        } else {
+            std::print(std::cerr, "SetUpTestCase: Warning - unexpected status code {} when deleting database\n", deleteRc.statusCode);
         }
 
+        // Wait a moment for deletion to propagate
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        // Create test database
+        std::print(std::cerr, "SetUpTestCase: Creating test database '{}'\n", testDBName0);
+        auto createDbRc = TScreateDatabase(testDBName0);
+        if (createDbRc.statusCode != 201) {
+            std::print(std::cerr, "SetUpTestCase: ERROR - Failed to create database '{}' (status: {})\n", testDBName0, createDbRc.statusCode);
+            throw std::runtime_error(std::format("Failed to create test database '{}' with status code {}", testDBName0, createDbRc.statusCode));
+        }
+        std::print(std::cerr, "SetUpTestCase: Database '{}' created successfully\n", testDBName0);
+
         // Create test collections
-        try {
-            for (auto& collName : testCollectionNames) {
-                if (auto rc = TScreateCollection(testDBName0, collName); rc.statusCode == 201) {
-                    // Seed with diverse test documents
-                    for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
-                        testSuiteClient.createDocument({
-                            .database   = testDBName0,
-                            .collection = collName,
-                            .document   = {
-                                {"id", std::format("seed_{:02d}", i)},
-                                {"__pk", "siddiqsoft.com"},
-                                {"index", i},
-                                {"parity", (i % 2) == 0 ? "even" : "odd"},
-                                {"category", std::format("cat_{}", i % 3)},
-                                {"value", i * 10},
-                                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()},
-                                {"active", i < 5}
-                            }
-                        });
+        std::print(std::cerr, "SetUpTestCase: Creating {} test collections...\n", testCollectionNames.size());
+        for (size_t idx = 0; idx < testCollectionNames.size(); ++idx) {
+            auto& collName = testCollectionNames[idx];
+            std::print(std::cerr, "SetUpTestCase: Creating collection '{}' in database '{}'\n", collName, testDBName0);
+            
+            auto createCollRc = TScreateCollection(testDBName0, collName);
+            if (createCollRc.statusCode != 201) {
+                std::print(std::cerr, "SetUpTestCase: ERROR - Failed to create collection '{}' (status: {})\n", collName, createCollRc.statusCode);
+                throw std::runtime_error(std::format("Failed to create test collection '{}' with status code {}", collName, createCollRc.statusCode));
+            }
+            std::print(std::cerr, "SetUpTestCase: Collection '{}' created successfully\n", collName);
+
+            // Seed with diverse test documents
+            std::print(std::cerr, "SetUpTestCase: Seeding collection '{}' with {} documents...\n", collName, SEED_DOCUMENT_COUNT);
+            for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
+                auto seedRc = testSuiteClient.createDocument({
+                    .database   = testDBName0,
+                    .collection = collName,
+                    .document   = {
+                        {"id", std::format("seed_{:02d}", i)},
+                        {"__pk", "siddiqsoft.com"},
+                        {"index", i},
+                        {"parity", (i % 2) == 0 ? "even" : "odd"},
+                        {"category", std::format("cat_{}", i % 3)},
+                        {"value", i * 10},
+                        {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()},
+                        {"active", i < 5}
                     }
+                });
+                if (seedRc.statusCode != 201) {
+                    std::print(std::cerr, "SetUpTestCase: Warning - Failed to seed document {} in collection '{}' (status: {})\n", i, collName, seedRc.statusCode);
                 }
             }
+            std::print(std::cerr, "SetUpTestCase: Collection '{}' seeding completed\n", collName);
         }
-        catch (...) {
-        }
+        std::print(std::cerr, "SetUpTestCase: Test suite setup completed successfully\n");
     }
 
     static void TearDownTestCase()
     {
-        TSdeleteDatabase(testDBName0);
+        std::print(std::cerr, "TearDownTestCase: Cleaning up test database '{}'\n", testDBName0);
+        auto deleteRc = TSdeleteDatabase(testDBName0);
+        if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
+            std::print(std::cerr, "TearDownTestCase: Database cleanup completed (status: {})\n", deleteRc.statusCode);
+        } else {
+            std::print(std::cerr, "TearDownTestCase: Warning - unexpected status code {} when deleting database\n", deleteRc.statusCode);
+        }
     }
 
     // Helper to generate unique document IDs
