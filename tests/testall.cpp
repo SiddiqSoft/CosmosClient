@@ -1634,3 +1634,694 @@ TEST_F(CosmosIntegrationTests, ConcurrentDocumentCreation)
         });
     }
 }
+
+// ============================================================================
+// ADDITIONAL AZURE COSMOS REST API FEATURE TESTS
+// ============================================================================
+
+TEST_F(CosmosIntegrationTests, DocumentTTLExpiration)
+{
+    std::string docId = GenerateDocId("ttl_doc");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"ttl", 1},
+            {"data", "This document will expire"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("ttl"));
+    EXPECT_EQ(1, rc.document.value("ttl", 0));
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithTimestamp)
+{
+    std::string docId = GenerateDocId("timestamp_doc");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"data", "Document with timestamp"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("_ts"));
+    EXPECT_GT(rc.document.value("_ts", 0), 0);
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithETag)
+{
+    std::string docId = GenerateDocId("etag_doc");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"data", "Document with ETag"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("_etag"));
+    EXPECT_FALSE(rc.document.value("_etag", "").empty());
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithRID)
+{
+    std::string docId = GenerateDocId("rid_doc");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"data", "Document with RID"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("_rid"));
+    EXPECT_FALSE(rc.document.value("_rid", "").empty());
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithOrderBy)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 5; i++) {
+        std::string docId = GenerateDocId(std::format("orderby_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"priority", 5 - i},
+                {"name", std::format("Item {}", i)}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE c.priority > 0 ORDER BY c.priority DESC"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    EXPECT_TRUE(irt.document.contains("Documents"));
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithAggregation)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 1; i <= 5; i++) {
+        std::string docId = GenerateDocId(std::format("agg_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"value", i * 10},
+                {"category", "test"}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT COUNT(c.id) as count, SUM(c.value) as total FROM c WHERE c.category = @cat",
+        .queryParameters = {{{"name", "@cat"}, {"value", "test"}}}
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    EXPECT_TRUE(irt.document.contains("Documents"));
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithDistinct)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 2; j++) {
+            std::string docId = GenerateDocId(std::format("distinct_{}_{}", i, j));
+            docIds.push_back(docId);
+            
+            testSuiteClient.createDocument({
+                .database   = testDBName0,
+                .collection = testCollectionNames[0],
+                .document   = {
+                    {"id", docId},
+                    {"__pk", "siddiqsoft.com"},
+                    {"category", std::format("cat_{}", i)}
+                }
+            });
+        }
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT DISTINCT c.category FROM c"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithStringFunctions)
+{
+    std::string docId = GenerateDocId("string_func");
+    
+    testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"text", "Hello World"}
+        }
+    });
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT c.id, UPPER(c.text) as upper_text, LOWER(c.text) as lower_text, LENGTH(c.text) as text_length FROM c WHERE c.id = @id",
+        .queryParameters = {{{"name", "@id"}, {"value", docId}}}
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithMathFunctions)
+{
+    std::string docId = GenerateDocId("math_func");
+    
+    testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"value", 16.5}
+        }
+    });
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT c.id, ROUND(c.value) as rounded, FLOOR(c.value) as floored, CEILING(c.value) as ceiled FROM c WHERE c.id = @id",
+        .queryParameters = {{{"name", "@id"}, {"value", docId}}}
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, UpsertDocumentInsert)
+{
+    std::string docId = GenerateDocId("upsert_insert");
+    
+    auto rc = testSuiteClient.upsertDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"operation", "insert"},
+            {"version", 1}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_EQ("insert", rc.document.value("operation", ""));
+    EXPECT_EQ(1, rc.document.value("version", 0));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, UpsertDocumentUpdate)
+{
+    std::string docId = GenerateDocId("upsert_update");
+    
+    auto createRc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"operation", "create"},
+            {"version", 1}
+        }
+    });
+    EXPECT_EQ(201, createRc.statusCode);
+    
+    auto upsertRc = testSuiteClient.upsertDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"operation", "upsert"},
+            {"version", 2}
+        }
+    });
+    
+    EXPECT_EQ(200, upsertRc.statusCode);
+    EXPECT_EQ("upsert", upsertRc.document.value("operation", ""));
+    EXPECT_EQ(2, upsertRc.document.value("version", 0));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, PartitionKeyRangeQuery)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 3; i++) {
+        std::string docId = GenerateDocId(std::format("pk_range_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"index", i}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "siddiqsoft.com",
+        .queryStatement = "SELECT * FROM c"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, CrossPartitionQuery)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 3; i++) {
+        std::string docId = GenerateDocId(std::format("cross_pk_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"index", i}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE c.index >= 0"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithSystemProperties)
+{
+    std::string docId = GenerateDocId("sys_props");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"data", "Test"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("_rid"));
+    EXPECT_TRUE(rc.document.contains("_self"));
+    EXPECT_TRUE(rc.document.contains("_etag"));
+    EXPECT_TRUE(rc.document.contains("_attachments"));
+    EXPECT_TRUE(rc.document.contains("_ts"));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithLimit)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 10; i++) {
+        std::string docId = GenerateDocId(std::format("limit_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"index", i}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT TOP 5 * FROM c"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    EXPECT_LE(irt.document.value("_count", 0), 5);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithOffset)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 10; i++) {
+        std::string docId = GenerateDocId(std::format("offset_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"index", i}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c ORDER BY c.index OFFSET 5 LIMIT 5"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithArrayContains)
+{
+    std::string docId = GenerateDocId("array_contains");
+    
+    testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"tags", nlohmann::json::array({"important", "urgent", "review"})}
+        }
+    });
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE ARRAY_CONTAINS(c.tags, @tag)",
+        .queryParameters = {{{"name", "@tag"}, {"value", "urgent"}}}
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithExists)
+{
+    std::string docId1 = GenerateDocId("exists_yes");
+    std::string docId2 = GenerateDocId("exists_no");
+    
+    testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId1},
+            {"__pk", "siddiqsoft.com"},
+            {"optional_field", "value"}
+        }
+    });
+    
+    testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId2},
+            {"__pk", "siddiqsoft.com"}
+        }
+    });
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE EXISTS(c.optional_field)"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId1,
+        .partitionKey = "siddiqsoft.com"
+    });
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId2,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithIn)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 0; i < 5; i++) {
+        std::string docId = GenerateDocId(std::format("in_query_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"status", i % 2 == 0 ? "active" : "inactive"}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE c.status IN ('active', 'pending')"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, QueryWithBetween)
+{
+    std::vector<std::string> docIds;
+    
+    for (int i = 1; i <= 10; i++) {
+        std::string docId = GenerateDocId(std::format("between_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"score", i * 10}
+            }
+        });
+    }
+    
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE c.score BETWEEN 30 AND 70"
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
