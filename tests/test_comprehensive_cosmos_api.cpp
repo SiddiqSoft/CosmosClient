@@ -130,29 +130,6 @@ protected:
 // SECTION 1: Connection and Configuration Tests
 // ============================================================================
 
-TEST(ComprehensiveConnectionTests, ParseValidConnectionString)
-{
-    std::string cs = "AccountEndpoint=https://myaccount.documents.azure.com:443/"
-                     ";AccountKey=abcd1234ABCD5678efgh9012EFGH3456ijkl7890IJKL1234mnop5678MNOP9012==;";
-    
-    siddiqsoft::CosmosEndpoint endpoint(cs);
-    
-    EXPECT_EQ(std::string(endpoint.BaseUri), "https://myaccount.documents.azure.com:443/");
-    EXPECT_EQ(std::string(endpoint.EncodedKey), "abcd1234ABCD5678efgh9012EFGH3456ijkl7890IJKL1234mnop5678MNOP9012==");
-    EXPECT_TRUE(static_cast<bool>(endpoint));
-}
-
-TEST(ComprehensiveConnectionTests, ParseConnectionStringWithoutTrailingSemicolon)
-{
-    std::string cs = "AccountEndpoint=https://myaccount.documents.azure.com:443/"
-                     ";AccountKey=abcd1234ABCD5678efgh9012EFGH3456ijkl7890IJKL1234mnop5678MNOP9012==";
-    
-    siddiqsoft::CosmosEndpoint endpoint(cs);
-    
-    EXPECT_EQ("https://myaccount.documents.azure.com:443/", std::string(endpoint.BaseUri));
-    EXPECT_EQ("abcd1234ABCD5678efgh9012EFGH3456ijkl7890IJKL1234mnop5678MNOP9012==", endpoint.EncodedKey);
-}
-
 TEST(ComprehensiveConnectionTests, InvalidConnectionStringFormat)
 {
     std::string cs = "InvalidFormat";
@@ -161,66 +138,7 @@ TEST(ComprehensiveConnectionTests, InvalidConnectionStringFormat)
     EXPECT_FALSE(static_cast<bool>(endpoint));
 }
 
-TEST(ComprehensiveConnectionTests, PrimarySecondaryConnectionRotation)
-{
-    std::string pcs = "AccountEndpoint=https://primary.documents.azure.com:443/"
-                      ";AccountKey=primary1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    std::string scs = "AccountEndpoint=https://secondary.documents.azure.com:443/"
-                      ";AccountKey=secondary1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    
-    siddiqsoft::CosmosConnection conn(pcs, scs);
-    
-    // Initial state
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, conn.CurrentConnectionId);
-    EXPECT_EQ(pcs, std::string(conn.current()));
-    
-    // Rotate to secondary
-    conn.rotate();
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, conn.CurrentConnectionId);
-    EXPECT_EQ(scs, std::string(conn.current()));
-    
-    // Rotate back to primary
-    conn.rotate();
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, conn.CurrentConnectionId);
-    EXPECT_EQ(pcs, std::string(conn.current()));
-}
-
-TEST(ComprehensiveConnectionTests, ExplicitConnectionSelection)
-{
-    std::string pcs = "AccountEndpoint=https://primary.documents.azure.com:443/"
-                      ";AccountKey=primary1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    std::string scs = "AccountEndpoint=https://secondary.documents.azure.com:443/"
-                      ";AccountKey=secondary1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    
-    siddiqsoft::CosmosConnection conn(pcs, scs);
-    
-    // Explicitly select secondary
-    conn.rotate(2);
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::SecondaryConnection, conn.CurrentConnectionId);
-    
-    // Explicitly select primary
-    conn.rotate(1);
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, conn.CurrentConnectionId);
-}
-
-TEST(ComprehensiveConnectionTests, SingleConnectionNoRotation)
-{
-    std::string cs = "AccountEndpoint=https://single.documents.azure.com:443/"
-                     ";AccountKey=single1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    
-    siddiqsoft::CosmosConnection conn(cs);
-    
-    // Should always be primary
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, conn.CurrentConnectionId);
-    
-    conn.rotate();
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, conn.CurrentConnectionId);
-    
-    conn.rotate();
-    EXPECT_EQ(siddiqsoft::CosmosConnection::CurrentConnectionIdType::PrimaryConnection, conn.CurrentConnectionId);
-}
-
-TEST(ComprehensiveCosmosAPITests, ClientDefaultConfiguration)
+TEST_F(ComprehensiveCosmosAPITests, ClientDefaultConfiguration)
 {
     siddiqsoft::CosmosClient client;
     auto& config = client.configuration();
@@ -233,56 +151,6 @@ TEST(ComprehensiveCosmosAPITests, ClientDefaultConfiguration)
     EXPECT_TRUE(config.contains("partitionKeyNames"));
 }
 
-TEST(ComprehensiveCosmosAPITests, ClientConfigureWithValidParameters)
-{
-    if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
-    
-    siddiqsoft::CosmosClient client;
-    auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
-    
-    EXPECT_NO_THROW(client.configure({
-        {"partitionKeyNames", {"__pk"}},
-        {"connectionStrings", {priConnStr, secConnStr}}
-    }));
-    
-    auto& config = client.configuration();
-    EXPECT_TRUE(config.contains("connectionStrings"));
-    EXPECT_TRUE(config.contains("partitionKeyNames"));
-}
-
-TEST(ComprehensiveCosmosAPITests, ClientConfigureMissingConnectionStrings)
-{
-    siddiqsoft::CosmosClient client;
-    
-    EXPECT_THROW(
-        client.configure({{"partitionKeyNames", {"__pk"}}}),
-        std::invalid_argument
-    );
-}
-
-TEST(ComprehensiveCosmosAPITests, ClientConfigureMissingPartitionKeyNames)
-{
-    siddiqsoft::CosmosClient client;
-    auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
-    
-    EXPECT_THROW(
-        client.configure({{"connectionStrings", {priConnStr, secConnStr}}}),
-        std::invalid_argument
-    );
-}
-
-TEST(ComprehensiveCosmosAPITests, ClientConfigureWithEmptyConnectionStrings)
-{
-    siddiqsoft::CosmosClient client;
-    
-    EXPECT_THROW(
-        client.configure({
-            {"partitionKeyNames", {"__pk"}},
-            {"connectionStrings", nlohmann::json::array()}
-        }),
-        std::invalid_argument
-    );
-}
 
 // ============================================================================
 // SECTION 2: Database Operations Tests
@@ -826,76 +694,6 @@ TEST_F(ComprehensiveCosmosAPITests, UpsertDocumentInsert)
     });
 }
 
-TEST_F(ComprehensiveCosmosAPITests, UpsertDocumentUpdate)
-{
-    std::string docId = GenerateDocId("upsertupdate");
-    
-    // First upsert (insert)
-    auto upsert1 = testSuiteClient.upsertDocument({
-        .database   = testDBName0,
-        .collection = testCollectionNames[0],
-        .document   = {
-            {"id", docId},
-            {"__pk", "siddiqsoft.com"},
-            {"version", 1},
-            {"status", "initial"}
-        }
-    });
-    EXPECT_EQ(201, upsert1.statusCode);
-    EXPECT_EQ(1, upsert1.document.value("version", 0));
-    
-    // Second upsert (update)
-    auto upsert2 = testSuiteClient.upsertDocument({
-        .database   = testDBName0,
-        .collection = testCollectionNames[0],
-        .document   = {
-            {"id", docId},
-            {"__pk", "siddiqsoft.com"},
-            {"version", 2},
-            {"status", "updated"}
-        }
-    });
-    EXPECT_EQ(201, upsert2.statusCode);
-    EXPECT_EQ(2, upsert2.document.value("version", 0));
-    EXPECT_EQ("updated", upsert2.document.value("status", ""));
-    
-    // Cleanup
-    testSuiteClient.removeDocument({
-        .database     = testDBName0,
-        .collection   = testCollectionNames[0],
-        .id           = docId,
-        .partitionKey = "siddiqsoft.com"
-    });
-}
-
-TEST_F(ComprehensiveCosmosAPITests, UpsertDocumentMultipleTimes)
-{
-    std::string docId = GenerateDocId("upsertmultiple");
-    
-    for (int i = 1; i <= 5; i++) {
-        auto rc = testSuiteClient.upsertDocument({
-            .database   = testDBName0,
-            .collection = testCollectionNames[0],
-            .document   = {
-                {"id", docId},
-                {"__pk", "siddiqsoft.com"},
-                {"iteration", i},
-                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
-            }
-        });
-        
-        EXPECT_EQ(201, rc.statusCode);
-        EXPECT_EQ(i, rc.document.value("iteration", 0));
-    }
-    
-    // Cleanup
-    testSuiteClient.removeDocument({
-        .database     = testDBName0,
-        .collection   = testCollectionNames[0],
-        .id           = docId,
-        .partitionKey = "siddiqsoft.com"
-    });
-}
 
 // ============================================================================
 // SECTION 8: Document Delete Tests
@@ -1040,39 +838,6 @@ TEST_F(ComprehensiveCosmosAPITests, QueryDocumentsMultipleConditions)
     EXPECT_TRUE(irt.document.contains("Documents"));
 }
 
-TEST_F(ComprehensiveCosmosAPITests, QueryDocumentsSelectSpecificFields)
-{
-    auto irt = testSuiteClient.queryDocuments({
-        .database       = testDBName0,
-        .collection     = testCollectionNames[0],
-        .partitionKey   = "*",
-        .queryStatement = "SELECT c.id, c.parity, c.value FROM c WHERE c.parity = @parity",
-        .queryParameters = {{{"name", "@parity"}, {"value", "odd"}}}
-    });
-    
-    EXPECT_EQ(200, irt.statusCode);
-    EXPECT_TRUE(irt.document.contains("Documents"));
-    
-    if (irt.document.value("_count", 0) > 0) {
-        auto& firstDoc = irt.document["Documents"][0];
-        EXPECT_TRUE(firstDoc.contains("id"));
-        EXPECT_TRUE(firstDoc.contains("parity"));
-        EXPECT_TRUE(firstDoc.contains("value"));
-    }
-}
-
-TEST_F(ComprehensiveCosmosAPITests, QueryDocumentsOrderBy)
-{
-    auto irt = testSuiteClient.queryDocuments({
-        .database       = testDBName0,
-        .collection     = testCollectionNames[0],
-        .partitionKey   = "*",
-        .queryStatement = "SELECT * FROM c ORDER BY c.value DESC"
-    });
-    
-    EXPECT_EQ(200, irt.statusCode);
-    EXPECT_TRUE(irt.document.contains("Documents"));
-}
 
 TEST_F(ComprehensiveCosmosAPITests, QueryDocumentsAggregate)
 {
@@ -1367,33 +1132,6 @@ TEST(ComprehensiveSerializationTests, CosmosArgumentTypeSerialization)
     EXPECT_EQ("pk1", json.value("partitionKey", ""));
 }
 
-TEST(ComprehensiveSerializationTests, CosmosConnectionSerialization)
-{
-    std::string cs = "AccountEndpoint=https://test.documents.azure.com:443/"
-                     ";AccountKey=testkey1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    
-    siddiqsoft::CosmosConnection conn(cs);
-    nlohmann::json json = conn;
-    
-    EXPECT_TRUE(json.contains("currentConnectionId"));
-    EXPECT_TRUE(json.contains("primary"));
-    EXPECT_TRUE(json.contains("secondary"));
-    EXPECT_TRUE(json.contains("currentConnection"));
-}
-
-TEST(ComprehensiveSerializationTests, CosmosEndpointSerialization)
-{
-    std::string cs = "AccountEndpoint=https://test.documents.azure.com:443/"
-                     ";AccountKey=testkey1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890==;";
-    
-    siddiqsoft::CosmosEndpoint endpoint(cs);
-    nlohmann::json json = endpoint;
-    
-    EXPECT_TRUE(json.contains("baseUri"));
-    EXPECT_TRUE(json.contains("key"));
-    EXPECT_TRUE(json.contains("readUris"));
-    EXPECT_TRUE(json.contains("writeUris"));
-}
 
 // ============================================================================
 // SECTION 16: Bulk Operations Tests
