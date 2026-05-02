@@ -143,7 +143,7 @@ protected:
     // Helper to generate unique document IDs
     static std::string GenerateDocId(const std::string& prefix = "doc")
     {
-        return std::format("{}_{}", prefix, std::chrono::system_clock().now().time_since_epoch().count());
+        return std::format("{}_{}", prefix, std::chrono::system_clock::now().time_since_epoch().count());
     }
 
     // Helper to create test document
@@ -451,7 +451,7 @@ TEST_F(CosmosIntegrationTests, Example)
 
         if (auto rc2 = testSuiteClient.listCollections({.database = dbName}); 200 == rc2.statusCode) {
             auto collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
-            auto id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+            auto id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock::now().time_since_epoch().count());
             auto pkId = "siddiqsoft.com";
 
             if (auto rc3 = testSuiteClient.createDocument({.database = dbName, .collection = collectionName, .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"func", __func__}, {"source", "basic_tests.exe"}}}); 201 == rc3.statusCode) {
@@ -545,7 +545,7 @@ TEST_F(CosmosIntegrationTests, CreateDocument)
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
     EXPECT_FALSE(collectionName.empty());
 
-    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock::now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
     auto rc3 = testSuiteClient.createDocument({.database = dbName, .collection = collectionName, .document = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}});
@@ -570,7 +570,7 @@ TEST_F(CosmosIntegrationTests, CreateDocument_MissingId)
     EXPECT_EQ(200, rc2.statusCode);
     collectionName = rc2.document.value("/DocumentCollections/0/id"_json_pointer, "");
 
-    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock().now().time_since_epoch().count());
+    id   = std::format("azure-cosmos-restcl.{}", std::chrono::system_clock::now().time_since_epoch().count());
     pkId = "siddiqsoft.com";
 
     EXPECT_THROW(testSuiteClient.createDocument({.database = dbName, .collection = collectionName, .document = {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}}), std::invalid_argument);
@@ -859,4 +859,778 @@ TEST_F(CosmosIntegrationTests, CreateDocumentThreaded)
 
     EXPECT_EQ(removeDocsCount.load(), addDocsCount.load());
     EXPECT_EQ((DOCS * threadCount), addDocsCount.load());
+}
+
+// ============================================================================
+// COMPREHENSIVE API TESTS (Requires Emulator)
+// ============================================================================
+
+TEST(ComprehensiveConnectionTests, InvalidConnectionStringFormat)
+{
+    std::string cs = "InvalidFormat";
+    siddiqsoft::CosmosEndpoint endpoint(cs);
+    
+    EXPECT_FALSE(static_cast<bool>(endpoint));
+}
+
+TEST_F(CosmosIntegrationTests, ClientDefaultConfiguration)
+{
+    siddiqsoft::CosmosClient client;
+    auto& config = client.configuration();
+    
+    EXPECT_TRUE(config.contains("apiVersion"));
+    EXPECT_EQ("2018-12-31", config.value("apiVersion", ""));
+    EXPECT_TRUE(config.contains("libRetryLimit"));
+    EXPECT_EQ(7, config.value("libRetryLimit", 0));
+    EXPECT_TRUE(config.contains("connectionStrings"));
+    EXPECT_TRUE(config.contains("partitionKeyNames"));
+}
+
+TEST_F(CosmosIntegrationTests, CreateDatabaseBasic)
+{
+    std::string dbName = GenerateDocId("testdb");
+    
+    auto rc = testSuiteClient.createDatabase({.database = dbName});
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("id"));
+    EXPECT_EQ(dbName, rc.document.value("id", ""));
+    
+    testSuiteClient.deleteDatabase({.database = dbName});
+}
+
+TEST_F(CosmosIntegrationTests, CreateDatabaseDuplicate)
+{
+    std::string dbName = GenerateDocId("dupdb");
+    
+    auto rc1 = testSuiteClient.createDatabase({.database = dbName});
+    EXPECT_EQ(201, rc1.statusCode);
+    
+    auto rc2 = testSuiteClient.createDatabase({.database = dbName});
+    EXPECT_EQ(409, rc2.statusCode);
+    
+    testSuiteClient.deleteDatabase({.database = dbName});
+}
+
+TEST_F(CosmosIntegrationTests, ListDatabasesNotEmpty)
+{
+    auto rc = testSuiteClient.listDatabases();
+    
+    EXPECT_EQ(200, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("Databases"));
+    EXPECT_TRUE(rc.document["Databases"].is_array());
+    EXPECT_GE(rc.document["Databases"].size(), 1);
+}
+
+TEST_F(CosmosIntegrationTests, FindDatabaseExists)
+{
+    auto rc = testSuiteClient.findDatabase({.database = testDBName0});
+    
+    EXPECT_EQ(200, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("id"));
+    EXPECT_EQ(testDBName0, rc.document.value("id", ""));
+}
+
+TEST_F(CosmosIntegrationTests, FindDatabaseNotFound)
+{
+    std::string nonexistentDb = "nonexistent_db_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    
+    auto rc = testSuiteClient.findDatabase({.database = nonexistentDb});
+    
+    EXPECT_EQ(404, rc.statusCode);
+}
+
+TEST_F(CosmosIntegrationTests, DeleteDatabaseSuccess)
+{
+    std::string dbName = GenerateDocId("deldb");
+    
+    auto createRc = testSuiteClient.createDatabase({.database = dbName});
+    EXPECT_EQ(201, createRc.statusCode);
+    
+    auto deleteRc = testSuiteClient.deleteDatabase({.database = dbName});
+    EXPECT_EQ(204, deleteRc.statusCode);
+    
+    auto findRc = testSuiteClient.findDatabase({.database = dbName});
+    EXPECT_EQ(404, findRc.statusCode);
+}
+
+TEST_F(CosmosIntegrationTests, CreateCollectionBasic)
+{
+    std::string collName = GenerateDocId("testcoll");
+    
+    auto rc = testSuiteClient.createCollection({
+        .database   = testDBName0,
+        .collection = collName
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("id"));
+    EXPECT_EQ(collName, rc.document.value("id", ""));
+}
+
+TEST_F(CosmosIntegrationTests, CreateCollectionDuplicate)
+{
+    std::string collName = GenerateDocId("dupcoll");
+    
+    auto rc1 = testSuiteClient.createCollection({
+        .database   = testDBName0,
+        .collection = collName
+    });
+    EXPECT_EQ(201, rc1.statusCode);
+    
+    auto rc2 = testSuiteClient.createCollection({
+        .database   = testDBName0,
+        .collection = collName
+    });
+    EXPECT_EQ(409, rc2.statusCode);
+}
+
+TEST_F(CosmosIntegrationTests, ListCollectionsNotEmpty)
+{
+    auto rc = testSuiteClient.listCollections({.database = testDBName0});
+    
+    EXPECT_EQ(200, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("DocumentCollections"));
+    EXPECT_TRUE(rc.document["DocumentCollections"].is_array());
+    EXPECT_GE(rc.document["DocumentCollections"].size(), 1);
+}
+
+TEST_F(CosmosIntegrationTests, CreateDocumentMinimal)
+{
+    std::string docId = GenerateDocId("mindoc");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_EQ(docId, rc.document.value("id", ""));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, CreateDocumentWithComplexStructure)
+{
+    std::string docId = GenerateDocId("complexdoc");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"name", "Complex Document"},
+            {"nested", {
+                {"level1", {
+                    {"level2", {
+                        {"value", "deep"}
+                    }}
+                }}
+            }},
+            {"array", nlohmann::json::array({1, 2, 3, "four"})},
+            {"boolean", true},
+            {"number", 42.5},
+            {"null_value", nullptr}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_EQ("Complex Document", rc.document.value("name", ""));
+    EXPECT_EQ("deep", rc.document.value("/nested/level1/level2/value"_json_pointer, ""));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, CreateDocumentMissingId)
+{
+    EXPECT_THROW(
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"__pk", "siddiqsoft.com"},
+                {"name", "No ID"}
+            }
+        }),
+        std::invalid_argument
+    );
+}
+
+TEST_F(CosmosIntegrationTests, CreateDocumentMissingPartitionKey)
+{
+    std::string docId = GenerateDocId("nopkdoc");
+    
+    EXPECT_THROW(
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"name", "No Partition Key"}
+            }
+        }),
+        std::invalid_argument
+    );
+}
+
+TEST_F(CosmosIntegrationTests, FindDocumentExists)
+{
+    std::string docId = GenerateDocId("finddoc");
+    
+    auto createRc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = CreateTestDocument(docId)
+    });
+    EXPECT_EQ(201, createRc.statusCode);
+    
+    auto findRc = testSuiteClient.findDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+    
+    EXPECT_EQ(200, findRc.statusCode);
+    EXPECT_EQ(docId, findRc.document.value("id", ""));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, FindDocumentNotFound)
+{
+    auto rc = testSuiteClient.findDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = "nonexistent_doc_12345",
+        .partitionKey = "siddiqsoft.com"
+    });
+    
+    EXPECT_EQ(404, rc.statusCode);
+}
+
+TEST_F(CosmosIntegrationTests, UpdateDocumentBasic)
+{
+    std::string docId = GenerateDocId("updatedoc");
+    
+    auto createRc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = CreateTestDocument(docId)
+    });
+    EXPECT_EQ(201, createRc.statusCode);
+    
+    nlohmann::json updatedDoc = createRc.document;
+    updatedDoc["name"] = "Updated Name";
+    updatedDoc["metadata"]["version"] = 2;
+    
+    auto updateRc = testSuiteClient.updateDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com",
+        .document     = updatedDoc
+    });
+    
+    EXPECT_EQ(200, updateRc.statusCode);
+    EXPECT_EQ("Updated Name", updateRc.document.value("name", ""));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, RemoveDocumentSuccess)
+{
+    std::string docId = GenerateDocId("removedoc");
+    
+    auto createRc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = CreateTestDocument(docId)
+    });
+    EXPECT_EQ(201, createRc.statusCode);
+    
+    auto removeRc = testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+    
+    EXPECT_EQ(204, removeRc);
+    
+    auto findRc = testSuiteClient.findDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+    
+    EXPECT_EQ(404, findRc.statusCode);
+}
+
+TEST_F(CosmosIntegrationTests, RemoveNonexistentDocument)
+{
+    auto rc = testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = "nonexistent_doc_12345",
+        .partitionKey = "siddiqsoft.com"
+    });
+    
+    EXPECT_EQ(404, rc);
+}
+
+TEST_F(CosmosIntegrationTests, QueryDocumentsSimple)
+{
+    auto irt = testSuiteClient.queryDocuments({
+        .database       = testDBName0,
+        .collection     = testCollectionNames[0],
+        .partitionKey   = "*",
+        .queryStatement = "SELECT * FROM c WHERE c.parity = @parity",
+        .queryParameters = {{{"name", "@parity"}, {"value", "even"}}}
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    EXPECT_TRUE(irt.document.contains("Documents"));
+}
+
+TEST_F(CosmosIntegrationTests, QueryDocumentsWithPagination)
+{
+    siddiqsoft::CosmosIterableResponseType irt {};
+    uint32_t totalDocs = 0;
+    int iterations = 0;
+    
+    do {
+        irt = testSuiteClient.queryDocuments({
+            .database          = testDBName0,
+            .collection        = testCollectionNames[0],
+            .partitionKey      = "*",
+            .continuationToken = irt.continuationToken,
+            .queryStatement    = "SELECT * FROM c"
+        });
+        
+        EXPECT_EQ(200, irt.statusCode);
+        if (irt.statusCode == 200 && irt.document.contains("Documents")) {
+            totalDocs += irt.document.value("_count", 0);
+        }
+        
+        iterations++;
+        if (iterations >= 10) break;
+    } while (!irt.continuationToken.empty());
+    
+    EXPECT_GE(totalDocs, SEED_DOCUMENT_COUNT);
+}
+
+TEST_F(CosmosIntegrationTests, ListDocumentsBasic)
+{
+    auto irt = testSuiteClient.listDocuments({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0]
+    });
+    
+    EXPECT_EQ(200, irt.statusCode);
+    EXPECT_TRUE(irt.document.contains("Documents"));
+    EXPECT_GE(irt.document.value("_count", 0), 1);
+}
+
+TEST_F(CosmosIntegrationTests, DiscoverRegionsSuccess)
+{
+    auto rc = testSuiteClient.discoverRegions();
+    
+    EXPECT_EQ(200, rc.statusCode);
+    EXPECT_TRUE(rc.document.contains("writableLocations"));
+    EXPECT_TRUE(rc.document.contains("readableLocations"));
+}
+
+TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeSuccess)
+{
+    siddiqsoft::CosmosResponseType resp;
+    resp.statusCode = 200;
+    
+    EXPECT_TRUE(resp.success());
+}
+
+TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeCreated)
+{
+    siddiqsoft::CosmosResponseType resp;
+    resp.statusCode = 201;
+    
+    EXPECT_TRUE(resp.success());
+}
+
+TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeNoContent)
+{
+    siddiqsoft::CosmosResponseType resp;
+    resp.statusCode = 204;
+    
+    EXPECT_TRUE(resp.success());
+}
+
+TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeClientError)
+{
+    siddiqsoft::CosmosResponseType resp;
+    resp.statusCode = 400;
+    
+    EXPECT_FALSE(resp.success());
+}
+
+TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeNotFound)
+{
+    siddiqsoft::CosmosResponseType resp;
+    resp.statusCode = 404;
+    
+    EXPECT_FALSE(resp.success());
+}
+
+TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeServerError)
+{
+    siddiqsoft::CosmosResponseType resp;
+    resp.statusCode = 500;
+    
+    EXPECT_FALSE(resp.success());
+}
+
+TEST(ComprehensiveEndpointTests, EndpointReadUriRotation)
+{
+    siddiqsoft::CosmosEndpoint endpoint;
+    endpoint.BaseUri = "https://base.documents.azure.com/";
+    endpoint.ReadableUris.push_back("https://read1.documents.azure.com/");
+    endpoint.ReadableUris.push_back("https://read2.documents.azure.com/");
+    endpoint.ReadableUris.push_back("https://read3.documents.azure.com/");
+    
+    EXPECT_EQ("https://read1.documents.azure.com/", endpoint.currentReadUri());
+    
+    endpoint.rotateReadUri();
+    EXPECT_EQ("https://read2.documents.azure.com/", endpoint.currentReadUri());
+    
+    endpoint.rotateReadUri();
+    EXPECT_EQ("https://read3.documents.azure.com/", endpoint.currentReadUri());
+    
+    endpoint.rotateReadUri();
+    EXPECT_EQ("https://read1.documents.azure.com/", endpoint.currentReadUri());
+}
+
+TEST(ComprehensiveEndpointTests, EndpointWriteUriRotation)
+{
+    siddiqsoft::CosmosEndpoint endpoint;
+    endpoint.BaseUri = "https://base.documents.azure.com/";
+    endpoint.WritableUris.push_back("https://write1.documents.azure.com/");
+    endpoint.WritableUris.push_back("https://write2.documents.azure.com/");
+    
+    EXPECT_EQ("https://write1.documents.azure.com/", endpoint.currentWriteUri());
+    
+    endpoint.rotateWriteUri();
+    EXPECT_EQ("https://write2.documents.azure.com/", endpoint.currentWriteUri());
+    
+    endpoint.rotateWriteUri();
+    EXPECT_EQ("https://write1.documents.azure.com/", endpoint.currentWriteUri());
+}
+
+TEST(ComprehensiveEndpointTests, EndpointFallbackToBaseUri)
+{
+    siddiqsoft::CosmosEndpoint endpoint;
+    endpoint.BaseUri = "https://base.documents.azure.com/";
+    
+    EXPECT_EQ("https://base.documents.azure.com/", endpoint.currentReadUri());
+    EXPECT_EQ("https://base.documents.azure.com/", endpoint.currentWriteUri());
+}
+
+TEST(ComprehensiveErrorHandlingTests, InvalidConfigurationMissingConnectionStrings)
+{
+    siddiqsoft::CosmosClient client;
+    
+    EXPECT_THROW(
+        client.configure({{"partitionKeyNames", {"__pk"}}}),
+        std::invalid_argument
+    );
+}
+
+TEST(ComprehensiveErrorHandlingTests, InvalidConfigurationMissingPartitionKeyNames)
+{
+    siddiqsoft::CosmosClient client;
+    auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
+    
+    EXPECT_THROW(
+        client.configure({{"connectionStrings", {priConnStr, secConnStr}}}),
+        std::invalid_argument
+    );
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithVariousDataTypes)
+{
+    std::string docId = GenerateDocId("datatypes");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"string_field", "test string"},
+            {"int_field", 42},
+            {"float_field", 3.14159},
+            {"bool_true", true},
+            {"bool_false", false},
+            {"null_field", nullptr},
+            {"array_field", nlohmann::json::array({1, "two", 3.0, true})},
+            {"object_field", {{"nested_key", "nested_value"}, {"nested_number", 99}}},
+            {"large_number", 9223372036854775807LL},
+            {"negative_number", -12345},
+            {"zero", 0},
+            {"empty_string", ""},
+            {"empty_array", nlohmann::json::array()},
+            {"empty_object", nlohmann::json::object()}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_EQ("test string", rc.document.value("string_field", ""));
+    EXPECT_EQ(42, rc.document.value("int_field", 0));
+    EXPECT_NEAR(3.14159, rc.document.value("float_field", 0.0), 0.00001);
+    EXPECT_TRUE(rc.document.value("bool_true", false));
+    EXPECT_FALSE(rc.document.value("bool_false", true));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithSpecialCharacters)
+{
+    std::string docId = GenerateDocId("special_chars");
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"unicode", "Hello 世界 🌍"},
+            {"special", "!@#$%^&*()_+-=[]{}|;:',.<>?/"},
+            {"quotes", "He said \"Hello\" and she replied 'Hi'"},
+            {"newlines", "Line 1\nLine 2\nLine 3"},
+            {"tabs", "Col1\tCol2\tCol3"},
+            {"backslash", "C:\\Users\\test\\file.txt"}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_EQ("Hello 世界 🌍", rc.document.value("unicode", ""));
+    EXPECT_EQ("!@#$%^&*()_+-=[]{}|;:',.<>?/", rc.document.value("special", ""));
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, DocumentWithLargeContent)
+{
+    std::string docId = GenerateDocId("large_doc");
+    
+    nlohmann::json largeArray = nlohmann::json::array();
+    for (int i = 0; i < 100; i++) {
+        largeArray.push_back({
+            {"index", i},
+            {"value", std::format("Item {}", i)},
+            {"data", std::string(100, 'x')}
+        });
+    }
+    
+    auto rc = testSuiteClient.createDocument({
+        .database   = testDBName0,
+        .collection = testCollectionNames[0],
+        .document   = {
+            {"id", docId},
+            {"__pk", "siddiqsoft.com"},
+            {"large_array", largeArray},
+            {"large_string", std::string(1000, 'a')}
+        }
+    });
+    
+    EXPECT_EQ(201, rc.statusCode);
+    EXPECT_EQ(100, rc.document.value("large_array", nlohmann::json::array()).size());
+    EXPECT_EQ(1000, rc.document.value("large_string", "").length());
+    
+    testSuiteClient.removeDocument({
+        .database     = testDBName0,
+        .collection   = testCollectionNames[0],
+        .id           = docId,
+        .partitionKey = "siddiqsoft.com"
+    });
+}
+
+TEST_F(CosmosIntegrationTests, BulkCreateDocuments)
+{
+    std::vector<std::string> docIds;
+    const int BULK_COUNT = 10;
+    
+    for (int i = 0; i < BULK_COUNT; i++) {
+        std::string docId = GenerateDocId(std::format("bulk_{}", i));
+        docIds.push_back(docId);
+        
+        auto rc = testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"bulk_index", i},
+                {"batch", "bulk_test"}
+            }
+        });
+        
+        EXPECT_EQ(201, rc.statusCode);
+    }
+    
+    for (const auto& docId : docIds) {
+        auto rc = testSuiteClient.findDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+        
+        EXPECT_EQ(200, rc.statusCode);
+    }
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, BulkUpdateDocuments)
+{
+    std::vector<std::string> docIds;
+    const int BULK_COUNT = 5;
+    
+    for (int i = 0; i < BULK_COUNT; i++) {
+        std::string docId = GenerateDocId(std::format("bulkupd_{}", i));
+        docIds.push_back(docId);
+        
+        testSuiteClient.createDocument({
+            .database   = testDBName0,
+            .collection = testCollectionNames[0],
+            .document   = {
+                {"id", docId},
+                {"__pk", "siddiqsoft.com"},
+                {"version", 1}
+            }
+        });
+    }
+    
+    for (const auto& docId : docIds) {
+        auto findRc = testSuiteClient.findDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+        
+        nlohmann::json updatedDoc = findRc.document;
+        updatedDoc["version"] = 2;
+        
+        auto updateRc = testSuiteClient.updateDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com",
+            .document     = updatedDoc
+        });
+        
+        EXPECT_EQ(200, updateRc.statusCode);
+        EXPECT_EQ(2, updateRc.document.value("version", 0));
+    }
+    
+    for (const auto& docId : docIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
+}
+
+TEST_F(CosmosIntegrationTests, ConcurrentDocumentCreation)
+{
+    const int THREAD_COUNT = 4;
+    const int DOCS_PER_THREAD = 5;
+    std::vector<std::jthread> threads;
+    std::vector<std::string> createdDocIds;
+    std::mutex docIdsMutex;
+    
+    for (int t = 0; t < THREAD_COUNT; t++) {
+        threads.emplace_back([this, t, &createdDocIds, &docIdsMutex]() {
+            for (int i = 0; i < DOCS_PER_THREAD; i++) {
+                std::string docId = GenerateDocId(std::format("concurrent_{}_{}", t, i));
+                
+                auto rc = testSuiteClient.createDocument({
+                    .database   = testDBName0,
+                    .collection = testCollectionNames[0],
+                    .document   = {
+                        {"id", docId},
+                        {"__pk", "siddiqsoft.com"},
+                        {"thread", t},
+                        {"iteration", i}
+                    }
+                });
+                
+                if (rc.statusCode == 201) {
+                    std::lock_guard<std::mutex> lock(docIdsMutex);
+                    createdDocIds.push_back(docId);
+                }
+            }
+        });
+    }
+    
+    threads.clear();
+    
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    
+    EXPECT_EQ(THREAD_COUNT * DOCS_PER_THREAD, createdDocIds.size());
+    
+    for (const auto& docId : createdDocIds) {
+        testSuiteClient.removeDocument({
+            .database     = testDBName0,
+            .collection   = testCollectionNames[0],
+            .id           = docId,
+            .partitionKey = "siddiqsoft.com"
+        });
+    }
 }

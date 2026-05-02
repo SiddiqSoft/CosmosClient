@@ -95,11 +95,11 @@ stages:
           echo "Emulator stopped"
       condition: always()
     - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
+      displayName: 'Publish $(BuildType) Test Results'
       inputs:
           testResultsFormat: 'JUnit'
-          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
-          mergeTestResults: false
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/*.xml'
+          mergeTestResults: true
           buildConfiguration: '$(BuildType)'
       continueOnError: true
       condition: succeeded()
@@ -254,11 +254,11 @@ stages:
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
     
     - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
+      displayName: 'Publish $(BuildType) Test Results'
       inputs:
         testResultsFormat: 'JUnit'
-        testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
-        mergeTestResults: false
+        testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/*.xml'
+        mergeTestResults: true
         buildConfiguration: '$(BuildType)'
       continueOnError: false
       condition: succeeded()
