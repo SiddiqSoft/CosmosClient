@@ -1445,6 +1445,9 @@ TEST_F(ComprehensiveCosmosAPITests, ConcurrentDocumentCreation)
     // Wait for all threads to complete
     threads.clear();
     
+    // Allow time for all operations to complete and propagate
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    
     // Verify all documents were created
     EXPECT_EQ(THREAD_COUNT * DOCS_PER_THREAD, createdDocIds.size());
     

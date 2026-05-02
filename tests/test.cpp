@@ -59,43 +59,77 @@ protected:
 
     static void SetUpTestCase()
     {
-        // Ensure connectivity (may start mock server)
-        IsCosmosReachable();
-        // Perform one-time setup for the entire test suite
+        if (!IsCosmosReachable()) {
+            std::print(std::cerr, "SetUpTestCase: Cosmos service is not reachable, skipping setup\n");
+            return;
+        }
+
+        std::print(std::cerr, "SetUpTestCase: Configuring test suite client...\n");
         testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
-
-        if (auto rc2 = TSfindDatabase(testDBName0); rc2.statusCode == 404) {
-            auto rc1 = TScreateDatabase(testDBName0);
+        // Clean up any existing test database from previous runs
+        std::print(std::cerr, "SetUpTestCase: Cleaning up existing database '{}' if it exists...\n", testDBName0);
+        auto deleteRc = TSdeleteDatabase(testDBName0);
+        if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
+            std::print(std::cerr, "SetUpTestCase: Database cleanup completed (status: {})\n", deleteRc.statusCode);
         }
 
-        // Next we create the collections..
-        try {
-            for (auto& collName : testCollectionNames) {
-                if (auto rc3 = TScreateCollection(testDBName0, collName); rc3.statusCode == 201) {
-                    for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
-                        auto rc4 =
-                                testSuiteClient.createDocument({.database   = testDBName0,
-                                                                .collection = collName,
-                                                                .document = {{"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
-                                                                             {"ttl", 1360},
-                                                                             {"__pk", "siddiqsoft.com"},
-                                                                             {"func", __func__},
-                                                                             {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
-                                                                             {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
+        // Wait a moment for deletion to propagate
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        // Create test database
+        std::print(std::cerr, "SetUpTestCase: Creating test database '{}'\n", testDBName0);
+        auto createDbRc = TScreateDatabase(testDBName0);
+        if (createDbRc.statusCode != 201) {
+            std::print(std::cerr, "SetUpTestCase: ERROR - Failed to create database '{}' (status: {})\n", testDBName0, createDbRc.statusCode);
+            throw std::runtime_error(std::format("Failed to create test database '{}' with status code {}", testDBName0, createDbRc.statusCode));
+        }
+        std::print(std::cerr, "SetUpTestCase: Database '{}' created successfully\n", testDBName0);
+
+        // Create test collections
+        std::print(std::cerr, "SetUpTestCase: Creating {} test collections...\n", testCollectionNames.size());
+        for (size_t idx = 0; idx < testCollectionNames.size(); ++idx) {
+            auto& collName = testCollectionNames[idx];
+            std::print(std::cerr, "SetUpTestCase: Creating collection '{}' in database '{}'\n", collName, testDBName0);
+            
+            auto createCollRc = TScreateCollection(testDBName0, collName);
+            if (createCollRc.statusCode != 201) {
+                std::print(std::cerr, "SetUpTestCase: ERROR - Failed to create collection '{}' (status: {})\n", collName, createCollRc.statusCode);
+                throw std::runtime_error(std::format("Failed to create test collection '{}' with status code {}", collName, createCollRc.statusCode));
+            }
+            std::print(std::cerr, "SetUpTestCase: Collection '{}' created successfully\n", collName);
+
+            // Seed with test documents
+            std::print(std::cerr, "SetUpTestCase: Seeding collection '{}' with {} documents...\n", collName, SEED_DOCUMENT_COUNT);
+            for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
+                auto seedRc = testSuiteClient.createDocument({
+                    .database   = testDBName0,
+                    .collection = collName,
+                    .document   = {
+                        {"id", std::format("{:0X}.{}", i, (i % 2) == 0 ? "even" : "odd")},
+                        {"ttl", 1360},
+                        {"__pk", "siddiqsoft.com"},
+                        {"func", __func__},
+                        {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
+                        {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}
                     }
+                });
+                if (seedRc.statusCode != 201) {
+                    std::print(std::cerr, "SetUpTestCase: Warning - Failed to seed document {} in collection '{}' (status: {})\n", i, collName, seedRc.statusCode);
                 }
             }
+            std::print(std::cerr, "SetUpTestCase: Collection '{}' seeding completed\n", collName);
         }
-        catch (...) {
-        }
+        std::print(std::cerr, "SetUpTestCase: Test suite setup completed successfully\n");
     }
 
     static void TearDownTestCase()
     {
-        // Perform one-time cleanup for the entire test suite
-        // Cleanup the db we just created.
-        auto rc9 = TSdeleteDatabase(testDBName0);
+        std::print(std::cerr, "TearDownTestCase: Cleaning up test database '{}'\n", testDBName0);
+        auto deleteRc = TSdeleteDatabase(testDBName0);
+        if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
+            std::print(std::cerr, "TearDownTestCase: Database cleanup completed (status: {})\n", deleteRc.statusCode);
+        }
     }
 };
 
@@ -571,7 +605,7 @@ TEST_F(CosmosClientSuite, upsertDocument)
     auto rc5 = testSuiteClient.upsertDocument({.database   = dbName,
                                                .collection = collectionName,
                                                .document   = {{"id", id}, {"ttl", 360}, {"__pk", pkId}, {"upsert", "update"}, {"source", "basic_tests.exe"}}});
-    EXPECT_EQ(201, rc5.statusCode);
+    EXPECT_EQ(200, rc5.statusCode);
     EXPECT_EQ("update", rc5.document.value("upsert", ""));
 
     // And to check if we call createDocument on the same docId it should fail

@@ -56,9 +56,8 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     CPMAddPackage("gh:google/googletest#v1.17.0")
     target_sources( ${TESTPROJ}
                     PRIVATE
-                   # ${PROJECT_SOURCE_DIR}/tests/test_async.cpp
-                   # ${PROJECT_SOURCE_DIR}/tests/test.cpp
-                   # ${PROJECT_SOURCE_DIR}/tests/test_cosmos_api.cpp
+                    ${PROJECT_SOURCE_DIR}/tests/test_async.cpp
+                    ${PROJECT_SOURCE_DIR}/tests/test.cpp
                     ${PROJECT_SOURCE_DIR}/tests/test_comprehensive_cosmos_api.cpp)
     # Link dependencies..
     target_link_libraries(${TESTPROJ} PRIVATE
