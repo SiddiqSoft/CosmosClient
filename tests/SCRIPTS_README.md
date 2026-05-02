@@ -40,11 +40,34 @@ cd tests
 - ✅ Automatic prerequisite checking
 - ✅ CMake configuration
 - ✅ Parallel build (uses all available cores)
-- ✅ Automatic emulator startup
+- ✅ Automatic emulator startup (Docker or Podman)
 - ✅ Validation tests (no emulator required)
 - ✅ Integration tests (with emulator)
 - ✅ Colored output for easy reading
-- ✅ Automatic cleanup on exit
+- ✅ Smart cleanup on exit (only prompts if emulator is running)
+- ✅ Container runtime detection (prefers Podman, falls back to Docker)
+- ✅ Continues tests if emulator already running (no interruption)
+
+#### Container Runtime Support
+
+The script automatically detects and uses the available container runtime:
+
+1. **Podman** (preferred) - If installed, podman will be used
+2. **Docker** (fallback) - If podman is not available, docker will be used
+3. **Error** - If neither is available, the script will exit with an error
+
+This allows the script to work on systems with either container runtime installed.
+
+```bash
+# Script will automatically detect and use the available runtime
+./tests/build_and_test.sh debug macos
+
+# Output will show which runtime is being used:
+# >>> Checking prerequisites...
+# ✓ CMake found
+# ✓ Container runtime found: podman
+# (or docker if podman is not available)
+```
 
 #### Example Output
 
@@ -90,7 +113,7 @@ Build and test completed successfully!
 
 ## Manual Build & Test
 
-If you prefer to build and test manually, see [DEVELOPER_BUILD_GUIDE.md](../DEVELOPER_BUILD_GUIDE.md).
+If you prefer to build and test manually, see [DEVELOPER_BUILD_GUIDE.md](../docs/DEVELOPER_BUILD_GUIDE.md).
 
 ### Quick Manual Steps
 
@@ -186,7 +209,7 @@ export EMULATOR_PORT=8081
 
 ## See Also
 
-- [DEVELOPER_BUILD_GUIDE.md](../DEVELOPER_BUILD_GUIDE.md) - Detailed build instructions
-- [QUICK_START.md](../QUICK_START.md) - Quick start guide
+- [DEVELOPER_BUILD_GUIDE.md](../docs/DEVELOPER_BUILD_GUIDE.md) - Detailed build instructions
+- [QUICK_START.md](../docs/QUICK_START.md) - Quick start guide
 - [README.md](../README.md) - Project overview
 

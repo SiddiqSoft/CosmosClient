@@ -16,6 +16,16 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Detect container runtime (podman or docker)
+CONTAINER_RUNTIME=""
+if command -v podman &> /dev/null; then
+    CONTAINER_RUNTIME="podman"
+elif command -v docker &> /dev/null; then
+    CONTAINER_RUNTIME="docker"
+else
+    CONTAINER_RUNTIME=""
+fi
+
 # Default values
 BUILD_TYPE="${1:-debug}"
 PLATFORM="${2:-macos}"
@@ -35,10 +45,11 @@ if [[ ! "$PLATFORM" =~ ^(macos|linux)$ ]]; then
 fi
 
 # Determine preset based on platform and build type
+# make the build_type first char uppercase..
 if [ "$PLATFORM" = "macos" ]; then
-    PRESET="Apple-$(echo $BUILD_TYPE | sed 's/^./\U&/')"
+    PRESET="Apple-$(echo $BUILD_TYPE | perl -pe 's/^./\u$&/')"
 else
-    PRESET="Linux-Clang-$(echo $BUILD_TYPE | sed 's/^./\U&/')"
+    PRESET="Linux-Clang-$(echo $BUILD_TYPE | perl -pe 's/^./\u$&/')"
 fi
 
 echo -e "${GREEN}========================================${NC}"
@@ -58,7 +69,11 @@ print_section() {
 
 # Function to check if emulator is running
 check_emulator() {
-    if docker ps | grep -q "$EMULATOR_NAME"; then
+    if [ -z "$CONTAINER_RUNTIME" ]; then
+        return 1
+    fi
+    
+    if $CONTAINER_RUNTIME ps | grep -q "$EMULATOR_NAME"; then
         return 0
     else
         return 1
@@ -69,12 +84,19 @@ check_emulator() {
 start_emulator() {
     print_section "Starting Azure Cosmos DB Emulator..."
     
+    if [ -z "$CONTAINER_RUNTIME" ]; then
+        echo -e "${RED}✗ Neither docker nor podman found${NC}"
+        return 1
+    fi
+    
     if check_emulator; then
-        echo "Emulator already running"
+        echo "Emulator already running (using $CONTAINER_RUNTIME)"
         return 0
     fi
     
-    docker run \
+    echo "Using container runtime: $CONTAINER_RUNTIME"
+    
+    $CONTAINER_RUNTIME run \
         --publish $EMULATOR_PORT:8081 \
         --publish 10250-10255:10250-10255 \
         --name $EMULATOR_NAME \
@@ -98,8 +120,13 @@ start_emulator() {
 stop_emulator() {
     print_section "Stopping Azure Cosmos DB Emulator..."
     
+    if [ -z "$CONTAINER_RUNTIME" ]; then
+        echo "No container runtime available"
+        return 0
+    fi
+    
     if check_emulator; then
-        docker stop $EMULATOR_NAME > /dev/null 2>&1 || true
+        $CONTAINER_RUNTIME stop $EMULATOR_NAME > /dev/null 2>&1 || true
         echo -e "${GREEN}✓ Emulator stopped${NC}"
     else
         echo "Emulator not running"
@@ -124,9 +151,9 @@ configure_build() {
 
 # Function to build project
 build_project() {
-    print_section "Building project..."
+    print_section "Building project... in $BUILD_DIR. $PRESET"
     
-    cmake --build "$BUILD_DIR" -j$(nproc) || {
+    cmake --build "$BUILD_DIR/$PRESET" || {
         echo -e "${RED}✗ Build failed${NC}"
         return 1
     }
@@ -136,9 +163,9 @@ build_project() {
 
 # Function to run tests
 run_tests() {
-    print_section "Running tests..."
+    print_section "Running tests... ${BUILD_DIR}. ${PRESET}"
     
-    cd "$BUILD_DIR"
+    cd "$BUILD_DIR/$PRESET"
     
     # Run validation tests (no emulator required)
     echo ""
@@ -181,11 +208,11 @@ main() {
     fi
     echo -e "${GREEN}✓ CMake found${NC}"
     
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}✗ Docker not found${NC}"
+    if [ -z "$CONTAINER_RUNTIME" ]; then
+        echo -e "${RED}✗ Neither docker nor podman found${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✓ Docker found${NC}"
+    echo -e "${GREEN}✓ Container runtime found: $CONTAINER_RUNTIME${NC}"
     
     echo ""
     
@@ -217,12 +244,20 @@ main() {
 
 # Trap to cleanup on exit
 cleanup() {
-    echo ""
-    read -p "Stop emulator? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        stop_emulator
+    # Only ask to stop if emulator is running
+    if check_emulator; then
+        echo ""
+        read -t 10 -p "Stop emulator? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            stop_emulator
+        else
+            echo "Emulator is still running. You can stop it manually with:"
+            echo "  $CONTAINER_RUNTIME stop $EMULATOR_NAME"
+        fi
     fi
+    # Exit cleanly regardless of response
+    exit 0
 }
 
 trap cleanup EXIT
