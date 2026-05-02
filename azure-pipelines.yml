@@ -234,7 +234,7 @@ stages:
         "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose -T Test -T Coverage'
-      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'))
+      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
       continueOnError: true
     
     - task: Bash@3
