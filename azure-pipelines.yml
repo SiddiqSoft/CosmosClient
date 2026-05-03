@@ -18,9 +18,8 @@ trigger:
     - README.md
 
 stages:
-################################## STAGE ####################################
-# STAGE: BuildTest                                                          #
-#############################################################################
+
+  # STAGE: BuildTest                                                          #
 - stage: BuildTest
   displayName: 'Building, Testing and Package'
   jobs:
@@ -60,7 +59,6 @@ stages:
       displayName: 'Determine Version..'
       name: version_step
       inputs:
-        useConfigFile: true
         configFilePath: 'GitVersion.yml'
 
     - task: CmdLine@2
@@ -212,7 +210,6 @@ stages:
       displayName: 'Determine Version..'
       name: version_step
       inputs:
-        useConfigFile: true
         configFilePath: 'GitVersion.yml'
     
     - task: Bash@3
@@ -279,4 +276,3 @@ stages:
       inputs:
         summaryFileLocation: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/coverage.*'
       condition: and(succeeded(), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'), eq(variables['BuildType'], 'Debug'))
-    
