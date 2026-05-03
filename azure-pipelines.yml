@@ -91,7 +91,7 @@ stages:
       env:
         "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
-        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all" -T Test'
+        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all"'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       continueOnError: true
       condition: succeeded()
@@ -238,7 +238,7 @@ stages:
       env:
         "CTEST_OUTPUT_ON_FAILURE": "TRUE"
       inputs:
-        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all" -T Test'
+        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all"'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: and(succeeded(), eq(variables['BuildType'], 'Release'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
