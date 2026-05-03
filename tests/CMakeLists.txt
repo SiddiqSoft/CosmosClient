@@ -24,6 +24,8 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     if( CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
         message(STATUS "  Setting DEBUG macro..")
         set(DEBUG_DEFS DEBUG=1 _DEBUG=1)
+        message(STATUS "  Setting azcosmoscl_TESTING_MODE..")
+        set(azcosmoscl_TESTING_MODE=1)
     endif()
 
     # On macOS with Homebrew LLVM, the CURL::libcurl imported target adds the Xcode SDK

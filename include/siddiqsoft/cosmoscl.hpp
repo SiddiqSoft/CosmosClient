@@ -281,10 +281,7 @@ namespace siddiqsoft
         /// @brief Get the current active connection string
         /// @return Cosmos connection string
         /// @return Reference to the current active Connection Primary/Secondary
-        const CosmosEndpoint& current() const
-        {
-            return (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) ? Secondary : Primary;
-        }
+        const CosmosEndpoint& current() const { return (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) ? Secondary : Primary; }
 
 
         /// @brief Swaps the current connection by incrementing the current and if we hit past Secondary, we restart at Primary.
@@ -506,8 +503,7 @@ namespace siddiqsoft
         std::string continuationToken;
     };
 
-    [[nodiscard]] static auto make_CosmosIterableResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret)
-            -> CosmosIterableResponseType
+    [[nodiscard]] static auto make_CosmosIterableResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosIterableResponseType
     {
         CosmosIterableResponseType crt;
 
@@ -967,7 +963,7 @@ namespace siddiqsoft
             auto ts   = DateUtils::RFC7231();
             auto path = cnxn.current().currentReadUri() + "dbs";
             auto req  = rest_request<char>(HttpMethodType::METHOD_GET,
-                                          path,
+                                           path,
                                            {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "dbs", "", ts)},
                                             {"x-ms-date", ts},
                                             {"x-ms-version", config["apiVersion"]}});
@@ -1260,7 +1256,7 @@ namespace siddiqsoft
         CosmosIterableResponseType queryDocuments(CosmosArgumentType const& ctx)
         {
             timethis       tt {};
-            auto           ts    = DateUtils::RFC7231();
+            auto           ts = DateUtils::RFC7231();
             nlohmann::json headers {
                     {"Authorization",
                      EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "POST", "docs", std::format("dbs/{}/colls/{}", ctx.database, ctx.collection), ts)},
