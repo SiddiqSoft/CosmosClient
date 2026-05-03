@@ -65,10 +65,10 @@ stages:
       displayName: 'Start Azure CosmosDB Emulator (Docker)'
       inputs:
         script: |
-          REM Check if the linux-emulator container is already running
+          echo "Check if the linux-emulator container is already running.."
           docker ps --filter "name=linux-emulator" --filter "status=running" --quiet | findstr . >nul
           if %errorlevel% equ 0 (
-              echo Docker container 'linux-emulator' is already running. Skipping start.
+              echo "Docker container 'linux-emulator' is already running. Skipping start."
               exit /b 0
           )
 
