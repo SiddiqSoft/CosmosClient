@@ -80,12 +80,14 @@ stages:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
-    - task: CMake@1
+    - task: CmdLine@2
       displayName: 'CMake Tests $(cmake.preset) - Catch-All Test Suite'
       env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+        CTEST_OUTPUT_ON_FAILURE: "TRUE"
       inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose -R "_all"'
+        script: |
+          cd $(System.DefaultWorkingDirectory)\build\$(cmake.preset)
+          ctest --output-on-failure --verbose -R "_all"
       continueOnError: true
       condition: succeeded()
     - task: CmdLine@2
@@ -219,21 +221,27 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
     
-    - task: CMake@1
+    - task: Bash@3
       displayName: 'CMake Tests $(cmake.preset) - Release (Catch-All)'
       env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+        CTEST_OUTPUT_ON_FAILURE: "TRUE"
       inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose -R "_all"'
+        targetType: 'inline'
+        script: |
+          cd $(System.DefaultWorkingDirectory)/build/$(cmake.preset)
+          ctest --output-on-failure --verbose -R "_all"
       condition: and(succeeded(), eq(variables['BuildType'], 'Release'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
     
-    - task: CMake@1
+    - task: Bash@3
       displayName: 'CMake Tests $(cmake.preset) - Debug with Coverage (Catch-All)'
       env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+        CTEST_OUTPUT_ON_FAILURE: "TRUE"
       inputs:
-        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset) ctest --output-on-failure --verbose -R "_all" -T Test -T Coverage'
+        targetType: 'inline'
+        script: |
+          cd $(System.DefaultWorkingDirectory)/build/$(cmake.preset)
+          ctest --output-on-failure --verbose -R "_all" -T Test -T Coverage
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
       continueOnError: true
     
