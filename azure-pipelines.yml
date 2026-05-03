@@ -105,16 +105,15 @@ stages:
       condition: always()
 
     - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results - Unified Suite'
+      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
       inputs:
           testResultsFormat: 'JUnit'
-          testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/*_test_detail.xml'
-          mergeTestResults: true
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
+          mergeTestResults: false
           buildConfiguration: '$(BuildType)'
-          testRunTitle: 'Unified Integration Tests ($(BuildType))'
       continueOnError: true
       condition: succeeded()
-
+          
     - task: NuGetToolInstaller@1
       displayName: 'Install Nuget on Windows'
       inputs:
@@ -260,17 +259,17 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)'
       condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
     
+      # Publish the test results
     - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results - Unified Suite'
+      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
       inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '$(System.DefaultWorkingDirectory)/tests/results/*_test_detail.xml'
-        mergeTestResults: true
-        buildConfiguration: '$(BuildType)'
-        testRunTitle: 'Unified Integration Tests ($(BuildType))'
-      continueOnError: false
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
+          mergeTestResults: false
+          buildConfiguration: '$(BuildType)'
+      continueOnError: true
       condition: succeeded()
-    
+        
     - task: PublishCodeCoverageResults@2
       displayName: 'Publish Coverage Results (Linux builds)'
       inputs:
