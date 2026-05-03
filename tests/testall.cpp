@@ -165,6 +165,9 @@ protected:
 // VALIDATION TESTS (No Emulator Required)
 // ============================================================================
 
+/// @brief Verify environment variables are set for connection strings
+/// @details Retrieves connection strings from environment variables
+/// @test Validates CCTEST_PRIMARY_CS and CCTEST_SECONDARY_CS environment variables
 TEST(Validation, checkEmulatorInfo)
 {
     auto [priConnStr, secConnStr] = GetConnectionStrings();
@@ -172,6 +175,9 @@ TEST(Validation, checkEmulatorInfo)
     ASSERT_FALSE(secConnStr.empty()) << "Missing environment variable CCTEST_SECONDARY_CS; Set it to Secondary Connection string from Azure portal.";
 }
 
+/// @brief Verify default client configuration is correct
+/// @details Creates a CosmosClient and checks default configuration values
+/// @test Validates API version is "2018-12-31" and required keys exist
 TEST(Validation, configure_Defaults)
 {
     siddiqsoft::CosmosClient cc;
@@ -183,6 +189,9 @@ TEST(Validation, configure_Defaults)
     EXPECT_TRUE(currentConfig.contains("partitionKeyNames"));
 }
 
+/// @brief Verify client can be serialized to JSON
+/// @details Converts CosmosClient to JSON and validates structure
+/// @test Ensures JSON contains serviceSettings, database, and configuration sections
 TEST(Validation, configure_check_json)
 {
     siddiqsoft::CosmosClient cc;
@@ -193,6 +202,9 @@ TEST(Validation, configure_check_json)
     EXPECT_EQ(5, info.size()) << info.dump(3);
 }
 
+/// @brief Verify client configuration with connection strings
+/// @details Configures client with connection strings and validates service settings
+/// @test Checks readable/writable locations are populated after configuration
 TEST(Validation, configure_1)
 {
     if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
@@ -216,6 +228,9 @@ TEST(Validation, configure_1)
 #endif
 }
 
+/// @brief Verify region discovery functionality
+/// @details Calls discoverRegions() and validates response
+/// @test Ensures status code is 200 and regions are discovered
 TEST(Validation, discoverRegions)
 {
     if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
@@ -242,6 +257,9 @@ TEST(Validation, discoverRegions)
     EXPECT_LE(1, cc.cnxn.current().WritableUris.size());
 }
 
+/// @brief Verify failover when primary connection fails
+/// @details Tests connection rotation with invalid primary and valid secondary
+/// @test Validates failover mechanism works correctly
 TEST(Validation, discoverRegions_BadPrimary)
 {
     if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
@@ -273,6 +291,9 @@ TEST(Validation, discoverRegions_BadPrimary)
 // CONNECTION TESTS (No Emulator Required)
 // ============================================================================
 
+/// @brief Parse connection string components
+/// @details Creates connection from connection string and validates parsing
+/// @test Validates base URI, encoded key, and host are extracted correctly
 TEST(CosmosConnection, test1_n)
 {
     std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
@@ -284,6 +305,9 @@ TEST(CosmosConnection, test1_n)
     EXPECT_EQ("yourdbname.documents.azure.com", ::siddiqsoft::Uri<char> {cd.Primary.BaseUri}.authority.host);
 }
 
+/// @brief Verify connection JSON serialization
+/// @details Converts connection to JSON and validates structure
+/// @test Ensures JSON has exactly 4 elements
 TEST(CosmosConnection, test2_n)
 {
     std::string cs = "AccountEndpoint=https://YOURDBNAME.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
@@ -293,6 +317,9 @@ TEST(CosmosConnection, test2_n)
     EXPECT_EQ(4, info.size());
 }
 
+/// @brief Verify connection rotation with primary and secondary
+/// @details Tests connection rotation between primary and secondary
+/// @test Validates rotation cycles correctly
 TEST(CosmosConnection, rotateConnection_1)
 {
     std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
@@ -319,6 +346,9 @@ TEST(CosmosConnection, rotateConnection_1)
     EXPECT_EQ(pcs, cd.current().string());
 }
 
+/// @brief Verify connection rotation with only primary
+/// @details Tests connection rotation with single connection
+/// @test Validates connection remains primary
 TEST(CosmosConnection, rotateConnection_2)
 {
     std::string pcs = "AccountEndpoint=https://YOURDBNAME-1.documents.azure.com:443/;AccountKey=U09NRUJBU0U2NEVOQ09ERURLRVlUSEFURU5EU1dJVEhTRU1JQ09MT04=;";
@@ -348,6 +378,9 @@ TEST(CosmosConnection, rotateConnection_2)
 // ENDPOINT TESTS (No Emulator Required)
 // ============================================================================
 
+/// @brief Parse connection string components
+/// @details Creates connection from connection string and validates parsing
+/// @test Validates base URI, encoded key, and host are extracted correctly
 TEST(CosmosEndpoint, test1_n)
 {
     siddiqsoft::CosmosEndpoint cs;
@@ -369,6 +402,9 @@ TEST(CosmosEndpoint, test1_n)
     EXPECT_EQ(6, info.size());
 }
 
+/// @brief Verify connection JSON serialization
+/// @details Converts connection to JSON and validates structure
+/// @test Ensures JSON has exactly 4 elements
 TEST(CosmosEndpoint, test2_n)
 {
     using namespace siddiqsoft::restcl_literals;
@@ -412,6 +448,9 @@ TEST(CosmosEndpoint, test2_n)
 // INTEGRATION TESTS (Requires Emulator)
 // ============================================================================
 
+/// @brief Create, find, and delete a database
+/// @details Tests complete database lifecycle operations
+/// @test Validates create (201), find (200), and delete (204) operations
 TEST_F(CosmosIntegrationTests, CreateDatabase)
 {
     auto rc1 = TScreateDatabase(testDBName);
@@ -424,6 +463,9 @@ TEST_F(CosmosIntegrationTests, CreateDatabase)
     EXPECT_EQ(204, rc3.statusCode);
 }
 
+/// @brief Create collections in a database
+/// @details Tests collection creation in a database
+/// @test Validates collection creation returns 201 status code
 TEST_F(CosmosIntegrationTests, CreateCollection)
 {
     if (auto rc2 = TSfindDatabase(testDBName); rc2.statusCode == 404) {
@@ -444,6 +486,9 @@ TEST_F(CosmosIntegrationTests, CreateCollection)
     EXPECT_EQ(204, rc9.statusCode);
 }
 
+/// @brief Complete CRUD example
+/// @details Lists databases, collections, creates and deletes document
+/// @test Validates full CRUD cycle works
 TEST_F(CosmosIntegrationTests, Example)
 {
     if (auto rc = testSuiteClient.listDatabases(); 200 == rc.statusCode) {
@@ -462,6 +507,9 @@ TEST_F(CosmosIntegrationTests, Example)
     }
 }
 
+/// @brief List all databases
+/// @details Calls listDatabases()
+/// @test Validates response contains Databases array
 TEST_F(CosmosIntegrationTests, ListDatabases)
 {
     EXPECT_NO_THROW({
@@ -472,6 +520,9 @@ TEST_F(CosmosIntegrationTests, ListDatabases)
     });
 }
 
+/// @brief List collections in each database
+/// @details Lists collections for each database
+/// @test Validates collections are listed correctly
 TEST_F(CosmosIntegrationTests, ListCollections)
 {
     auto rc = testSuiteClient.listDatabases();
@@ -487,6 +538,9 @@ TEST_F(CosmosIntegrationTests, ListCollections)
     }
 }
 
+/// @brief List documents with pagination
+/// @details Lists documents with continuation token
+/// @test Validates document pagination works
 TEST_F(CosmosIntegrationTests, ListDocuments)
 {
     siddiqsoft::CosmosIterableResponseType irt {};
@@ -511,6 +565,9 @@ TEST_F(CosmosIntegrationTests, ListDocuments)
     } while (!irt.continuationToken.empty());
 }
 
+/// @brief List documents with limit
+/// @details Lists documents with limit
+/// @test Validates document listing with limit works
 TEST_F(CosmosIntegrationTests, ListDocuments_top8)
 {
     siddiqsoft::CosmosIterableResponseType irt {};
@@ -528,6 +585,9 @@ TEST_F(CosmosIntegrationTests, ListDocuments_top8)
     EXPECT_GE(10, irt.document.value("_count", 0));
 }
 
+/// @brief Create and delete a document
+/// @details Tests document creation and deletion operations
+/// @test Validates create (201) and delete (204) operations
 TEST_F(CosmosIntegrationTests, CreateDocument)
 {
     std::string dbName {};
@@ -555,6 +615,9 @@ TEST_F(CosmosIntegrationTests, CreateDocument)
     EXPECT_EQ(204, rc4);
 }
 
+/// @brief Verify validation of required id field
+/// @details Attempts to create document without id field
+/// @test Expects std::invalid_argument exception to be thrown
 TEST_F(CosmosIntegrationTests, CreateDocument_MissingId)
 {
     std::string dbName {};
@@ -576,6 +639,9 @@ TEST_F(CosmosIntegrationTests, CreateDocument_MissingId)
     EXPECT_THROW(testSuiteClient.createDocument({.database = dbName, .collection = collectionName, .document = {{"MissingId", id}, {"ttl", 360}, {"__pk", pkId}, {"source", "basic_tests.exe"}}}), std::invalid_argument);
 }
 
+/// @brief Verify partition key validation
+/// @details Attempts to create document without partition key field
+/// @test Expects std::invalid_argument exception to be thrown
 TEST_F(CosmosIntegrationTests, CreateDocument_MissingPkId)
 {
     std::string dbName {};
@@ -597,6 +663,9 @@ TEST_F(CosmosIntegrationTests, CreateDocument_MissingPkId)
     EXPECT_THROW(testSuiteClient.createDocument({.database = dbName, .collection = collectionName, .document = {{"id", id}, {"ttl", 360}, {"Missing__pk", pkId}, {"source", "basic_tests.exe"}}}), std::invalid_argument);
 }
 
+/// @brief Create and retrieve a document
+/// @details Tests document retrieval by ID and partition key
+/// @test Validates find (200) operation and document ID matches
 TEST_F(CosmosIntegrationTests, FindDocument)
 {
     std::string dbName {};
@@ -626,6 +695,9 @@ TEST_F(CosmosIntegrationTests, FindDocument)
     EXPECT_EQ(204, rc5);
 }
 
+/// @brief Test upsert (insert or update) operation
+/// @details Tests upsert for both insert and update scenarios
+/// @test Validates insert (201), update (200), and conflict (409) responses
 TEST_F(CosmosIntegrationTests, UpsertDocument)
 {
     std::string dbName {};
@@ -659,6 +731,9 @@ TEST_F(CosmosIntegrationTests, UpsertDocument)
     EXPECT_EQ(204, rc7);
 }
 
+/// @brief Update an existing document
+/// @details Tests document update and persistence
+/// @test Validates update (200) and changes are persisted
 TEST_F(CosmosIntegrationTests, UpdateDocument)
 {
     std::string dbName {};
@@ -695,6 +770,9 @@ TEST_F(CosmosIntegrationTests, UpdateDocument)
     EXPECT_EQ(204, rc7);
 }
 
+/// @brief Query documents with parameters and pagination
+/// @details Queries documents where source contains "odd" with continuation tokens
+/// @test Validates parameterized queries work with pagination
 TEST_F(CosmosIntegrationTests, QueryDocument_odd)
 {
     std::string dbName {};
@@ -718,6 +796,9 @@ TEST_F(CosmosIntegrationTests, QueryDocument_odd)
     EXPECT_EQ(5, allDocsCount);
 }
 
+/// @brief Query documents with parameters and pagination
+/// @details Queries documents where source contains "even" with continuation tokens
+/// @test Validates parameterized queries work with pagination
 TEST_F(CosmosIntegrationTests, QueryDocument_even)
 {
     std::string dbName {};
@@ -741,6 +822,9 @@ TEST_F(CosmosIntegrationTests, QueryDocument_even)
     EXPECT_EQ(5, allDocsCount);
 }
 
+/// @brief Verify move semantics
+/// @details Creates vector of CosmosClient instances
+/// @test Validates move construction works
 TEST_F(CosmosIntegrationTests, MoveConstruct)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
@@ -751,6 +835,9 @@ TEST_F(CosmosIntegrationTests, MoveConstruct)
     EXPECT_EQ(2, clients.size());
 }
 
+/// @brief Configure multiple clients concurrently
+/// @details Creates and configures 4 CosmosClient instances
+/// @test Validates multiple clients can be configured
 TEST_F(CosmosIntegrationTests, ConfigureMulti)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
@@ -784,6 +871,9 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
     EXPECT_EQ(4, passTest.load());
 }
 
+/// @brief Test concurrent document creation
+/// @details Creates documents from multiple threads with synchronization
+/// @test Validates concurrent operations work correctly
 TEST_F(CosmosIntegrationTests, CreateDocumentThreaded)
 {
     auto ttx = std::chrono::system_clock::now();
@@ -865,6 +955,9 @@ TEST_F(CosmosIntegrationTests, CreateDocumentThreaded)
 // COMPREHENSIVE API TESTS (Requires Emulator)
 // ============================================================================
 
+/// @brief Verify invalid connection string handling
+/// @details Creates endpoint with invalid connection string
+/// @test Validates endpoint is invalid (bool conversion returns false)
 TEST(ComprehensiveConnectionTests, InvalidConnectionStringFormat)
 {
     std::string cs = "InvalidFormat";
@@ -873,6 +966,9 @@ TEST(ComprehensiveConnectionTests, InvalidConnectionStringFormat)
     EXPECT_FALSE(static_cast<bool>(endpoint));
 }
 
+/// @brief Verify default client configuration
+/// @details Creates new client and checks default configuration
+/// @test Validates API version and retry limit are correct
 TEST_F(CosmosIntegrationTests, ClientDefaultConfiguration)
 {
     siddiqsoft::CosmosClient client;
@@ -886,6 +982,9 @@ TEST_F(CosmosIntegrationTests, ClientDefaultConfiguration)
     EXPECT_TRUE(config.contains("partitionKeyNames"));
 }
 
+/// @brief Create a database with unique name
+/// @details Generates unique database name and creates it
+/// @test Validates database creation returns 201 status code
 TEST_F(CosmosIntegrationTests, CreateDatabaseBasic)
 {
     std::string dbName = GenerateDocId("testdb");
@@ -899,6 +998,9 @@ TEST_F(CosmosIntegrationTests, CreateDatabaseBasic)
     testSuiteClient.deleteDatabase({.database = dbName});
 }
 
+/// @brief Verify duplicate database prevention
+/// @details Attempts to create same database twice
+/// @test Validates second creation returns 409 (Conflict)
 TEST_F(CosmosIntegrationTests, CreateDatabaseDuplicate)
 {
     std::string dbName = GenerateDocId("dupdb");
@@ -912,6 +1014,9 @@ TEST_F(CosmosIntegrationTests, CreateDatabaseDuplicate)
     testSuiteClient.deleteDatabase({.database = dbName});
 }
 
+/// @brief Verify database list is not empty
+/// @details Lists all databases
+/// @test Validates database list contains at least one database
 TEST_F(CosmosIntegrationTests, ListDatabasesNotEmpty)
 {
     auto rc = testSuiteClient.listDatabases();
@@ -922,6 +1027,9 @@ TEST_F(CosmosIntegrationTests, ListDatabasesNotEmpty)
     EXPECT_GE(rc.document["Databases"].size(), 1);
 }
 
+/// @brief Find a specific database
+/// @details Finds test database by name
+/// @test Validates database is found with correct ID
 TEST_F(CosmosIntegrationTests, FindDatabaseExists)
 {
     auto rc = testSuiteClient.findDatabase({.database = testDBName0});
@@ -931,6 +1039,9 @@ TEST_F(CosmosIntegrationTests, FindDatabaseExists)
     EXPECT_EQ(testDBName0, rc.document.value("id", ""));
 }
 
+/// @brief Verify 404 for non-existent database
+/// @details Attempts to find non-existent database
+/// @test Validates status code is 404
 TEST_F(CosmosIntegrationTests, FindDatabaseNotFound)
 {
     std::string nonexistentDb = "nonexistent_db_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
@@ -940,6 +1051,9 @@ TEST_F(CosmosIntegrationTests, FindDatabaseNotFound)
     EXPECT_EQ(404, rc.statusCode);
 }
 
+/// @brief Delete a database
+/// @details Creates and deletes a database
+/// @test Validates delete returns 204 and find returns 404
 TEST_F(CosmosIntegrationTests, DeleteDatabaseSuccess)
 {
     std::string dbName = GenerateDocId("deldb");
@@ -954,6 +1068,9 @@ TEST_F(CosmosIntegrationTests, DeleteDatabaseSuccess)
     EXPECT_EQ(404, findRc.statusCode);
 }
 
+/// @brief Create a collection
+/// @details Generates unique collection name and creates it
+/// @test Validates collection creation returns 201 status code
 TEST_F(CosmosIntegrationTests, CreateCollectionBasic)
 {
     std::string collName = GenerateDocId("testcoll");
@@ -968,6 +1085,9 @@ TEST_F(CosmosIntegrationTests, CreateCollectionBasic)
     EXPECT_EQ(collName, rc.document.value("id", ""));
 }
 
+/// @brief Verify duplicate collection prevention
+/// @details Attempts to create same collection twice
+/// @test Validates second creation returns 409 (Conflict)
 TEST_F(CosmosIntegrationTests, CreateCollectionDuplicate)
 {
     std::string collName = GenerateDocId("dupcoll");
@@ -985,6 +1105,9 @@ TEST_F(CosmosIntegrationTests, CreateCollectionDuplicate)
     EXPECT_EQ(409, rc2.statusCode);
 }
 
+/// @brief Verify collection list is not empty
+/// @details Lists collections in test database
+/// @test Validates collection list contains at least one collection
 TEST_F(CosmosIntegrationTests, ListCollectionsNotEmpty)
 {
     auto rc = testSuiteClient.listCollections({.database = testDBName0});
@@ -995,6 +1118,9 @@ TEST_F(CosmosIntegrationTests, ListCollectionsNotEmpty)
     EXPECT_GE(rc.document["DocumentCollections"].size(), 1);
 }
 
+/// @brief Create document with minimal fields
+/// @details Creates document with only id and partition key
+/// @test Validates minimal document creation works
 TEST_F(CosmosIntegrationTests, CreateDocumentMinimal)
 {
     std::string docId = GenerateDocId("mindoc");
@@ -1019,6 +1145,9 @@ TEST_F(CosmosIntegrationTests, CreateDocumentMinimal)
     });
 }
 
+/// @brief Create document with nested structures
+/// @details Creates document with nested objects, arrays, booleans, floats, nulls
+/// @test Validates complex document structures work
 TEST_F(CosmosIntegrationTests, CreateDocumentWithComplexStructure)
 {
     std::string docId = GenerateDocId("complexdoc");
@@ -1056,6 +1185,9 @@ TEST_F(CosmosIntegrationTests, CreateDocumentWithComplexStructure)
     });
 }
 
+/// @brief Verify ID validation
+/// @details Attempts to create document without ID
+/// @test Expects std::invalid_argument exception
 TEST_F(CosmosIntegrationTests, CreateDocumentMissingId)
 {
     EXPECT_THROW(
@@ -1071,6 +1203,9 @@ TEST_F(CosmosIntegrationTests, CreateDocumentMissingId)
     );
 }
 
+/// @brief Verify partition key validation
+/// @details Attempts to create document without partition key
+/// @test Expects std::invalid_argument exception
 TEST_F(CosmosIntegrationTests, CreateDocumentMissingPartitionKey)
 {
     std::string docId = GenerateDocId("nopkdoc");
@@ -1088,6 +1223,9 @@ TEST_F(CosmosIntegrationTests, CreateDocumentMissingPartitionKey)
     );
 }
 
+/// @brief Find and retrieve a document
+/// @details Creates and finds a document
+/// @test Validates document retrieval works correctly
 TEST_F(CosmosIntegrationTests, FindDocumentExists)
 {
     std::string docId = GenerateDocId("finddoc");
@@ -1117,6 +1255,9 @@ TEST_F(CosmosIntegrationTests, FindDocumentExists)
     });
 }
 
+/// @brief Verify 404 for non-existent document
+/// @details Attempts to find non-existent document
+/// @test Validates status code is 404
 TEST_F(CosmosIntegrationTests, FindDocumentNotFound)
 {
     auto rc = testSuiteClient.findDocument({
@@ -1129,6 +1270,9 @@ TEST_F(CosmosIntegrationTests, FindDocumentNotFound)
     EXPECT_EQ(404, rc.statusCode);
 }
 
+/// @brief Update document fields
+/// @details Creates document, modifies fields, and updates
+/// @test Validates update returns 200 and changes persist
 TEST_F(CosmosIntegrationTests, UpdateDocumentBasic)
 {
     std::string docId = GenerateDocId("updatedoc");
@@ -1163,6 +1307,9 @@ TEST_F(CosmosIntegrationTests, UpdateDocumentBasic)
     });
 }
 
+/// @brief Delete a document
+/// @details Creates and deletes a document
+/// @test Validates delete returns 204 and find returns 404
 TEST_F(CosmosIntegrationTests, RemoveDocumentSuccess)
 {
     std::string docId = GenerateDocId("removedoc");
@@ -1193,6 +1340,9 @@ TEST_F(CosmosIntegrationTests, RemoveDocumentSuccess)
     EXPECT_EQ(404, findRc.statusCode);
 }
 
+/// @brief Verify 404 when deleting non-existent document
+/// @details Attempts to delete non-existent document
+/// @test Validates status code is 404
 TEST_F(CosmosIntegrationTests, RemoveNonexistentDocument)
 {
     auto rc = testSuiteClient.removeDocument({
@@ -1205,6 +1355,9 @@ TEST_F(CosmosIntegrationTests, RemoveNonexistentDocument)
     EXPECT_EQ(404, rc);
 }
 
+/// @brief Execute a simple query
+/// @details Queries documents with WHERE clause
+/// @test Validates simple query works correctly
 TEST_F(CosmosIntegrationTests, QueryDocumentsSimple)
 {
     auto irt = testSuiteClient.queryDocuments({
@@ -1219,6 +1372,9 @@ TEST_F(CosmosIntegrationTests, QueryDocumentsSimple)
     EXPECT_TRUE(irt.document.contains("Documents"));
 }
 
+/// @brief Query with continuation tokens
+/// @details Queries documents with pagination
+/// @test Validates pagination works correctly
 TEST_F(CosmosIntegrationTests, QueryDocumentsWithPagination)
 {
     siddiqsoft::CosmosIterableResponseType irt {};
@@ -1246,6 +1402,9 @@ TEST_F(CosmosIntegrationTests, QueryDocumentsWithPagination)
     EXPECT_GE(totalDocs, SEED_DOCUMENT_COUNT);
 }
 
+/// @brief List documents in collection
+/// @details Lists documents in test collection
+/// @test Validates document listing works correctly
 TEST_F(CosmosIntegrationTests, ListDocumentsBasic)
 {
     auto irt = testSuiteClient.listDocuments({
@@ -1258,6 +1417,9 @@ TEST_F(CosmosIntegrationTests, ListDocumentsBasic)
     EXPECT_GE(irt.document.value("_count", 0), 1);
 }
 
+/// @brief Discover available regions
+/// @details Calls discoverRegions() and validates response
+/// @test Validates writableLocations and readableLocations exist
 TEST_F(CosmosIntegrationTests, DiscoverRegionsSuccess)
 {
     auto rc = testSuiteClient.discoverRegions();
@@ -1267,6 +1429,9 @@ TEST_F(CosmosIntegrationTests, DiscoverRegionsSuccess)
     EXPECT_TRUE(rc.document.contains("readableLocations"));
 }
 
+/// @brief Verify 200 status is success
+/// @details Creates response with status 200
+/// @test Validates success() returns true
 TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeSuccess)
 {
     siddiqsoft::CosmosResponseType resp;
@@ -1275,6 +1440,9 @@ TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeSuccess)
     EXPECT_TRUE(resp.success());
 }
 
+/// @brief Verify 201 status is success
+/// @details Creates response with status 201
+/// @test Validates success() returns true
 TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeCreated)
 {
     siddiqsoft::CosmosResponseType resp;
@@ -1283,6 +1451,9 @@ TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeCreated)
     EXPECT_TRUE(resp.success());
 }
 
+/// @brief Verify 204 status is success
+/// @details Creates response with status 204
+/// @test Validates success() returns true
 TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeNoContent)
 {
     siddiqsoft::CosmosResponseType resp;
@@ -1291,6 +1462,9 @@ TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeNoContent)
     EXPECT_TRUE(resp.success());
 }
 
+/// @brief Verify 400 status is failure
+/// @details Creates response with status 400
+/// @test Validates success() returns false
 TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeClientError)
 {
     siddiqsoft::CosmosResponseType resp;
@@ -1299,6 +1473,9 @@ TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeClientError)
     EXPECT_FALSE(resp.success());
 }
 
+/// @brief Verify 404 status is failure
+/// @details Creates response with status 404
+/// @test Validates success() returns false
 TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeNotFound)
 {
     siddiqsoft::CosmosResponseType resp;
@@ -1307,6 +1484,9 @@ TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeNotFound)
     EXPECT_FALSE(resp.success());
 }
 
+/// @brief Verify 500 status is failure
+/// @details Creates response with status 500
+/// @test Validates success() returns false
 TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeServerError)
 {
     siddiqsoft::CosmosResponseType resp;
@@ -1315,6 +1495,9 @@ TEST(ComprehensiveResponseTypeTests, CosmosResponseTypeServerError)
     EXPECT_FALSE(resp.success());
 }
 
+/// @brief Verify read URI cycles through all URIs
+/// @details Creates endpoint with 3 readable URIs and rotates
+/// @test Validates read URI rotation works correctly
 TEST(ComprehensiveEndpointTests, EndpointReadUriRotation)
 {
     siddiqsoft::CosmosEndpoint endpoint;
@@ -1335,6 +1518,9 @@ TEST(ComprehensiveEndpointTests, EndpointReadUriRotation)
     EXPECT_EQ("https://read1.documents.azure.com/", endpoint.currentReadUri());
 }
 
+/// @brief Verify write URI cycles through all URIs
+/// @details Creates endpoint with 2 writable URIs and rotates
+/// @test Validates write URI rotation works correctly
 TEST(ComprehensiveEndpointTests, EndpointWriteUriRotation)
 {
     siddiqsoft::CosmosEndpoint endpoint;
@@ -1351,6 +1537,9 @@ TEST(ComprehensiveEndpointTests, EndpointWriteUriRotation)
     EXPECT_EQ("https://write1.documents.azure.com/", endpoint.currentWriteUri());
 }
 
+/// @brief Verify fallback when no URIs configured
+/// @details Creates endpoint with only base URI
+/// @test Validates fallback to base URI works
 TEST(ComprehensiveEndpointTests, EndpointFallbackToBaseUri)
 {
     siddiqsoft::CosmosEndpoint endpoint;
@@ -1360,6 +1549,9 @@ TEST(ComprehensiveEndpointTests, EndpointFallbackToBaseUri)
     EXPECT_EQ("https://base.documents.azure.com/", endpoint.currentWriteUri());
 }
 
+/// @brief Verify exception when connection strings missing
+/// @details Attempts to configure without connection strings
+/// @test Expects std::invalid_argument exception
 TEST(ComprehensiveErrorHandlingTests, InvalidConfigurationMissingConnectionStrings)
 {
     siddiqsoft::CosmosClient client;
@@ -1370,6 +1562,9 @@ TEST(ComprehensiveErrorHandlingTests, InvalidConfigurationMissingConnectionStrin
     );
 }
 
+/// @brief Verify exception when partition keys missing
+/// @details Attempts to configure without partition key names
+/// @test Expects std::invalid_argument exception
 TEST(ComprehensiveErrorHandlingTests, InvalidConfigurationMissingPartitionKeyNames)
 {
     siddiqsoft::CosmosClient client;
@@ -1381,6 +1576,9 @@ TEST(ComprehensiveErrorHandlingTests, InvalidConfigurationMissingPartitionKeyNam
     );
 }
 
+/// @brief Test all JSON data types
+/// @details Creates document with strings, numbers, booleans, arrays, objects, null
+/// @test Validates all data types are preserved
 TEST_F(CosmosIntegrationTests, DocumentWithVariousDataTypes)
 {
     std::string docId = GenerateDocId("datatypes");
@@ -1423,6 +1621,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithVariousDataTypes)
     });
 }
 
+/// @brief Test Unicode and special characters
+/// @details Creates document with Unicode, escape sequences, special characters
+/// @test Validates special characters are preserved
 TEST_F(CosmosIntegrationTests, DocumentWithSpecialCharacters)
 {
     std::string docId = GenerateDocId("special_chars");
@@ -1454,6 +1655,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithSpecialCharacters)
     });
 }
 
+/// @brief Test large arrays and strings
+/// @details Creates document with 100-item array and 1000-char string
+/// @test Validates large content works correctly
 TEST_F(CosmosIntegrationTests, DocumentWithLargeContent)
 {
     std::string docId = GenerateDocId("large_doc");
@@ -1490,6 +1694,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithLargeContent)
     });
 }
 
+/// @brief Create 10 documents in sequence
+/// @details Creates, finds, and deletes 10 documents
+/// @test Validates bulk creation works correctly
 TEST_F(CosmosIntegrationTests, BulkCreateDocuments)
 {
     std::vector<std::string> docIds;
@@ -1534,6 +1741,9 @@ TEST_F(CosmosIntegrationTests, BulkCreateDocuments)
     }
 }
 
+/// @brief Update 5 documents in sequence
+/// @details Creates, updates, and deletes 5 documents
+/// @test Validates bulk update works correctly
 TEST_F(CosmosIntegrationTests, BulkUpdateDocuments)
 {
     std::vector<std::string> docIds;
@@ -1587,6 +1797,9 @@ TEST_F(CosmosIntegrationTests, BulkUpdateDocuments)
     }
 }
 
+/// @brief Create documents from 4 threads concurrently
+/// @details Creates documents from multiple threads
+/// @test Validates concurrent operations work correctly
 TEST_F(CosmosIntegrationTests, ConcurrentDocumentCreation)
 {
     const int THREAD_COUNT = 4;
@@ -1639,6 +1852,9 @@ TEST_F(CosmosIntegrationTests, ConcurrentDocumentCreation)
 // ADDITIONAL AZURE COSMOS REST API FEATURE TESTS
 // ============================================================================
 
+/// @brief Verify TTL (Time-To-Live) field support
+/// @details Creates document with TTL=1 second
+/// @test Validates TTL field is preserved in response
 TEST_F(CosmosIntegrationTests, DocumentTTLExpiration)
 {
     std::string docId = GenerateDocId("ttl_doc");
@@ -1659,6 +1875,9 @@ TEST_F(CosmosIntegrationTests, DocumentTTLExpiration)
     EXPECT_EQ(1, rc.document.value("ttl", 0));
 }
 
+/// @brief Verify _ts system property (timestamp)
+/// @details Creates document and checks _ts field
+/// @test Validates timestamp is automatically set by Cosmos DB
 TEST_F(CosmosIntegrationTests, DocumentWithTimestamp)
 {
     std::string docId = GenerateDocId("timestamp_doc");
@@ -1685,6 +1904,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithTimestamp)
     });
 }
 
+/// @brief Verify _etag system property (entity tag)
+/// @details Creates document and checks _etag field
+/// @test Validates ETag is automatically set by Cosmos DB
 TEST_F(CosmosIntegrationTests, DocumentWithETag)
 {
     std::string docId = GenerateDocId("etag_doc");
@@ -1711,6 +1933,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithETag)
     });
 }
 
+/// @brief Verify _rid system property (resource ID)
+/// @details Creates document and checks _rid field
+/// @test Validates Resource ID is automatically set by Cosmos DB
 TEST_F(CosmosIntegrationTests, DocumentWithRID)
 {
     std::string docId = GenerateDocId("rid_doc");
@@ -1737,6 +1962,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithRID)
     });
 }
 
+/// @brief Test ORDER BY clause in queries
+/// @details Creates documents with priority values and queries with ORDER BY
+/// @test Validates ORDER BY clause works correctly
 TEST_F(CosmosIntegrationTests, QueryWithOrderBy)
 {
     std::vector<std::string> docIds;
@@ -1777,6 +2005,9 @@ TEST_F(CosmosIntegrationTests, QueryWithOrderBy)
     }
 }
 
+/// @brief Test COUNT and SUM aggregation functions
+/// @details Creates documents with numeric values and queries aggregations
+/// @test Validates aggregation functions work correctly
 TEST_F(CosmosIntegrationTests, QueryWithAggregation)
 {
     std::vector<std::string> docIds;
@@ -1818,6 +2049,9 @@ TEST_F(CosmosIntegrationTests, QueryWithAggregation)
     }
 }
 
+/// @brief Test DISTINCT keyword in queries
+/// @details Creates documents with duplicate categories and queries DISTINCT
+/// @test Validates DISTINCT keyword works correctly
 TEST_F(CosmosIntegrationTests, QueryWithDistinct)
 {
     std::vector<std::string> docIds;
@@ -1858,6 +2092,9 @@ TEST_F(CosmosIntegrationTests, QueryWithDistinct)
     }
 }
 
+/// @brief Test UPPER, LOWER, LENGTH string functions
+/// @details Creates document with text field and queries string functions
+/// @test Validates string functions work correctly
 TEST_F(CosmosIntegrationTests, QueryWithStringFunctions)
 {
     std::string docId = GenerateDocId("string_func");
@@ -1890,6 +2127,9 @@ TEST_F(CosmosIntegrationTests, QueryWithStringFunctions)
     });
 }
 
+/// @brief Test ROUND, FLOOR, CEILING math functions
+/// @details Creates document with numeric value and queries math functions
+/// @test Validates math functions work correctly
 TEST_F(CosmosIntegrationTests, QueryWithMathFunctions)
 {
     std::string docId = GenerateDocId("math_func");
@@ -1922,6 +2162,9 @@ TEST_F(CosmosIntegrationTests, QueryWithMathFunctions)
     });
 }
 
+/// @brief Test upsert as insert operation
+/// @details Upserts new document (does not exist yet)
+/// @test Validates status code is 201 (Created)
 TEST_F(CosmosIntegrationTests, UpsertDocumentInsert)
 {
     std::string docId = GenerateDocId("upsert_insert");
@@ -1949,6 +2192,9 @@ TEST_F(CosmosIntegrationTests, UpsertDocumentInsert)
     });
 }
 
+/// @brief Test upsert as update operation
+/// @details Creates document then upserts with new data
+/// @test Validates status code is 200 (OK)
 TEST_F(CosmosIntegrationTests, UpsertDocumentUpdate)
 {
     std::string docId = GenerateDocId("upsert_update");
@@ -1988,6 +2234,9 @@ TEST_F(CosmosIntegrationTests, UpsertDocumentUpdate)
     });
 }
 
+/// @brief Query with specific partition key
+/// @details Creates documents and queries with specific partition key
+/// @test Validates partition key query works correctly
 TEST_F(CosmosIntegrationTests, PartitionKeyRangeQuery)
 {
     std::vector<std::string> docIds;
@@ -2026,6 +2275,9 @@ TEST_F(CosmosIntegrationTests, PartitionKeyRangeQuery)
     }
 }
 
+/// @brief Query across all partitions
+/// @details Creates documents and queries with "*" partition key
+/// @test Validates cross-partition query works correctly
 TEST_F(CosmosIntegrationTests, CrossPartitionQuery)
 {
     std::vector<std::string> docIds;
@@ -2064,6 +2316,9 @@ TEST_F(CosmosIntegrationTests, CrossPartitionQuery)
     }
 }
 
+/// @brief Verify all system properties are present
+/// @details Creates document and checks all system properties
+/// @test Validates _rid, _self, _etag, _attachments, _ts exist
 TEST_F(CosmosIntegrationTests, DocumentWithSystemProperties)
 {
     std::string docId = GenerateDocId("sys_props");
@@ -2093,6 +2348,9 @@ TEST_F(CosmosIntegrationTests, DocumentWithSystemProperties)
     });
 }
 
+/// @brief Test TOP clause for limiting results
+/// @details Creates 10 documents and queries with TOP 5
+/// @test Validates TOP clause limits results correctly
 TEST_F(CosmosIntegrationTests, QueryWithLimit)
 {
     std::vector<std::string> docIds;
@@ -2132,6 +2390,9 @@ TEST_F(CosmosIntegrationTests, QueryWithLimit)
     }
 }
 
+/// @brief Test OFFSET and LIMIT for pagination
+/// @details Creates 10 documents and queries with OFFSET 5 LIMIT 5
+/// @test Validates OFFSET and LIMIT work correctly
 TEST_F(CosmosIntegrationTests, QueryWithOffset)
 {
     std::vector<std::string> docIds;
@@ -2170,6 +2431,9 @@ TEST_F(CosmosIntegrationTests, QueryWithOffset)
     }
 }
 
+/// @brief Test ARRAY_CONTAINS function
+/// @details Creates document with array field and queries ARRAY_CONTAINS
+/// @test Validates ARRAY_CONTAINS function works correctly
 TEST_F(CosmosIntegrationTests, QueryWithArrayContains)
 {
     std::string docId = GenerateDocId("array_contains");
@@ -2202,6 +2466,9 @@ TEST_F(CosmosIntegrationTests, QueryWithArrayContains)
     });
 }
 
+/// @brief Test EXISTS function
+/// @details Creates documents with and without optional field
+/// @test Validates EXISTS function works correctly
 TEST_F(CosmosIntegrationTests, QueryWithExists)
 {
     std::string docId1 = GenerateDocId("exists_yes");
