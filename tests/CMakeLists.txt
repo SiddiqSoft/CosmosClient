@@ -103,6 +103,17 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     endif()
     
     # ============================================================================
+    # Catch-All Test - Runs all tests in the executable
+    # This ensures ctest discovers and runs all tests when invoked without filters
+    # ============================================================================
+    add_test(
+        NAME ${TEST_ALL_TARGET}_all
+        COMMAND ${TEST_ALL_TARGET} --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/all_tests_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_all PROPERTIES TIMEOUT 3600)
+    
+    # ============================================================================
     # Non-Emulator Tests (Validation, Connection, Endpoint)
     # These tests can run in PARALLEL since they don't require emulator
     # ============================================================================
@@ -180,6 +191,9 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     message(STATUS "  ")
     message(STATUS "  CTest configured with PARALLEL and SEQUENTIAL test execution:")
     message(STATUS "  ")
+    message(STATUS "  CATCH-ALL TEST (Runs all tests):")
+    message(STATUS "    - ${TEST_ALL_TARGET}_all (All tests in the executable)")
+    message(STATUS "  ")
     message(STATUS "  PARALLEL TESTS (No Emulator Required) - 7 tests:")
     message(STATUS "    - ${TEST_ALL_TARGET}_validation (Validation tests)")
     message(STATUS "    - ${TEST_ALL_TARGET}_connection (Connection tests)")
@@ -193,8 +207,12 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     message(STATUS "    - ${TEST_ALL_TARGET}_integration (Integration tests with shared setup/teardown)")
     message(STATUS "  ")
     message(STATUS "  Test output directory: ${PROJECT_SOURCE_DIR}/tests/results/")
+    message(STATUS "  Catch-all test timeout: 3600 seconds")
     message(STATUS "  Parallel test timeout: 300 seconds each")
     message(STATUS "  Sequential test timeout: 1800 seconds")
+    message(STATUS "  ")
+    message(STATUS "  To run all tests (catch-all):")
+    message(STATUS "    ctest -R '_all'")
     message(STATUS "  ")
     message(STATUS "  To run all tests with parallelism:")
     message(STATUS "    ctest --parallel 7")
