@@ -49,14 +49,14 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     file(MAKE_DIRECTORY "${PROJECT_SOURCE_DIR}/tests/results")
     
     # ============================================================================
-    # Unified Test Executable: testall.cpp
+    # Test Executable: testall.cpp
     # ============================================================================
-    # This single executable contains all integration tests with shared setup/teardown
+    # This executable contains all tests (validation, connection, endpoint, integration)
     # Tests are organized by category:
-    # - Validation tests (no emulator required)
-    # - Connection tests (no emulator required)
-    # - Endpoint tests (no emulator required)
-    # - Integration tests (requires emulator)
+    # - Validation tests (no emulator required) - can run in parallel
+    # - Connection tests (no emulator required) - can run in parallel
+    # - Endpoint tests (no emulator required) - can run in parallel
+    # - Integration tests (requires emulator) - must run sequentially
     
     set(TEST_ALL_TARGET ${PROJECT_NAME}_tests)
     add_executable(${TEST_ALL_TARGET})
@@ -87,7 +87,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
             StringHelpers::StringHelpers)
     
     # ============================================================================
-    # CTest Configuration
+    # CTest Configuration - Parallel & Sequential Test Execution
     # ============================================================================
     include(CTest)
     
@@ -102,23 +102,106 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
         set(TEST_OUTPUT_NAME "test_detail.xml")
     endif()
     
-    # Add single test entry - all tests run in one process with shared setup/teardown
+    # ============================================================================
+    # Non-Emulator Tests (Validation, Connection, Endpoint)
+    # These tests can run in PARALLEL since they don't require emulator
+    # ============================================================================
     add_test(
-        NAME ${TEST_ALL_TARGET}
-        COMMAND ${TEST_ALL_TARGET} --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/${TEST_OUTPUT_NAME}
+        NAME ${TEST_ALL_TARGET}_validation
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=Validation.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/validation_test_detail.xml
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
+    set_tests_properties(${TEST_ALL_TARGET}_validation PROPERTIES TIMEOUT 300)
     
-    # Set timeout for the entire test suite
-    set_tests_properties(${TEST_ALL_TARGET} PROPERTIES TIMEOUT 1800)
+    add_test(
+        NAME ${TEST_ALL_TARGET}_connection
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=CosmosConnection.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/connection_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_connection PROPERTIES TIMEOUT 300)
     
-    # Configure CTest to run tests sequentially (single process)
-    set(CTEST_PARALLEL_LEVEL 1 CACHE STRING "Number of parallel test jobs (1 = sequential)")
+    add_test(
+        NAME ${TEST_ALL_TARGET}_endpoint
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=CosmosEndpoint.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/endpoint_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_endpoint PROPERTIES TIMEOUT 300)
+    
+    add_test(
+        NAME ${TEST_ALL_TARGET}_comprehensive_connection
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=ComprehensiveConnectionTests.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/comprehensive_connection_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_comprehensive_connection PROPERTIES TIMEOUT 300)
+    
+    add_test(
+        NAME ${TEST_ALL_TARGET}_comprehensive_response
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=ComprehensiveResponseTypeTests.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/comprehensive_response_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_comprehensive_response PROPERTIES TIMEOUT 300)
+    
+    add_test(
+        NAME ${TEST_ALL_TARGET}_comprehensive_endpoint
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=ComprehensiveEndpointTests.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/comprehensive_endpoint_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_comprehensive_endpoint PROPERTIES TIMEOUT 300)
+    
+    add_test(
+        NAME ${TEST_ALL_TARGET}_comprehensive_error
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=ComprehensiveErrorHandlingTests.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/comprehensive_error_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_comprehensive_error PROPERTIES TIMEOUT 300)
+    
+    # ============================================================================
+    # Emulator-Required Tests (Integration & Comprehensive API)
+    # These tests MUST run SEQUENTIALLY due to shared database/collection setup
+    # ============================================================================
+    add_test(
+        NAME ${TEST_ALL_TARGET}_integration
+        COMMAND ${TEST_ALL_TARGET} --gtest_filter=CosmosIntegrationTests.* --gtest_output=xml:${PROJECT_SOURCE_DIR}/tests/results/integration_test_detail.xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    set_tests_properties(${TEST_ALL_TARGET}_integration PROPERTIES TIMEOUT 1800)
+    
+    # ============================================================================
+    # Test Execution Strategy
+    # ============================================================================
+    # Non-emulator tests can run in parallel (up to 7 jobs)
+    # Emulator tests must run sequentially (1 job)
+    # Set CTEST_PARALLEL_LEVEL environment variable to control parallelism:
+    #   - For parallel non-emulator tests: CTEST_PARALLEL_LEVEL=7
+    #   - For sequential emulator tests: CTEST_PARALLEL_LEVEL=1
+    # ============================================================================
     
     message(STATUS "  Finished configuring for ${PROJECT_NAME} -- ${PROJECT_NAME}_BUILD_TESTS = ${${PROJECT_NAME}_BUILD_TESTS}")
-    message(STATUS "  CTest configured to run ALL tests in a single process:")
-    message(STATUS "    - ${TEST_ALL_TARGET} (unified integration tests)")
-    message(STATUS "  SetUpTestCase/TearDownTestCase run once for all tests")
-    message(STATUS "  Total test timeout: 1800 seconds (30 minutes)")
-    message(STATUS "  Test output: ${PROJECT_SOURCE_DIR}/tests/results/${TEST_OUTPUT_NAME}")
+    message(STATUS "  ")
+    message(STATUS "  CTest configured with PARALLEL and SEQUENTIAL test execution:")
+    message(STATUS "  ")
+    message(STATUS "  PARALLEL TESTS (No Emulator Required) - 7 tests:")
+    message(STATUS "    - ${TEST_ALL_TARGET}_validation (Validation tests)")
+    message(STATUS "    - ${TEST_ALL_TARGET}_connection (Connection tests)")
+    message(STATUS "    - ${TEST_ALL_TARGET}_endpoint (Endpoint tests)")
+    message(STATUS "    - ${TEST_ALL_TARGET}_comprehensive_connection (Comprehensive connection tests)")
+    message(STATUS "    - ${TEST_ALL_TARGET}_comprehensive_response (Response type tests)")
+    message(STATUS "    - ${TEST_ALL_TARGET}_comprehensive_endpoint (Endpoint rotation tests)")
+    message(STATUS "    - ${TEST_ALL_TARGET}_comprehensive_error (Error handling tests)")
+    message(STATUS "  ")
+    message(STATUS "  SEQUENTIAL TESTS (Requires Emulator) - 1 test:")
+    message(STATUS "    - ${TEST_ALL_TARGET}_integration (Integration tests with shared setup/teardown)")
+    message(STATUS "  ")
+    message(STATUS "  Test output directory: ${PROJECT_SOURCE_DIR}/tests/results/")
+    message(STATUS "  Parallel test timeout: 300 seconds each")
+    message(STATUS "  Sequential test timeout: 1800 seconds")
+    message(STATUS "  ")
+    message(STATUS "  To run all tests with parallelism:")
+    message(STATUS "    ctest --parallel 7")
+    message(STATUS "  ")
+    message(STATUS "  To run only parallel tests (no emulator required):")
+    message(STATUS "    ctest --parallel 7 -R '_validation|_connection|_endpoint|_comprehensive'")
+    message(STATUS "  ")
+    message(STATUS "  To run only emulator tests sequentially:")
+    message(STATUS "    ctest --parallel 1 -R '_integration'")
 endif()
