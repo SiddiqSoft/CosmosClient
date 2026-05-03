@@ -520,12 +520,12 @@ namespace siddiqsoft
             catch (...) {
             }
 
-#if defined(azcosmoscl_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE) || defined(DEBUG)
             std::println(std::cerr, "{} - CIRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
-#if defined(azcosmoscl_TESTING_MODE)
+#if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
             std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
 #endif
             // Has value but not successful, return the code

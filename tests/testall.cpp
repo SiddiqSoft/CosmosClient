@@ -1797,13 +1797,20 @@ TEST_F(CosmosIntegrationTests, QueryWithAggregation)
 
         testSuiteClient.createDocument({.database   = testDBName0,
                                         .collection = testCollectionNames[0],
-                                        .document   = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"value", i * 10}, {"category", "test"}}});
+                                        .document   = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"ival", i * 10}, {"category", "test"}}});
     }
 
+    // Dump the just added document..
+    // In order to test the following queryDocuments.. we must allow the above createDocument to complete.
+    // For some reason the emulator fails the queryDocuments if we don't perform a listDocuments!
+    auto justAdded = testSuiteClient.listDocuments({.database = testDBName0, .collection = testCollectionNames[0]});
+    EXPECT_EQ(200, justAdded.statusCode);
+
+    // SELECT COUNT(c.id) as count, SUM(c.value) as total FROM c WHERE c.category = @cat
     auto irt = testSuiteClient.queryDocuments({.database        = testDBName0,
                                                .collection      = testCollectionNames[0],
                                                .partitionKey    = "*",
-                                               .queryStatement  = "SELECT COUNT(c.id) as count, SUM(c.value) as total FROM c WHERE c.category = @cat",
+                                               .queryStatement  = "SELECT COUNT(c.id) as count, SUM(c.ival) as total FROM c WHERE c.category = @cat",
                                                .queryParameters = {{{"name", "@cat"}, {"value", "test"}}}});
 
     EXPECT_EQ(200, irt.statusCode);
@@ -1872,13 +1879,20 @@ TEST_F(CosmosIntegrationTests, QueryWithMathFunctions)
     std::string docId = GenerateDocId("math_func");
 
     testSuiteClient.createDocument(
-            {.database = testDBName0, .collection = testCollectionNames[0], .document = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"value", 16.5}}});
+            {.database = testDBName0, .collection = testCollectionNames[0], .document = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"fval", 16.5}}});
 
+    // Dump the just added document..
+    // In order to test the following queryDocuments.. we must allow the above createDocument to complete.
+    // For some reason the emulator fails the queryDocuments if we don't perform a listDocuments!
+    auto justAdded = testSuiteClient.listDocuments({.database = testDBName0, .collection = testCollectionNames[0]});
+    EXPECT_EQ(200, justAdded.statusCode);
+
+    // Get the various math functions tested.
     auto irt = testSuiteClient.queryDocuments(
             {.database        = testDBName0,
              .collection      = testCollectionNames[0],
              .partitionKey    = "*",
-             .queryStatement  = "SELECT c.id, ROUND(c.value) as rounded, FLOOR(c.value) as floored, CEILING(c.value) as ceiled FROM c WHERE c.id = @id",
+             .queryStatement  = "SELECT c.id, ROUND(c.fval) as rounded, FLOOR(c.fval) as floored, CEILING(c.fval) as ceiled FROM c WHERE c.id = @id",
              .queryParameters = {{{"name", "@id"}, {"value", docId}}}});
 
     EXPECT_EQ(200, irt.statusCode);
@@ -2085,10 +2099,12 @@ TEST_F(CosmosIntegrationTests, QueryWithExists)
 
     testSuiteClient.createDocument({.database = testDBName0, .collection = testCollectionNames[0], .document = {{"id", docId2}, {"__pk", "siddiqsoft.com"}}});
 
+    // Check if the field exists in the document
+    // The EXISTS function in Cosmos DB SQL requires a subquery, not just a field reference.
     auto irt = testSuiteClient.queryDocuments({.database       = testDBName0,
                                                .collection     = testCollectionNames[0],
                                                .partitionKey   = "*",
-                                               .queryStatement = "SELECT * FROM c WHERE EXISTS(c.optional_field)"});
+                                               .queryStatement = "SELECT * FROM c WHERE IS_DEFINED(c.optional_field)"});
 
     EXPECT_EQ(200, irt.statusCode);
 
