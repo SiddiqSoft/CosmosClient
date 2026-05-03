@@ -24,6 +24,8 @@ stages:
 - stage: BuildTest
   displayName: 'Building, Testing and Package'
   jobs:
+
+    # Build on Windows ######
   - job: buildWindows
     displayName: 'Build and Test Windows'
     workspace:
@@ -61,12 +63,6 @@ stages:
         useConfigFile: true
         configFilePath: 'GitVersion.yml'
 
-    - task: CMake@1
-      displayName: 'CMake Configure $(cmake.preset)'
-      inputs:
-        cmakeArgs: '--preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-
     - task: CmdLine@2
       displayName: 'Start Azure CosmosDB Emulator (Docker)'
       inputs:
@@ -80,18 +76,23 @@ stages:
       condition: succeeded()
 
     - task: CMake@1
+      displayName: 'CMake Configure $(cmake.preset)'
+      inputs:
+        cmakeArgs: '--preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+    - task: CMake@1
       displayName: 'CMake Build $(cmake.preset)'
       inputs:
         cmakeArgs: '--build --preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH)  -DCPM_SOURCE_CACHE=$(Agent.HomeDirectory)/.cpmcache'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
 
+      # Run the tests via cmake/ctest..
     - task: CMake@1
-      displayName: 'CMake Tests $(cmake.preset) - Catch-All Test Suite'
-      env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+      displayName: 'CMake Tests $(cmake.preset)'
       inputs:
-        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all"'
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       continueOnError: true
       condition: succeeded()
@@ -172,6 +173,7 @@ stages:
       name: Default
       demands:
         - Agent.OS -equals Linux
+        - docker
     strategy:
       matrix:
         #GCC-Debug:
@@ -233,26 +235,15 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)'
       condition: succeeded()
     
+      # Run the tests via cmake/ctest..
     - task: CMake@1
-      displayName: 'CMake Tests $(cmake.preset) - Release (Catch-All)'
-      env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
+      displayName: 'CMake Tests $(cmake.preset)'
       inputs:
-        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all"'
+        cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure'
         workingDirectory: '$(System.DefaultWorkingDirectory)'
-      condition: and(succeeded(), eq(variables['BuildType'], 'Release'), startsWith(variables['Agent.OS'], 'Linux'))
       continueOnError: true
-    
-    - task: CMake@1
-      displayName: 'CMake Tests $(cmake.preset) - Debug with Coverage (Catch-All)'
-      env:
-        "CTEST_OUTPUT_ON_FAILURE": "TRUE"
-      inputs:
-        cmakeArgs: '--build --preset $(cmake.preset) --target test -- --output-on-failure --verbose -R "_all" -T Test -T Coverage'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-      condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), startsWith(variables['Agent.OSArchitecture'], 'X64'))
-      continueOnError: true
-    
+      condition: succeeded()
+
     - task: Bash@3
       displayName: 'Stop Azure CosmosDB emulator'
       inputs:
