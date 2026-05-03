@@ -505,37 +505,37 @@ namespace siddiqsoft
 
     [[nodiscard]] static auto make_CosmosIterableResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosIterableResponseType
     {
-        CosmosIterableResponseType crt;
+        CosmosIterableResponseType iterableRespFromCosmos;
 
-        crt.ttx = std::chrono::microseconds(tt.elapsed().count());
+        iterableRespFromCosmos.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(azcosmoscl_TESTING_MODE)
-            std::println(std::cerr, "{} - Raw response (good):\n{}", __func__, ret);
+#if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
+            std::cerr << std::format("{} - Raw response (good):\n{}", __func__, *ret);
 #endif
-            crt.statusCode = ret->statusCode();
-            crt.document   = std::move(ret->getContentBodyJSON());
+            iterableRespFromCosmos.statusCode = ret->statusCode();
+            iterableRespFromCosmos.document   = std::move(ret->getContentBodyJSON());
             try {
-                crt.continuationToken = ret->getHeader("x-ms-continuation");
+                iterableRespFromCosmos.continuationToken = ret->getHeader("x-ms-continuation");
             }
             catch (...) {
             }
 
-#if defined(azcosmoscl_TESTING_MODE) || defined(DEBUG)
-            std::println(std::cerr, "{} - CIRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
+#if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
+            std::cerr << std::format("{} - CIRT (good)  statusCode:{}\n{}", __func__, iterableRespFromCosmos.statusCode, iterableRespFromCosmos.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
 #if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
-            std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
+            std::cerr << std::format("{} - Raw response (failed):\n{}", __func__, *ret);
 #endif
             // Has value but not successful, return the code
-            std::tie(crt.statusCode, std::ignore) = ret->status();
+            std::tie(iterableRespFromCosmos.statusCode, std::ignore) = ret->status();
         }
         else {
-            crt.statusCode = ret.error();
+            iterableRespFromCosmos.statusCode = ret.error();
         }
 
-        return crt;
+        return iterableRespFromCosmos;
     }
 
 
