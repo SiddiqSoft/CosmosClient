@@ -509,7 +509,7 @@ namespace siddiqsoft
 
         iterableRespFromCosmos.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
+#if defined(azcosmoscl_TESTING_MODE)
             std::cerr << std::format("{} - Raw response (good):\n{}", __func__, *ret);
 #endif
             iterableRespFromCosmos.statusCode = ret->statusCode();
@@ -520,12 +520,12 @@ namespace siddiqsoft
             catch (...) {
             }
 
-#if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
+#if defined(azcosmoscl_TESTING_MODE)
             std::cerr << std::format("{} - CIRT (good)  statusCode:{}\n{}", __func__, iterableRespFromCosmos.statusCode, iterableRespFromCosmos.document.dump(4));
 #endif
         }
         else if (ret.has_value()) {
-#if defined(azcosmoscl_TESTING_MODE) || defined (DEBUG)
+#if defined(azcosmoscl_TESTING_MODE)
             std::cerr << std::format("{} - Raw response (failed):\n{}", __func__, *ret);
 #endif
             // Has value but not successful, return the code

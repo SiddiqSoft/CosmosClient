@@ -91,7 +91,16 @@ stages:
       displayName: 'CMake Tests $(cmake.preset)'
       inputs:
         cmakeArgs: '-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      continueOnError: true
+      condition: succeeded()
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
+      inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
+          mergeTestResults: false
+          buildConfiguration: '$(BuildType)'
       continueOnError: true
       condition: succeeded()
 
@@ -104,16 +113,6 @@ stages:
           echo "Emulator stopped"
       condition: always()
 
-    - task: PublishTestResults@2
-      displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
-      inputs:
-          testResultsFormat: 'JUnit'
-          testResultsFiles: '$(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml'
-          mergeTestResults: false
-          buildConfiguration: '$(BuildType)'
-      continueOnError: true
-      condition: succeeded()
-          
     - task: NuGetToolInstaller@1
       displayName: 'Install Nuget on Windows'
       inputs:
