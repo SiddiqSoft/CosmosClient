@@ -56,7 +56,7 @@ BreakInheritanceList : BeforeComma
 BreakBeforeConceptDeclarations: true
 
 ContinuationIndentWidth : 8
-ColumnLimit: 132
+ColumnLimit: 164
 Cpp11BracedListStyle: true
 IndentCaseLabels: true
 IndentPPDirectives: None
