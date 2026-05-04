@@ -74,10 +74,15 @@ stages:
 
           echo "Starting Azure Cosmos DB Emulator via Docker..."
           docker pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
-          docker run --publish 8081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+
+          echo "Now lets start.."
+          docker run --publish 8081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --rm mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+
           echo "Waiting for emulator to start..."
-          powershell -Command "Start-Sleep -Seconds 30"
-          echo "Emulator should be running on http://localhost:8081.."
+          powershell -Command "Start-Sleep -Seconds 60"
+          docker ps
+          
+          echo "Checking if emulator is running on http://localhost:8081.."
           powershell -Command "Write-Host 'Trying to check on http://localhost:8081'; try { $response = Invoke-WebRequest -Uri http://localhost:8081 -Method Get -TimeoutSec 10; Write-Host "Success! Status Code: $($response.StatusCode)" -ForegroundColor Green; } catch { Write-Host "Failed to reach site. Error: $($_.Exception.Message)" -ForegroundColor Red ; exit 1;}"
       condition: succeeded()
 
