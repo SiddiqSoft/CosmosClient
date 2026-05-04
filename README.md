@@ -176,6 +176,10 @@ ctest --output-on-failure --verbose
 - **Unified Setup** - Single shared database for all tests
 - **No Emulator Required** - Validation tests run without Azure Cosmos Emulator
 
+#### Windows Docker Tests
+
+Docker-based tests are **disabled on Windows** in the CI/CD pipeline. This is because the Azure Cosmos DB Emulator Docker image is only available for Linux containers, and Windows agents cannot run Linux containers without additional virtualization overhead. Windows builds focus on compilation and packaging validation. For full integration testing, use macOS or Linux environments.
+
 For detailed testing information, see [DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md#running-tests).
 
 ---

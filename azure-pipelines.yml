@@ -109,6 +109,7 @@ stages:
       continueOnError: true
       condition: succeeded()
     
+      # Disabled on windows
     - task: PublishTestResults@2
       enabled: false
       displayName: 'Publish $(BuildType) Test Results $(cmake.preset)_test_detail.xml'
@@ -120,6 +121,7 @@ stages:
       continueOnError: true
       condition: succeeded()
 
+      # Disabled on windows
     - task: CmdLine@2
       enabled: false
       displayName: 'Stop Azure CosmosDB emulator'
