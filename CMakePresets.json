@@ -9,6 +9,7 @@
         {
             "name": "Common-Base",
             "hidden": true,
+            "inherits": "Project-Base",
             "generator": "Ninja",
             "environment": {
                 "CTEST_PARALLEL_LEVEL": "0",
