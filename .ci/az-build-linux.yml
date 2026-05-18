@@ -340,7 +340,7 @@ jobs:
         # - Previous steps succeeded
         # - runTests parameter is true
         # - Building Release OR tests failed
-        - 
+      
       - task: PublishCodeCoverageResults@2
         displayName: 'Publish Coverage Results (Linux builds)'
         inputs:
