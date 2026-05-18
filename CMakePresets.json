@@ -1,22 +1,21 @@
 {
     "version": 8,
+    "include": [ "project-base.json" ],
     "cmakeMinimumRequired": {
         "major": 3,
         "minor": 29
     },
     "configurePresets": [
         {
-            "name": "Project-Base",
+            "name": "Common-Base",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
             "environment": {
                 "CTEST_PARALLEL_LEVEL": "0",
                 "CMAKE_COLOR_DIAGNOSTICS": "1"
             },
             "cacheVariables": {
-                "CPM_SOURCE_CACHE": "${sourceParentDir}/.cpmcache",
-                "restcl_BUILD_TESTS": "ON"
+                "CPM_SOURCE_CACHE": "${sourceParentDir}/.cpmcache"
             }
         },
         {
@@ -24,7 +23,7 @@
             "displayName": "Apple-Debug (Homebrew LLVM)",
             "description": "Using compilers: C = /opt/homebrew/opt/llvm/bin/clang, CXX = /opt/homebrew/opt/llvm/bin/clang++",
             "binaryDir": "${sourceDir}/build/${presetName}",
-            "inherits": "Project-Base",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
                 "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
@@ -43,7 +42,7 @@
             "displayName": "Apple-Release (Homebrew LLVM)",
             "description": "Using compilers: C = /opt/homebrew/opt/llvm/bin/clang, CXX = /opt/homebrew/opt/llvm/bin/clang++",
             "binaryDir": "${sourceDir}/build/${presetName}",
-            "inherits": "Project-Base",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
                 "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
@@ -63,7 +62,7 @@
             "description": "Target Linux Clang (Debug)",
             "binaryDir": "${sourceDir}/build/${presetName}",
             "installDir": "${sourceDir}/install/${presetName}",
-            "inherits": "Project-Base",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
@@ -86,7 +85,7 @@
             "description": "Target Linux Clang (Release)",
             "binaryDir": "${sourceDir}/build/${presetName}",
             "installDir": "${sourceDir}/install/${presetName}",
-            "inherits": "Project-Base",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_C_COMPILER": "/usr/bin/clang",
@@ -109,7 +108,7 @@
             "description": "Target Linux GCC (Debug)",
             "binaryDir": "${sourceDir}/build/${presetName}",
             "installDir": "${sourceDir}/install/${presetName}",
-            "inherits": "Project-Base",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_COMPILER": "/usr/bin/gcc",
@@ -132,7 +131,7 @@
             "description": "Target Linux GCC (Release)",
             "binaryDir": "${sourceDir}/build/${presetName}",
             "installDir": "${sourceDir}/install/${presetName}",
-            "inherits": "Project-Base",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_C_COMPILER": "/usr/bin/gcc",
@@ -155,12 +154,11 @@
             "binaryDir": "${sourceDir}/build/${presetName}",
             "installDir": "${sourceDir}/install/${presetName}",
             "generator": "Ninja Multi-Config",
+            "inherits": "Common-Base",
             "cacheVariables": {
                 "CMAKE_MAKE_PROGRAM": "ninja.exe",
                 "CMAKE_C_COMPILER": "cl.exe",
-                "CMAKE_CXX_COMPILER": "cl.exe",
-                "CPM_SOURCE_CACHE": "${sourceParentDir}/.cpmcache",
-                "restcl_BUILD_TESTS": "ON"
+                "CMAKE_CXX_COMPILER": "cl.exe"
             },
             "environment": {
                 "CTEST_PARALLEL_LEVEL": "0",

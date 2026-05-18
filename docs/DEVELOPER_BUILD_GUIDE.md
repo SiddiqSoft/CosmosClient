@@ -33,6 +33,10 @@ export CCTEST_SECONDARY_CS="AccountEndpoint=https://localhost:8081/;AccountKey=C
 
 ---
 
+**NOTE**
+The file `project-base.json` contains the project-specific settings for the common CMakePresets.json file. Make sure to change the value `project_BUILD_TESTS` where `project` is the name of your project.
+
+
 ## macOS Setup
 
 ### 1. Install Homebrew (if not already installed)
