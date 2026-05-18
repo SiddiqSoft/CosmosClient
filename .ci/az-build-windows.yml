@@ -126,7 +126,7 @@ jobs:
         # Requires: Matching architecture (x64 or arm64)
         - docker
         # Requires: Docker installed (for Cosmos DB emulator)
-        
+
     # ====================================================================
     # STRATEGY MATRIX
     # ====================================================================
@@ -249,7 +249,7 @@ jobs:
 
             echo "Checking if emulator is running on http://localhost:8081.."
             powershell -Command "Write-Host 'Trying to check on http://localhost:8081'; try { $response = Invoke-WebRequest -Uri http://localhost:8081 -Method Get -TimeoutSec 10; Write-Host "Success! Status Code: $($response.StatusCode)" -ForegroundColor Green; } catch { Write-Host "Failed to reach site. Error: $($_.Exception.Message)" -ForegroundColor Red ; exit 1;}"
-        condition: succeeded()
+        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
       
       # ====================================================================
       # Step 6: CMake Configure

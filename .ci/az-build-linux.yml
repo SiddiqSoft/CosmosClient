@@ -274,7 +274,7 @@ jobs:
         inputs:
           targetType: 'filePath'
           filePath: '$(System.DefaultWorkingDirectory)/tests/setup-emulator.sh'
-        condition: succeeded()
+        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
           
       # ====================================================================
       # Step 10: Run Tests
@@ -306,7 +306,7 @@ jobs:
             docker ps
             echo "Stop the running emulator.."
             docker stop linux-emulator
-        condition: succeeded()
+        condition: always()
       
       - task: CmdLine@2
         displayName: 'Coverage collection (Linux builds Only)'
