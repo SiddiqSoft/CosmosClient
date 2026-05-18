@@ -307,6 +307,7 @@ jobs:
             echo "Stop the running emulator.."
             docker stop linux-emulator
         condition: always()
+        continueOnError: true
       
       - task: CmdLine@2
         displayName: 'Coverage collection (Linux builds Only)'
