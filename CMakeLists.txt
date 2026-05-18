@@ -26,6 +26,7 @@ project(cosmoscl
 # ____________________________________
 # Options; define and declare defaults
 option(${PROJECT_NAME}_BUILD_TESTS "${PROJECT_NAME} - Build tests. Uncheck for install only runs" OFF)
+option(CI_BUILDID "${PROJECT_NAME} - Build Version" "notset")
 
 # ____________________________________
 #  Library Definition

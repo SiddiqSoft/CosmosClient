@@ -98,6 +98,8 @@ jobs:
       demands:
         - Agent.OS -equals Linux
         # Requires: Linux operating system
+        - docker
+        # Requires: Docker installed (for Cosmos DB emulator)
     
     # ====================================================================
     # STRATEGY MATRIX

@@ -124,7 +124,9 @@ jobs:
         # Requires: Windows operating system
         - Agent.OSArchitecture -equals ${{ parameters.architecture }}
         # Requires: Matching architecture (x64 or arm64)
-    
+        - docker
+        # Requires: Docker installed (for Cosmos DB emulator)
+        
     # ====================================================================
     # STRATEGY MATRIX
     # ====================================================================
