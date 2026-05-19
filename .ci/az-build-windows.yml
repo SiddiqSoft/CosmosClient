@@ -124,7 +124,7 @@ jobs:
           script: |
             Write-Host "$((Get-Date).ToUniversalTime()) - Checking if emulator is already running..."
             docker ps --filter "name=$(dockerContainerName)" --filter "status=running" --quiet | findstr . >nul
-            if ($LASTEXITCODE equ 0) {
+            if ($LASTEXITCODE -equ 0) {
               Write-Host "Emulator already running. Skipping start."
               exit /b 0
             }
