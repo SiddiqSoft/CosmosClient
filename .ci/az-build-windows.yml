@@ -253,10 +253,11 @@ jobs:
         displayName: 'Clear the CPM cache'
         inputs:
           script: |
-            write-host "Checking if the $Agent.HomeDirectory/.cpmcache exists.."
-            if test-path -path "$env:Agent.HomeDirectory/.cpmcache" {
+            write-host "Checking if the $env:Agent.HomeDirectory\.cpmcache exists.."
+            if test-path -path "$env:Agent.HomeDirectory\.cpmcache" {
                 write-host "CPM cache directory exists. Clearing..."
-                remove-Item "$env:Agent.HomeDirectory/.cpmcache" -Recurse -Force
+                remove-Item "$env:Agent.HomeDirectory\.cpmcache" -Recurse -Force
+                write-host "CPM cache directory cleared."
             } else {
                 write-host "CPM cache directory does not exist. Skipping clear."
                 exit /b 0

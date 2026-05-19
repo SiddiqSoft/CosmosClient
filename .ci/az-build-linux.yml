@@ -135,6 +135,20 @@ jobs:
         name: step1
         # Checks out the current repository
         # Makes source code available for build
+
+      - task: bash@3
+        displayName: 'Clear the CPM cache'
+        inputs:
+          script: |
+            echo "Checking if the $env:Agent.HomeDirectory\.cpmcache exists.."
+            if exists "$env:Agent.HomeDirectory\.cpmcache" (
+                echo "CPM cache directory exists. Clearing..."
+                rm -rdf "$env:Agent.HomeDirectory\.cpmcache"
+                echo "CPM cache directory cleared."
+            ) else (
+                echo "CPM cache directory does not exist. Skipping clear."
+                exit /b 0
+            )
       
       # ====================================================================
       # Step 2: Install GitVersion
