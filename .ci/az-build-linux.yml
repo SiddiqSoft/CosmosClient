@@ -136,24 +136,27 @@ jobs:
         # Checks out the current repository
         # Makes source code available for build
 
-      - task: bash@3
-        displayName: 'Clear the CPM cache'
-        enabled: false
-        inputs:
-          script: |
-            cpmcache="$env:Agent.HomeDirectory/.cpmcache"
-            echo "Clear the cpm cache..$cpmcache..."
-            echo "Checking if the '$env:Agent.HomeDirectory/.cpmcache' exists.."
-            if [[ -d "$cpmcache" ]]; then
-                echo "CPM cache directory exists. Clearing..."
-                rm -rdf "$cpmcache"
-                echo "CPM cache directory cleared."
-            else
-                echo "CPM cache directory does not exist. Skipping clear."
-                exit /b 0
-            fi
-          continueOnError: true
-      
+      - task: Bash@3
+        displayName: Cleanup Job
+        steps:
+          - script: |
+              echo "This step only works on local build machine;"
+              echo "the running user must have permissions to delete the $(Agent.HomeDirectory) directory and all its contents,"
+              echo "so be careful when enabling this option."
+              echo "It is recommended to only enable this option when running on a local machine for testing purposes, "
+              echo "and not on shared or hosted agents."
+              echo "----------------------------------------------------------"
+              DTC="$(Agent.HomeDirectory)/.cpmcache"
+              echo "Cleaning up before build...$DTC"
+              if [ -d "$DTC" ]; then
+                rm -rdf "$DTC"
+                echo "Cleanup successful: Deleted $DTC"
+              else
+                echo "No cleanup needed: $DTC does not exist"
+              fi
+            displayName: "Cleanup of CPM Cache Directory"
+        condition: eq(${{ parameters.Cleanup }}, true)
+
       # ====================================================================
       # Step 2: Install GitVersion
       # ====================================================================

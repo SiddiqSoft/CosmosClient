@@ -155,6 +155,27 @@ jobs:
         name: step1
         # Checks out the current repository
         # Makes source code available for build
+
+      - task: CmdLine@2
+        displayName: Cleanup Job
+        steps:
+          - script: |
+              echo "This step only works on local build machine;"
+              echo "the running user must have permissions to delete the $(Agent.HomeDirectory) directory and all its contents,"
+              echo "so be careful when enabling this option."
+              echo "It is recommended to only enable this option when running on a local machine for testing purposes, "
+              echo "and not on shared or hosted agents."
+              echo "----------------------------------------------------------"
+              DTC="$(Agent.HomeDirectory)/.cpmcache"
+              echo "Cleaning up before build...$DTC"
+              if [ -d "$DTC" ]; then
+                rm -rdf "$DTC"
+                echo "Cleanup successful: Deleted $DTC"
+              else
+                echo "No cleanup needed: $DTC does not exist"
+              fi
+            displayName: "Cleanup of CPM Cache Directory"
+        condition: eq(${{ parameters.Cleanup }}, true)
       
       # ====================================================================
       # Step 2: Detect Visual Studio Paths
@@ -249,21 +270,6 @@ jobs:
             powershell -Command "Write-Host 'Trying to check on http://localhost:8081'; try { $response = Invoke-WebRequest -Uri http://localhost:8081 -Method Get -TimeoutSec 10; Write-Host "Success! Status Code: $($response.StatusCode)" -ForegroundColor Green; } catch { Write-Host "Failed to reach site. Error: $($_.Exception.Message)" -ForegroundColor Red ; exit 1;}"
         condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
       
-      - task: PowerShell@2
-        displayName: 'Clear the CPM cache'
-        enabled: false
-        inputs:
-          script: |
-            write-host "Checking if the '$env:Agent.HomeDirectory\.cpmcache' exists.."
-            if (test-path -path "$env:Agent.HomeDirectory\.cpmcache" -pathType container) {
-                write-host "CPM cache directory exists. Clearing..."
-                remove-Item -path "$env:Agent.HomeDirectory\.cpmcache" -Recurse -Force
-                write-host "CPM cache directory cleared."
-            } else {
-                write-host "CPM cache directory does not exist. Skipping clear."
-                exit /b 0
-            }
-              
       # ====================================================================
       # Step 6: CMake Configure
       # ====================================================================
