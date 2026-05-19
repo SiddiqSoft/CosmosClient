@@ -46,8 +46,14 @@ A lightweight, modern C++ client for Azure Cosmos DB REST API. Designed for C++ 
 ### Dependencies
 
 - [nlohmann/json](https://github.com/nlohmann/json) - JSON library
-- [azure-cpp-utils](https://github.com/siddiqsoft/azure-cpp-utils) - Azure utilities
-- [restcl](https://github.com/siddiqsoft/restcl) - REST client library
+- [SplitUri](https://github.com/SiddiqSoft/SplitUri) - URI parsing utilities
+- [StringHelpers](https://github.com/siddiqsoft/StringHelpers) - String manipulation utilities
+- [AzureCppUtils](https://github.com/SiddiqSoft/AzureCppUtils) - Azure utilities
+- [string2map](https://github.com/SiddiqSoft/string2map) - String to map conversion
+- [RunOnEnd](https://github.com/SiddiqSoft/RunOnEnd) - RAII scope guard utility
+- [asynchrony](https://github.com/SiddiqSoft/asynchrony) - Async/await support
+- [timethis](https://github.com/SiddiqSoft/timethis) - Timing utilities
+- [restcl](https://github.com/SiddiqSoft/restcl) - REST client library
 
 ---
 

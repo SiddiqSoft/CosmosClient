@@ -2,9 +2,6 @@
 # Azure Pipelines Main Configuration
 # ============================================================================
 #
-# Purpose: Main pipeline orchestration for building and publishing restcl
-# Project: SiddiqSoft restcl - A Focused REST Client for Modern C++
-#
 # This pipeline:
 # 1. Builds the library on Windows (x64 and arm64)
 # 2. Builds the library on Linux (Clang and GCC)
@@ -16,338 +13,214 @@
 # 2. StgBldLinux   - Builds on Linux with Clang/GCC
 # 3. Publication   - Publishes to NuGet and GitHub
 #
-# Key Features:
-# - Multi-platform support (Windows, Linux)
-# - Multi-compiler support (MSVC, Clang, GCC)
-# - Conditional compilation based on parameters
-# - Automatic version detection from git tags
-# - Optional debug builds and x64 builds
-# - Automatic publishing on main/master branches
-#
 # Documentation: See PIPELINE_DOCUMENTATION_INDEX.md for detailed information
 # ============================================================================
 
 # ============================================================================
-# TRIGGER CONFIGURATION
+# TRIGGER & PR CONFIGURATION
 # ============================================================================
-# Defines which branches trigger automatic pipeline runs
-# When code is pushed to these branches, the pipeline automatically starts
 trigger:
   branches:
     include:
-      - main # Main production branch
-      - master # Alternative main branch
-      - development # Development branch
-      - develop # Alternative development branch
-      - release/* # Release branches (e.g., release/1.0.0)
+      - main
+      - master
+      - development
+      - develop
+      - release/*
   paths:
     exclude:
       - README.md
 
-# ============================================================================
-# PULL REQUEST CONFIGURATION
-# ============================================================================
-# Defines which branches trigger pipeline runs for pull requests
-# When a PR is created against these branches, the pipeline runs
 pr:
   branches:
     include:
-      - main # PR to main branch
-      - release/* # PR to release branches
+      - main
+      - release/*
 
 # ============================================================================
 # RESOURCES
 # ============================================================================
-# External resources used by the pipeline
 resources:
   repositories:
     - repository: self
       type: git
-      #name: ${{ parameters.repoToCheckout }}
 
 # ============================================================================
 # PARAMETERS
 # ============================================================================
-# User-configurable parameters that can be set when manually running the pipeline
-# These appear as options in the "Run pipeline" dialog in Azure DevOps
-#
-# SYNTAX NOTES:
-# - Parameters use compile-time syntax: ${{ parameters.name }}
-# - Parameters are evaluated during pipeline parsing, not during job execution
-# - Use displayName for user-friendly labels in the UI
-# - Use default to set the default value when not specified
 parameters:
-  # ========================================================================
-  # Platform Selection Parameters
-  # ========================================================================
+  # Platform Selection
   - name: RunWindows
     type: boolean
     default: true
-    # Description: Enable/disable Windows builds (x64 and arm64)
-    # When true: Runs Windows build stage
-    # When false: Skips Windows build stage
+    displayName: "Run Windows builds (x64 and arm64)"
 
   - name: RunLinux
     type: boolean
     default: true
-    # Description: Enable/disable Linux builds (Clang and GCC)
-    # When true: Runs Linux build stage
-    # When false: Skips Linux build stage
+    displayName: "Run Linux builds (Clang and GCC)"
 
   - name: RunLinuxClangOnly
-    displayName: "RunLinuxClangOnly - Check to only run the Linux Clang builds and skip the Linux GCC builds"
     type: boolean
     default: true
-    # Description: When true, only runs Clang builds on Linux (faster CI)
-    # When false, runs both Clang and GCC builds on Linux
-    # Useful for quick feedback during development
+    displayName: "Linux Clang only (skip GCC for faster CI)"
 
-  # ========================================================================
-  # Build Configuration Parameters
-  # ========================================================================
+  # Build Configuration
   - name: BuildX64
-    displayName: "BuildX64 - Check to enable the x64 builds (windows only)"
     type: boolean
     default: true
-    # Description: Enable x64 architecture builds (in addition to default arm64)
-    # Note: Currently not used in Windows builds, reserved for future use
+    displayName: "Enable x64 builds (Windows)"
 
   - name: BuildDebug
-    displayName: "BuildDebug - Check to enable the Debug builds"
     type: boolean
     default: false
-    # Description: Enable Debug build type (in addition to Release builds)
-    # Debug builds include ASAN (Address Sanitizer) and code coverage on Linux
-    # Useful for finding memory errors and measuring test coverage
+    displayName: "Enable Debug builds"
 
-  # ========================================================================
-  # Publishing Parameters
-  # ========================================================================
+  # Publishing
   - name: PublishNuGet
-    displayName: "PublishNuGet - Defaults to false; auto set to true when on main/master"
     type: boolean
     default: false
-    # Description: Publish NuGet package to nuget.org
-    # Note: Automatically set to true when building on main/master branches
-    # Can be manually overridden when running pipeline
+    displayName: "Publish to NuGet (auto-enabled on main/master)"
 
   - name: PublishGitHub
-    displayName: "PublishGitHub - Defaults to false; auto set to true when on main/master"
     type: boolean
     default: false
-    # Description: Create GitHub release with build artifacts
-    # Note: Automatically set to true when building on main/master branches
-    # Can be manually overridden when running pipeline
+    displayName: "Create GitHub release (auto-enabled on main/master)"
 
-  - name: Cleanup
-    displayName: "Cleanup - Cleanup"
-    type: boolean
-    default: false
-    # Description: When true, only runs the Cleanup stage and skips all other stages
-    # Useful for running cleanup tasks without triggering builds or publications
-
-  # ========================================================================
-  # Testing Parameters
-  # ========================================================================
+  # Testing & Cleanup
   - name: RunTests
-    displayName: "RunTests - Check to run tests after building"
     type: boolean
     default: true
-    # Description: Run test suite after building
-    # Tests include unit tests, integration tests, and platform-specific tests
-    # Disable to speed up builds during development
+    displayName: "Run tests after building"
+
+  - name: Cleanup
+    type: boolean
+    default: false
+    displayName: "Cleanup only (skip builds and tests)"
 
 # ============================================================================
 # VARIABLES
 # ============================================================================
-# Pipeline-level variables available throughout all stages and jobs
-#
-# SYNTAX NOTES:
-# - Variables use runtime syntax: $(variableName)
-# - Variables are evaluated during job execution
-# - Conditional variables use compile-time syntax: ${{ if condition }}
-# - Stage dependencies use special syntax: $[stageDependencies.stageName.jobName.outputs['key']]
 variables:
-  # ========================================================================
-  # CONDITIONAL PUBLISHING LOGIC
-  # ========================================================================
-  # Automatically enable publishing when building on main/master branches
-  # This ensures releases are published without manual intervention
+  # Auto-enable publishing on main/master branches
   ${{ if and(eq(parameters.PublishNuGet, false), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))) }}:
-    PublishNuGet: true # Auto-enable NuGet publishing on main/master
-    PublishGitHub: true # Auto-enable GitHub publishing on main/master
+    PublishNuGet: true
+    PublishGitHub: true
   ${{ else }}:
-    PublishNuGet: ${{ parameters.PublishNuGet }} # Use parameter value
-    PublishGitHub: ${{ parameters.PublishGitHub }} # Use parameter value
+    PublishNuGet: ${{ parameters.PublishNuGet }}
+    PublishGitHub: ${{ parameters.PublishGitHub }}
 
-  # ========================================================================
-  # SYSTEM INFORMATION VARIABLES
-  # ========================================================================
-  # Capture system information for logging and diagnostics
-  ThisAgentOS: $(Agent.OS) # Operating system of the build agent
-  ThisAgentArch: $(Agent.OSArchitecture) # Architecture of the build agent
-
-  # ========================================================================
-  # VERSION TRACKING
-  # ========================================================================
-  # Used for tagging releases and versioning artifacts
-  TagVersion: "notset" # Will be set by build jobs from git tags
+  # System information
+  AgentOS: $(Agent.OS)
+  AgentArch: $(Agent.OSArchitecture)
 
 # ============================================================================
 # STAGES
 # ============================================================================
-# Pipeline stages execute sequentially (unless dependsOn is empty)
-# Each stage can contain multiple jobs that run in parallel
-#
-# Stage Execution Order:
-# 1. StgBldWindows (parallel with StgBldLinux)
-# 2. StgBldLinux   (parallel with StgBldWindows)
-# 3. Publication   (after both build stages complete)
-
 stages:
   # ==========================================================================
   # STAGE 1: WINDOWS BUILD
   # ==========================================================================
-  # Builds the library on Windows with MSVC compiler
-  # Supports x64 and arm64 architectures
-  # Optionally runs tests and publishes NuGet packages
   - stage: StgBldWindows
     displayName: Windows
-    dependsOn: [] # No dependencies, runs immediately
+    dependsOn: []
     condition: eq(${{ parameters.RunWindows }}, true)
     jobs:
-      # ====================================================================
-      # Windows x64 Build Job
-      # ====================================================================
-      # Builds for x64 architecture (Release and optionally Debug)
-      # Uses az-build-windows.yml template
+      # Windows x64
       - template: .ci/az-build-windows.yml
         parameters:
           displayName: Windows x64
           architecture: x64
+          runTests: ${{ parameters.RunTests }}
+          publishNuGet: ${{ parameters.PublishNuGet }}
+          BuildX64: ${{ parameters.BuildX64 }}
+          BuildDebug: ${{ parameters.BuildDebug }}
+          Cleanup: ${{ parameters.Cleanup }}
           matrixConfigs:
-            # Release build (always included)
             Windows_x64_Release:
               BuildType: Release
               BuildArchitecture: x64
-              cmake.preset: Windows-$(BuildArchitecture)-$(BuildType)
-            # Debug build (only if BuildDebug parameter is true)
+              cmake.preset: Windows-x64-Release
             ${{ if eq(parameters.BuildDebug, true) }}:
               Windows_x64_Debug:
                 BuildType: Debug
                 BuildArchitecture: x64
-                cmake.preset: Windows-$(BuildArchitecture)-$(BuildType)
-          runTests: ${{ parameters.RunTests }}
-          publishNuGet: ${{ parameters.PublishNuGet }}
-          BuildX64: ${{ parameters.BuildX64 }}
-          BuildDebug: ${{ parameters.BuildDebug }}
-          Cleanup: ${{ parameters.Cleanup }}
+                cmake.preset: Windows-x64-Debug
 
-      # ====================================================================
-      # Windows arm64 Build Job
-      # Docker is not available for Windows arm64
-      # ====================================================================
-      # Builds for arm64 architecture (Release and optionally Debug)
-      # Uses az-build-windows.yml template
+      # Windows arm64 (Docker unavailable, skip tests)
       - template: .ci/az-build-windows.yml
         parameters:
           displayName: Windows arm64
           architecture: arm64
-          runTests: false # docker is not available for Windows arm64, so we cannot run tests in this job
-          matrixConfigs:
-            # Release build (always included)
-            Windows_arm64_Release:
-              BuildType: Release
-              BuildArchitecture: arm64
-              cmake.preset: Windows-$(BuildArchitecture)-$(BuildType)
-            # Debug build (only if BuildDebug parameter is true)
-            ${{ if eq(parameters.BuildDebug, true) }}:
-              Windows_arm64_Debug:
-                BuildType: Debug
-                BuildArchitecture: arm64
-                cmake.preset: Windows-$(BuildArchitecture)-$(BuildType)
+          runTests: false
           publishNuGet: ${{ parameters.PublishNuGet }}
           BuildX64: ${{ parameters.BuildX64 }}
           BuildDebug: ${{ parameters.BuildDebug }}
           Cleanup: ${{ parameters.Cleanup }}
+          matrixConfigs:
+            Windows_arm64_Release:
+              BuildType: Release
+              BuildArchitecture: arm64
+              cmake.preset: Windows-arm64-Release
+            ${{ if eq(parameters.BuildDebug, true) }}:
+              Windows_arm64_Debug:
+                BuildType: Debug
+                BuildArchitecture: arm64
+                cmake.preset: Windows-arm64-Debug
 
   # ==========================================================================
   # STAGE 2: LINUX BUILD
   # ==========================================================================
-  # Builds the library on Linux with Clang and optionally GCC
-  # Supports Release and optionally Debug builds
-  # Includes ASAN and code coverage for Debug builds
   - stage: StgBldLinux
     displayName: Linux
-    dependsOn: [] # No dependencies, runs immediately (parallel with Windows)
+    dependsOn: []
     condition: eq(${{ parameters.RunLinux }}, true)
     jobs:
-      # ====================================================================
-      # Linux Clang Build Job
-      # ====================================================================
-      # Builds with Clang compiler (Release and optionally Debug)
-      # Always included when RunLinux is true
-      # Uses az-build-linux.yml template
       - template: .ci/az-build-linux.yml
         parameters:
-          displayName: Linux Builds
+          displayName: Linux Builds (Clang & GCC)
           runTests: ${{ parameters.RunTests }}
           Cleanup: ${{ parameters.Cleanup }}
           matrixConfigs:
-            # Release build (always included)
+            # Clang builds (always included)
             Linux_Clang_Release:
               BuildType: Release
               LinuxCompiler: Clang
-              cmake.preset: Linux-$(LinuxCompiler)-$(BuildType)
-            # Debug build (only if BuildDebug parameter is true)
+              cmake.preset: Linux-Clang-Release
             ${{ if eq(parameters.BuildDebug, true) }}:
               Linux_Clang_Debug:
                 BuildType: Debug
                 LinuxCompiler: Clang
-                cmake.preset: Linux-$(LinuxCompiler)-$(BuildType)
-            # Release build (always included)
+                cmake.preset: Linux-Clang-Debug
+            # GCC builds (conditional on RunLinuxClangOnly)
             ${{ if eq(parameters.RunLinuxClangOnly, false) }}:
               Linux_GCC_Release:
                 BuildType: Release
                 LinuxCompiler: GCC
-                cmake.preset: Linux-$(LinuxCompiler)-$(BuildType)
-            # Debug build (only if BuildDebug parameter is true)
+                cmake.preset: Linux-GCC-Release
             ${{ if and(eq(parameters.RunLinuxClangOnly, false), eq(parameters.BuildDebug, true)) }}:
               Linux_GCC_Debug:
                 BuildType: Debug
                 LinuxCompiler: GCC
-                cmake.preset: Linux-$(LinuxCompiler)-$(BuildType)
+                cmake.preset: Linux-GCC-Debug
 
   # ==========================================================================
   # STAGE 3: PUBLICATION
   # ==========================================================================
-  # Publishes build artifacts to NuGet and GitHub
-  # Only runs after both Windows and Linux builds complete successfully
-  # Only publishes if PublishNuGet or PublishGitHub is true
   - stage: Publication
     displayName: Publication
     dependsOn:
-      - StgBldWindows # Wait for Windows builds to complete
-      - StgBldLinux # Wait for Linux builds to complete
-    condition: and( ne(${{ parameters.Cleanup }}, true), succeeded() ) # Only run if not cleaning up and all previous stages succeeded
+      - StgBldWindows
+      - StgBldLinux
+    condition: and(ne(${{ parameters.Cleanup }}, true), succeeded())
     jobs:
-      # ====================================================================
-      # NuGet Release Job
-      # ====================================================================
-      # Publishes NuGet package to nuget.org
-      # Triggered when PublishNuGet is true
-      # Uses az-publish-nuget.yml template
+      # NuGet Release
       - template: .ci/az-publish-nuget.yml
         parameters:
-          displayName: Nuget Release
+          displayName: NuGet Release
           PublishNuGet: ${{ variables.PublishNuGet }}
 
-      # ====================================================================
-      # GitHub Release Job
-      # ====================================================================
-      # Creates GitHub release with build artifacts
-      # Triggered when PublishGitHub is true
-      # Uses az-publish-github.yml template
+      # GitHub Release
       - template: .ci/az-publish-github.yml
         parameters:
           displayName: GitHub Release
