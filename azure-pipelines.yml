@@ -57,7 +57,7 @@ parameters:
 
   - name: RunLinux
     type: boolean
-    default: true
+    default: false
     displayName: "Run Linux builds (Clang and GCC)"
 
   - name: RunLinuxClangOnly
@@ -68,7 +68,7 @@ parameters:
   # Build Configuration
   - name: BuildX64
     type: boolean
-    default: true
+    default: false
     displayName: "Enable x64 builds (Windows)"
 
   - name: BuildDebug

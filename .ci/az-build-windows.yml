@@ -139,14 +139,7 @@ jobs:
             powershell -Command "Start-Sleep -Seconds $(emulatorWaitSeconds)"
             
             echo "Verifying emulator connectivity..."
-            powershell -Command ^
-              "try { ^
-                Invoke-WebRequest -Uri $(emulatorUrl) -Method Get -TimeoutSec 10; ^
-                Write-Host 'Emulator is ready' -ForegroundColor Green; ^
-              } catch { ^
-                Write-Host 'Emulator not ready: $($_.Exception.Message)' -ForegroundColor Red; ^
-                exit 1; ^
-              }"
+            powershell -Command "try { $response = Invoke-WebRequest -Uri $(emulatorUrl) -Method Get -TimeoutSec 10; Write-Host 'Emulator is ready' -ForegroundColor Green; } catch { Write-Host 'Emulator not ready: $($_.Exception.Message)' -ForegroundColor Red; exit 1; }"
         condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
       
       # ====================================================================
