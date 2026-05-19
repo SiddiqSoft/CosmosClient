@@ -78,6 +78,12 @@ parameters:
     # When true: Includes Debug builds in matrix
     # When false: Only Release builds run
 
+  - name: Cleanup
+    type: boolean
+    default: false
+    # Description: Enable cleanup of the CPM cache directory before build
+    # When true: Deletes $(Agent.HomeDirectory)/.cpmcache
+
 # ============================================================================
 # JOBS
 # ============================================================================
@@ -158,23 +164,20 @@ jobs:
 
       - task: CmdLine@2
         displayName: Cleanup Job
-        steps:
-          - script: |
-              echo "This step only works on local build machine;"
-              echo "the running user must have permissions to delete the $(Agent.HomeDirectory) directory and all its contents,"
-              echo "so be careful when enabling this option."
-              echo "It is recommended to only enable this option when running on a local machine for testing purposes, "
-              echo "and not on shared or hosted agents."
-              echo "----------------------------------------------------------"
-              DTC="$(Agent.HomeDirectory)/.cpmcache"
-              echo "Cleaning up before build...$DTC"
-              if [ -d "$DTC" ]; then
-                rm -rdf "$DTC"
-                echo "Cleanup successful: Deleted $DTC"
-              else
-                echo "No cleanup needed: $DTC does not exist"
-              fi
-            displayName: "Cleanup of CPM Cache Directory"
+        inputs:
+          targetType: 'inline'
+          pwsh: true
+          script: |
+            Write-Host "Cleaning up before build..."
+            $dtc = Join-Path "$(Agent.HomeDirectory)" '.cpmcache'
+            Write-Host "Cleanup path: $dtc"
+            if (Test-Path -Path $dtc) {
+              Remove-Item -Recurse -Force -LiteralPath $dtc
+              Write-Host "Cleanup successful: Deleted $dtc"
+            }
+            else {
+              Write-Host "No cleanup needed: $dtc does not exist"
+            }
         condition: eq(${{ parameters.Cleanup }}, true)
       
       # ====================================================================

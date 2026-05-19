@@ -48,6 +48,12 @@ parameters:
     # When true: Runs ctest and publishes test results
     # When false: Skips test execution
 
+  - name: Cleanup
+    type: boolean
+    default: false
+    # Description: Enable cleanup of the CPM cache directory before build
+    # When true: Deletes $(Agent.HomeDirectory)/.cpmcache
+
   - name: matrixConfigs
     type: object
     # Description: Matrix configuration for build types and compilers
@@ -138,8 +144,9 @@ jobs:
 
       - task: Bash@3
         displayName: Cleanup Job
-        steps:
-          - script: |
+        inputs:
+          targetType: 'inline'
+          script: |
               echo "This step only works on local build machine;"
               echo "the running user must have permissions to delete the $(Agent.HomeDirectory) directory and all its contents,"
               echo "so be careful when enabling this option."
@@ -154,7 +161,7 @@ jobs:
               else
                 echo "No cleanup needed: $DTC does not exist"
               fi
-            displayName: "Cleanup of CPM Cache Directory"
+          displayName: "Cleanup of CPM Cache Directory"
         condition: eq(${{ parameters.Cleanup }}, true)
 
       # ====================================================================
