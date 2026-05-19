@@ -216,11 +216,18 @@ stages:
               echo "This step only works on local build machine;"
               echo "the running user must have permissions to delete the $(Agent.HomeDirectory) directory and all its contents,"
               echo "so be careful when enabling this option."
-              echo " It is recommended to only enable this option when running on a local machine for testing purposes, "
+              echo "It is recommended to only enable this option when running on a local machine for testing purposes, "
               echo "and not on shared or hosted agents."
               echo "----------------------------------------------------------"
-              echo "Cleaning up before build...$(Agent.HomeDirectory)"
-            displayName: "Pre-build Cleanup"
+              DTC="$(Agent.HomeDirectory)/.cpmcache"
+              echo "Cleaning up before build...$DTC"
+              if [ -d "$DTC" ]; then
+                rm -rdf "$DTC"
+                echo "Cleanup successful: Deleted $DTC"
+              else
+                echo "No cleanup needed: $DTC does not exist"
+              fi
+            displayName: "Pre-build Cleanup of CPM Cache Directory"
     
   # ==========================================================================
   # STAGE 1: WINDOWS BUILD
