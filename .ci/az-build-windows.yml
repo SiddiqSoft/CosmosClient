@@ -117,38 +117,12 @@ jobs:
       # ====================================================================
       # Emulator Setup (for tests)
       # ====================================================================
-      - task: PowerShell@2
+      - task: BatchScript@1
         displayName: Start Azure CosmosDB Emulator
         inputs:
-          targetType: inline
-          script: |
-            Write-Host "$((Get-Date).ToUniversalTime()) - Checking if emulator is already running..."
-            docker ps --filter "name=$(dockerContainerName)" --filter "status=running" --quiet | findstr . >nul
-            if ($LastExitCode -eq 0) {
-              Write-Host "Emulator already running. Skipping start."
-              exit /b 0
-            }
-
-            Write-Host "$((Get-Date).ToUniversalTime()) - Pulling emulator image..."
-            docker pull $(dockerImageUri)
-
-            Write-Host "$((Get-Date).ToUniversalTime()) - Starting emulator..."
-            docker run --publish 8081:8081 --publish 10250-10255:10250-10255 --name $(dockerContainerName) --detach --rm $(dockerImageUri)
-
-            Write-Host "$((Get-Date).ToUniversalTime()) - Waiting for emulator to initialize..."
-            Start-Sleep -Seconds $(emulatorWaitSeconds)
-            
-            Write-Host "$((Get-Date).ToUniversalTime()) - Verifying emulator connectivity..."
-            try {
-              $response = Invoke-WebRequest -Uri $(emulatorUrl) -Method Get -TimeoutSec 10;
-              Write-Host '$(Get-Date).ToUniversalTime()) - Emulator is ready' -ForegroundColor Green;
-            } catch {
-              Write-Host '$((Get-Date).ToUniversalTime()) - Emulator not ready: $($_.Exception.Message)' -ForegroundColor Red;
-                exit 1;
-              }
-            Write-Host "$((Get-Date).ToUniversalTime()) - Finished"
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
-      
+          filename: $(System.DefaultWorkingDirectory)/tests/setup-linux-emulator.bat
+        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), ne('${{parameters.architecture}}', 'arm64')) # docker on arm64 not available yet    
+        
       # ====================================================================
       # Build
       # ====================================================================
