@@ -140,7 +140,8 @@ jobs:
         displayName: 'Clear the CPM cache'
         inputs:
           script: |
-            echo "Checking if the $env:Agent.HomeDirectory/.cpmcache exists.."
+            echo "Clear the cpm cache.."
+            echo "Checking if the '$env:Agent.HomeDirectory/.cpmcache' exists.."
             if [[ -d "$env:Agent.HomeDirectory/.cpmcache" ]]; then
                 echo "CPM cache directory exists. Clearing..."
                 rm -rdf "$env:Agent.HomeDirectory/.cpmcache"
@@ -149,6 +150,7 @@ jobs:
                 echo "CPM cache directory does not exist. Skipping clear."
                 exit /b 0
             fi
+          continueOnError: true
       
       # ====================================================================
       # Step 2: Install GitVersion
