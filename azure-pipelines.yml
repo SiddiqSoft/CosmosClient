@@ -139,6 +139,13 @@ parameters:
     # Note: Automatically set to true when building on main/master branches
     # Can be manually overridden when running pipeline
     
+  - name: Cleanup
+    displayName: "Cleanup - Cleanup"
+    type: boolean
+    default: true
+    # Description: When true, only runs the Cleanup stage and skips all other stages
+    # Useful for running cleanup tasks without triggering builds or publications
+  
   # ========================================================================
   # Testing Parameters
   # ========================================================================
@@ -172,7 +179,14 @@ variables:
   ${{ else }}:
     PublishNuGet: ${{ parameters.PublishNuGet }}      # Use parameter value
     PublishGitHub: ${{ parameters.PublishGitHub }}    # Use parameter value
-  
+  ${{ if(parameters.Cleanup) }}:
+    PublishNuGet: false     # Disable NuGet publishing if Cleanup is true
+    PublishGitHub: false    # Disable GitHub publishing if Cleanup is true
+    BuildDebug: false      # Disable Debug builds if Cleanup is true
+    BuildX64: false        # Disable x64 builds if Cleanup is true  
+    BuildWindows: false     # Disable Windows builds if Cleanup is true
+    BuildLinux: false       # Disable Linux builds if Cleanup is true
+
   # ========================================================================
   # SYSTEM INFORMATION VARIABLES
   # ========================================================================
@@ -198,6 +212,23 @@ variables:
 # 3. Publication   (after both build stages complete)
 
 stages:
+  - stage: StgCleanup
+    displayName: Cleanup
+    condition: ${{ parameters.Cleanup }}
+    jobs:
+      - job: JobCleanup
+        displayName: Cleanup Job
+        steps:
+          - script: |
+              echo "This step only works on local build machine;"
+              echo "the running user must have permissions to delete the $(Agent.HomeDirectory) directory and all its contents,"
+              echo "so be careful when enabling this option."
+              echo " It is recommended to only enable this option when running on a local machine for testing purposes, "
+              echo "and not on shared or hosted agents."
+              echo "----------------------------------------------------------"
+              echo "Cleaning up before build...$(Agent.HomeDirectory)"
+            displayName: "Pre-build Cleanup"
+    
   # ==========================================================================
   # STAGE 1: WINDOWS BUILD
   # ==========================================================================
