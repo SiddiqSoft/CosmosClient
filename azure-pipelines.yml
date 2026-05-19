@@ -35,14 +35,14 @@
 trigger:
   branches:
     include:
-      - main          # Main production branch
-      - master        # Alternative main branch
-      - development   # Development branch
-      - develop       # Alternative development branch
-      - release/*     # Release branches (e.g., release/1.0.0)
+      - main # Main production branch
+      - master # Alternative main branch
+      - development # Development branch
+      - develop # Alternative development branch
+      - release/* # Release branches (e.g., release/1.0.0)
   paths:
     exclude:
-    - README.md
+      - README.md
 
 # ============================================================================
 # PULL REQUEST CONFIGURATION
@@ -52,8 +52,8 @@ trigger:
 pr:
   branches:
     include:
-      - main          # PR to main branch
-      - release/*     # PR to release branches
+      - main # PR to main branch
+      - release/* # PR to release branches
 
 # ============================================================================
 # RESOURCES
@@ -86,14 +86,14 @@ parameters:
     # Description: Enable/disable Windows builds (x64 and arm64)
     # When true: Runs Windows build stage
     # When false: Skips Windows build stage
-    
+
   - name: RunLinux
     type: boolean
     default: true
     # Description: Enable/disable Linux builds (Clang and GCC)
     # When true: Runs Linux build stage
     # When false: Skips Linux build stage
-    
+
   - name: RunLinuxClangOnly
     displayName: "RunLinuxClangOnly - Check to only run the Linux Clang builds and skip the Linux GCC builds"
     type: boolean
@@ -101,7 +101,7 @@ parameters:
     # Description: When true, only runs Clang builds on Linux (faster CI)
     # When false, runs both Clang and GCC builds on Linux
     # Useful for quick feedback during development
-  
+
   # ========================================================================
   # Build Configuration Parameters
   # ========================================================================
@@ -111,7 +111,7 @@ parameters:
     default: true
     # Description: Enable x64 architecture builds (in addition to default arm64)
     # Note: Currently not used in Windows builds, reserved for future use
-    
+
   - name: BuildDebug
     displayName: "BuildDebug - Check to enable the Debug builds"
     type: boolean
@@ -119,7 +119,7 @@ parameters:
     # Description: Enable Debug build type (in addition to Release builds)
     # Debug builds include ASAN (Address Sanitizer) and code coverage on Linux
     # Useful for finding memory errors and measuring test coverage
-    
+
   # ========================================================================
   # Publishing Parameters
   # ========================================================================
@@ -130,7 +130,7 @@ parameters:
     # Description: Publish NuGet package to nuget.org
     # Note: Automatically set to true when building on main/master branches
     # Can be manually overridden when running pipeline
-    
+
   - name: PublishGitHub
     displayName: "PublishGitHub - Defaults to false; auto set to true when on main/master"
     type: boolean
@@ -138,14 +138,14 @@ parameters:
     # Description: Create GitHub release with build artifacts
     # Note: Automatically set to true when building on main/master branches
     # Can be manually overridden when running pipeline
-    
+
   - name: Cleanup
     displayName: "Cleanup - Cleanup"
     type: boolean
     default: true
     # Description: When true, only runs the Cleanup stage and skips all other stages
     # Useful for running cleanup tasks without triggering builds or publications
-  
+
   # ========================================================================
   # Testing Parameters
   # ========================================================================
@@ -174,24 +174,24 @@ variables:
   # Automatically enable publishing when building on main/master branches
   # This ensures releases are published without manual intervention
   ${{ if and(eq(parameters.PublishNuGet, false), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))) }}:
-    PublishNuGet: true      # Auto-enable NuGet publishing on main/master
-    PublishGitHub: true     # Auto-enable GitHub publishing on main/master
+    PublishNuGet: true # Auto-enable NuGet publishing on main/master
+    PublishGitHub: true # Auto-enable GitHub publishing on main/master
   ${{ else }}:
-    PublishNuGet: ${{ parameters.PublishNuGet }}      # Use parameter value
-    PublishGitHub: ${{ parameters.PublishGitHub }}    # Use parameter value
+    PublishNuGet: ${{ parameters.PublishNuGet }} # Use parameter value
+    PublishGitHub: ${{ parameters.PublishGitHub }} # Use parameter value
 
   # ========================================================================
   # SYSTEM INFORMATION VARIABLES
   # ========================================================================
   # Capture system information for logging and diagnostics
-  ThisAgentOS: $(Agent.OS)              # Operating system of the build agent
+  ThisAgentOS: $(Agent.OS) # Operating system of the build agent
   ThisAgentArch: $(Agent.OSArchitecture) # Architecture of the build agent
-  
+
   # ========================================================================
   # VERSION TRACKING
   # ========================================================================
   # Used for tagging releases and versioning artifacts
-  TagVersion: "notset"  # Will be set by build jobs from git tags
+  TagVersion: "notset" # Will be set by build jobs from git tags
 
 # ============================================================================
 # STAGES
@@ -213,7 +213,7 @@ stages:
   # Optionally runs tests and publishes NuGet packages
   - stage: StgBldWindows
     displayName: Windows
-    dependsOn: []           # No dependencies, runs immediately
+    dependsOn: [] # No dependencies, runs immediately
     condition: eq(${{ parameters.RunWindows }}, true)
     jobs:
       # ====================================================================
@@ -242,7 +242,7 @@ stages:
           BuildX64: ${{ parameters.BuildX64 }}
           BuildDebug: ${{ parameters.BuildDebug }}
           Cleanup: ${{ parameters.Cleanup }}
-      
+
       # ====================================================================
       # Windows arm64 Build Job
       # Docker is not available for Windows arm64
@@ -279,7 +279,7 @@ stages:
   # Includes ASAN and code coverage for Debug builds
   - stage: StgBldLinux
     displayName: Linux
-    dependsOn: []           # No dependencies, runs immediately (parallel with Windows)
+    dependsOn: [] # No dependencies, runs immediately (parallel with Windows)
     condition: eq(${{ parameters.RunLinux }}, true)
     jobs:
       # ====================================================================
@@ -327,9 +327,9 @@ stages:
   - stage: Publication
     displayName: Publication
     dependsOn:
-      - StgBldWindows   # Wait for Windows builds to complete
-      - StgBldLinux     # Wait for Linux builds to complete
-    condition: and( ne(${{ parameters.Cleanup }}, true), succeeded() )  # Only run if not cleaning up and all previous stages succeeded
+      - StgBldWindows # Wait for Windows builds to complete
+      - StgBldLinux # Wait for Linux builds to complete
+    condition: and( ne(${{ parameters.Cleanup }}, true), succeeded() ) # Only run if not cleaning up and all previous stages succeeded
     jobs:
       # ====================================================================
       # NuGet Release Job
@@ -339,9 +339,9 @@ stages:
       # Uses az-publish-nuget.yml template
       - template: .ci/az-publish-nuget.yml
         parameters:
-          displayName: Nuget Release 
+          displayName: Nuget Release
           PublishNuGet: ${{ variables.PublishNuGet }}
-      
+
       # ====================================================================
       # GitHub Release Job
       # ====================================================================
@@ -350,5 +350,5 @@ stages:
       # Uses az-publish-github.yml template
       - template: .ci/az-publish-github.yml
         parameters:
-          displayName: GitHub Release 
+          displayName: GitHub Release
           PublishGitHub: ${{ variables.PublishGitHub }}
