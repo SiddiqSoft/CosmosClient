@@ -124,6 +124,7 @@ jobs:
         # Requires: Windows operating system
         - Agent.OSArchitecture -equals ${{ parameters.architecture }}
         # Requires: Matching architecture (x64 or arm64)
+        - ${{ if eq(parameters.runTests, true) }}:
         - docker
         # Requires: Docker installed (for Cosmos DB emulator)
 
@@ -251,6 +252,19 @@ jobs:
             powershell -Command "Write-Host 'Trying to check on http://localhost:8081'; try { $response = Invoke-WebRequest -Uri http://localhost:8081 -Method Get -TimeoutSec 10; Write-Host "Success! Status Code: $($response.StatusCode)" -ForegroundColor Green; } catch { Write-Host "Failed to reach site. Error: $($_.Exception.Message)" -ForegroundColor Red ; exit 1;}"
         condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
       
+      - task: PowerShell@2
+        displayName: 'Clear the CPM cache'
+        inputs:
+          script: |
+            write-host "Checking if the $Agent.HomeDirectory/.cpmcache exists.."
+            if test-path -path "$env:Agent.HomeDirectory/.cpmcache" {
+                write-host "CPM cache directory exists. Clearing..."
+                remove-Item "$env:Agent.HomeDirectory/.cpmcache" -Recurse -Force
+            } else {
+                write-host "CPM cache directory does not exist. Skipping clear."
+                exit /b 0
+            }
+              
       # ====================================================================
       # Step 6: CMake Configure
       # ====================================================================
