@@ -119,8 +119,8 @@ jobs:
       # ====================================================================
       - task: PowerShell@2
         displayName: Start Azure CosmosDB Emulator
-        targetType: inline
         inputs:
+          targetType: inline
           script: |
             Write-Host "$((Get-Date).ToUniversalTime()) - Checking if emulator is already running..."
             docker ps --filter "name=$(dockerContainerName)" --filter "status=running" --quiet | findstr . >nul
