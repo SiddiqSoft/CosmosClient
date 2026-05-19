@@ -179,7 +179,7 @@ variables:
   ${{ else }}:
     PublishNuGet: ${{ parameters.PublishNuGet }}      # Use parameter value
     PublishGitHub: ${{ parameters.PublishGitHub }}    # Use parameter value
-  ${{ if( eq(parameters.Cleanup, true) ) }}:
+  ${{ if eq(parameters.Cleanup, true) }}:
     PublishNuGet: false     # Disable NuGet publishing if Cleanup is true
     PublishGitHub: false    # Disable GitHub publishing if Cleanup is true
     BuildDebug: false      # Disable Debug builds if Cleanup is true
