@@ -214,7 +214,7 @@ stages:
   - stage: StgBldWindows
     displayName: Windows
     dependsOn: []           # No dependencies, runs immediately
-    condition: and( ne(${{ parameters.Cleanup }}, true), eq(${{ parameters.RunWindows }}, true))  # Only run if enabled
+    condition: eq(${{ parameters.RunWindows }}, true)
     jobs:
       # ====================================================================
       # Windows x64 Build Job
@@ -278,7 +278,7 @@ stages:
   - stage: StgBldLinux
     displayName: Linux
     dependsOn: []           # No dependencies, runs immediately (parallel with Windows)
-    condition: and( ne(${{ parameters.Cleanup }}, true), eq(${{ parameters.RunLinux }}, true))  # Only run if enabled
+    condition: eq(${{ parameters.RunLinux }}, true)
     jobs:
       # ====================================================================
       # Linux Clang Build Job
