@@ -251,6 +251,7 @@ jobs:
       
       - task: PowerShell@2
         displayName: 'Clear the CPM cache'
+        enabled: false
         inputs:
           script: |
             write-host "Checking if the '$env:Agent.HomeDirectory\.cpmcache' exists.."
