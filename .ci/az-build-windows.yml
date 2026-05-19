@@ -162,14 +162,13 @@ jobs:
         # Checks out the current repository
         # Makes source code available for build
 
-      - task: CmdLine@2
+      - task: PowerShell@2
         displayName: Cleanup Job
         inputs:
           targetType: 'inline'
-          pwsh: true
           script: |
             Write-Host "Cleaning up before build..."
-            $dtc = Join-Path "$(Agent.HomeDirectory)" '.cpmcache'
+            Set-Variable -Name "dtc" -Value (Join-Path "$(Agent.HomeDirectory)" '.cpmcache')
             Write-Host "Cleanup path: $dtc"
             if (Test-Path -Path $dtc) {
               Remove-Item -Recurse -Force -LiteralPath $dtc
