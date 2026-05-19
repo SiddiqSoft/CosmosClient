@@ -138,6 +138,7 @@ jobs:
 
       - task: bash@3
         displayName: 'Clear the CPM cache'
+        enabled: false
         inputs:
           script: |
             cpmcache="$env:Agent.HomeDirectory/.cpmcache"
