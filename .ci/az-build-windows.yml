@@ -80,7 +80,16 @@ jobs:
               Write-Host "No cleanup needed: path does not exist"
             }
         condition: eq(${{ parameters.Cleanup }}, true)
-      
+
+      # ====================================================================
+      # Emulator Setup (for tests)
+      # ====================================================================
+      - task: BatchScript@1
+        displayName: Start Azure CosmosDB Emulator
+        inputs:
+          filename: $(System.DefaultWorkingDirectory)/tests/setup-linux-emulator.bat
+        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), ne('${{parameters.architecture}}', 'arm64')) # docker on arm64 not available yet    
+
       # ====================================================================
       # Environment Setup
       # ====================================================================
@@ -113,15 +122,6 @@ jobs:
           useConfigFile: true
           configFilePath: GitVersion.yml
           updateBuildNumber: true
-      
-      # ====================================================================
-      # Emulator Setup (for tests)
-      # ====================================================================
-      - task: BatchScript@1
-        displayName: Start Azure CosmosDB Emulator
-        inputs:
-          filename: $(System.DefaultWorkingDirectory)/tests/setup-linux-emulator.bat
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), ne('${{parameters.architecture}}', 'arm64')) # docker on arm64 not available yet    
         
       # ====================================================================
       # Build
