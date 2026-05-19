@@ -231,7 +231,7 @@ stages:
   - stage: StgBldWindows
     displayName: Windows
     dependsOn: []           # No dependencies, runs immediately
-    condition: eq(${{ parameters.RunWindows }}, true)  # Only run if enabled
+    condition: and( ne(${{ parameters.Cleanup }}, true), eq(${{ parameters.RunWindows }}, true))  # Only run if enabled
     jobs:
       # ====================================================================
       # Windows x64 Build Job
@@ -295,7 +295,7 @@ stages:
   - stage: StgBldLinux
     displayName: Linux
     dependsOn: []           # No dependencies, runs immediately (parallel with Windows)
-    condition: eq(${{ parameters.RunLinux }}, true)  # Only run if enabled
+    condition: and( ne(${{ parameters.Cleanup }}, true), eq(${{ parameters.RunLinux }}, true))  # Only run if enabled
     jobs:
       # ====================================================================
       # Linux Clang Build Job
@@ -343,7 +343,7 @@ stages:
     dependsOn:
       - StgBldWindows   # Wait for Windows builds to complete
       - StgBldLinux     # Wait for Linux builds to complete
-    condition: succeeded()  # Only run if all previous stages succeeded
+    condition: and( ne(${{ parameters.Cleanup }}, true), succeeded() )  # Only run if not cleaning up and all previous stages succeeded
     jobs:
       # ====================================================================
       # NuGet Release Job
