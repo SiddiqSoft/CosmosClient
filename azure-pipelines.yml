@@ -68,7 +68,7 @@ parameters:
   # Build Configuration
   - name: BuildX64
     type: boolean
-    default: false
+    default: true
     displayName: "Enable x64 builds (Windows)"
 
   - name: BuildDebug
