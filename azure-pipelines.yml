@@ -115,6 +115,7 @@ variables:
   AgentArch: $(Agent.OSArchitecture)
 
   # Some global variables
+  # Windows uses a batch file to start the emulator, Linux uses a docker image directly in the pipeline
   dockerImageUri: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
   dockerContainerName: linux-emulator
   emulatorName: linux-emulator
