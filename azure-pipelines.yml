@@ -142,7 +142,7 @@ parameters:
   - name: Cleanup
     displayName: "Cleanup - Cleanup"
     type: boolean
-    default: true
+    default: false
     # Description: When true, only runs the Cleanup stage and skips all other stages
     # Useful for running cleanup tasks without triggering builds or publications
 
