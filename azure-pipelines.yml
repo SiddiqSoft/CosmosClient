@@ -114,6 +114,16 @@ variables:
   AgentOS: $(Agent.OS)
   AgentArch: $(Agent.OSArchitecture)
 
+  # Some global variables
+  dockerImageUri: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+  dockerContainerName: linux-emulator
+  emulatorName: linux-emulator
+  emulatorWaitSeconds: 60
+  emulatorUrl: http://localhost:8081
+  cpmCachePath: $(Agent.HomeDirectory)/.cpmcache
+  buildOutputPath: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)
+  testResultsPath: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results
+
 # ============================================================================
 # STAGES
 # ============================================================================

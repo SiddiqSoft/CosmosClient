@@ -46,15 +46,6 @@ parameters:
   - name: matrixConfigs
     type: object
 
-# ============================================================================
-# VARIABLES
-# ============================================================================
-variables:
-  cpmCachePath: $(Agent.HomeDirectory)/.cpmcache
-  buildOutputPath: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)
-  testResultsPath: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results
-  emulatorName: linux-emulator
-  emulatorWaitSeconds: 60
 
 # ============================================================================
 # JOBS

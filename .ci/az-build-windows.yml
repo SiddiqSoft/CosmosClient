@@ -40,16 +40,6 @@ parameters:
     default: false
 
 # ============================================================================
-# VARIABLES
-# ============================================================================
-variables:
-  cpmCachePath: $(Agent.HomeDirectory)/.cpmcache
-  dockerImageUri: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
-  dockerContainerName: linux-emulator
-  emulatorWaitSeconds: 60
-  emulatorUrl: http://localhost:8081
-
-# ============================================================================
 # JOBS
 # ============================================================================
 jobs:
