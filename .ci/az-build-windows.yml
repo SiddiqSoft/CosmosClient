@@ -124,7 +124,7 @@ jobs:
           script: |
             Write-Host "$((Get-Date).ToUniversalTime()) - Checking if emulator is already running..."
             docker ps --filter "name=$(dockerContainerName)" --filter "status=running" --quiet | findstr . >nul
-            if %errorlevel% equ 0 (
+            if $LASTEXITCODE equ 0 (
               Write-Host "Emulator already running. Skipping start."
               exit /b 0
             )
@@ -133,8 +133,7 @@ jobs:
             docker pull $(dockerImageUri)
 
             Write-Host "$((Get-Date).ToUniversalTime()) - Starting emulator..."
-            docker run --publish 8081:8081 --publish 10250-10255:10250-10255 ^
-              --name $(dockerContainerName) --detach --rm $(dockerImageUri)
+            docker run --publish 8081:8081 --publish 10250-10255:10250-10255 --name $(dockerContainerName) --detach --rm $(dockerImageUri)
 
             Write-Host "$((Get-Date).ToUniversalTime()) - Waiting for emulator to initialize..."
             Start-Sleep -Seconds $(emulatorWaitSeconds)
