@@ -97,7 +97,7 @@ parameters:
   - name: RunLinuxClangOnly
     displayName: "RunLinuxClangOnly - Check to only run the Linux Clang builds and skip the Linux GCC builds"
     type: boolean
-    default: false
+    default: true
     # Description: When true, only runs Clang builds on Linux (faster CI)
     # When false, runs both Clang and GCC builds on Linux
     # Useful for quick feedback during development
@@ -237,6 +237,7 @@ stages:
       
       # ====================================================================
       # Windows arm64 Build Job
+      # Docker is not available for Windows arm64
       # ====================================================================
       # Builds for arm64 architecture (Release and optionally Debug)
       # Uses az-build-windows.yml template
@@ -244,7 +245,7 @@ stages:
         parameters:
           displayName: Windows arm64
           architecture: arm64
-          runTests: ${{ parameters.RunTests }}
+          runTests: false # docker is not available for Windows arm64, so we cannot run tests in this job
           matrixConfigs:
             # Release build (always included)
             Windows_arm64_Release:
