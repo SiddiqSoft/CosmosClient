@@ -117,30 +117,37 @@ jobs:
       # ====================================================================
       # Emulator Setup (for tests)
       # ====================================================================
-      - task: CmdLine@2
+      - task: PowerShell@2
         displayName: Start Azure CosmosDB Emulator
+        targetType: inline
         inputs:
           script: |
-            echo "$((Get-Date).ToUniversalTime()) - Checking if emulator is already running..."
+            Write-Host "$((Get-Date).ToUniversalTime()) - Checking if emulator is already running..."
             docker ps --filter "name=$(dockerContainerName)" --filter "status=running" --quiet | findstr . >nul
             if %errorlevel% equ 0 (
-              echo "Emulator already running. Skipping start."
+              Write-Host "Emulator already running. Skipping start."
               exit /b 0
             )
 
-            echo "$((Get-Date).ToUniversalTime()) - Pulling emulator image..."
+            Write-Host "$((Get-Date).ToUniversalTime()) - Pulling emulator image..."
             docker pull $(dockerImageUri)
 
-            echo "$((Get-Date).ToUniversalTime()) - Starting emulator..."
+            Write-Host "$((Get-Date).ToUniversalTime()) - Starting emulator..."
             docker run --publish 8081:8081 --publish 10250-10255:10250-10255 ^
               --name $(dockerContainerName) --detach --rm $(dockerImageUri)
 
-            echo "$((Get-Date).ToUniversalTime()) - Waiting for emulator to initialize..."
-            powershell -Command "Start-Sleep -Seconds $(emulatorWaitSeconds)"
+            Write-Host "$((Get-Date).ToUniversalTime()) - Waiting for emulator to initialize..."
+            Start-Sleep -Seconds $(emulatorWaitSeconds)
             
-            echo "$((Get-Date).ToUniversalTime()) - Verifying emulator connectivity..."
-            powershell -Command "try { $response = Invoke-WebRequest -Uri $(emulatorUrl) -Method Get -TimeoutSec 10; Write-Host '$((Get-Date).ToUniversalTime()) - Emulator is ready' -ForegroundColor Green; } catch { Write-Host '$((Get-Date).ToUniversalTime()) - Emulator not ready: $($_.Exception.Message)' -ForegroundColor Red; exit 1; }"
-            echo "$((Get-Date).ToUniversalTime()) - Finished"
+            Write-Host "$((Get-Date).ToUniversalTime()) - Verifying emulator connectivity..."
+            try {
+              $response = Invoke-WebRequest -Uri $(emulatorUrl) -Method Get -TimeoutSec 10;
+              Write-Host '$(Get-Date).ToUniversalTime()) - Emulator is ready' -ForegroundColor Green;
+            } catch {
+              Write-Host '$((Get-Date).ToUniversalTime()) - Emulator not ready: $($_.Exception.Message)' -ForegroundColor Red;
+                exit 1;
+              }
+            Write-Host "$((Get-Date).ToUniversalTime()) - Finished"
         condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
       
       # ====================================================================
