@@ -254,7 +254,7 @@ jobs:
         inputs:
           script: |
             write-host "Checking if the $env:Agent.HomeDirectory\.cpmcache exists.."
-            if test-path -path "$env:Agent.HomeDirectory\.cpmcache" {
+            if (test-path -path "$env:Agent.HomeDirectory\.cpmcache" -pathType container) {
                 write-host "CPM cache directory exists. Clearing..."
                 remove-Item "$env:Agent.HomeDirectory\.cpmcache" -Recurse -Force
                 write-host "CPM cache directory cleared."

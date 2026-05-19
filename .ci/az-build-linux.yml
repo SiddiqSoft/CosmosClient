@@ -140,10 +140,10 @@ jobs:
         displayName: 'Clear the CPM cache'
         inputs:
           script: |
-            echo "Checking if the $env:Agent.HomeDirectory\.cpmcache exists.."
-            if exists "$env:Agent.HomeDirectory\.cpmcache" (
+            echo "Checking if the $env:Agent.HomeDirectory/.cpmcache exists.."
+            if exists "$env:Agent.HomeDirectory/.cpmcache" (
                 echo "CPM cache directory exists. Clearing..."
-                rm -rdf "$env:Agent.HomeDirectory\.cpmcache"
+                rm -rdf "$env:Agent.HomeDirectory/.cpmcache"
                 echo "CPM cache directory cleared."
             ) else (
                 echo "CPM cache directory does not exist. Skipping clear."
