@@ -30,7 +30,8 @@ trigger:
   paths:
     exclude:
       - README.md
-
+      - .ci/* # Skip CI when changing pipeline files
+      - azure-pipelines.yml # Avoids recursive triggers when modifying the pipeline itself
 pr:
   branches:
     include:
