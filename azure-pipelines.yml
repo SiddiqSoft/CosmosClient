@@ -90,7 +90,7 @@ parameters:
   # Testing & Cleanup
   - name: RunTests
     type: boolean
-    default: false
+    default: true
     displayName: "Run tests after building"
 
   - name: Cleanup

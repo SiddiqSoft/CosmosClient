@@ -151,6 +151,38 @@ jobs:
       # ====================================================================
       # Testing
       # ====================================================================
+      - task: PowerShell@2
+        displayName: Wait for Emulator to be Ready
+        inputs:
+          targetType: inline
+          script: |
+            Write-Host "Waiting for Azure CosmosDB Emulator to be ready..."
+            $maxRetries = 10
+            $retryCount = 0
+            $emulatorReady = $false
+
+            while (-not $emulatorReady -and $retryCount -lt $maxRetries) {
+              try {
+                $response = Invoke-WebRequest -Uri "$(emulatorUrl)/_explorer/emulator.pem" -UseBasicParsing -TimeoutSec 5
+                if ($response.StatusCode -eq 200) {
+                  Write-Host "Emulator is ready!"
+                  $emulatorReady = $true
+                } else {
+                  throw "Unexpected status code: $($response.StatusCode)"
+                }
+              } catch {
+                Write-Host "Emulator not ready yet. Retrying in 6 seconds..."
+                Start-Sleep -Seconds 6
+                $retryCount++
+              }
+            }
+
+            if (-not $emulatorReady) {
+              throw "Emulator did not become ready within the expected time."
+            }
+        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), ne('${{parameters.architecture}}', 'arm64')) # docker on arm64 not available yet
+        continueOnError: true
+        
       - task: CMake@1
         displayName: CMake Tests
         inputs:
