@@ -81,6 +81,18 @@ jobs:
         condition: eq(${{ parameters.Cleanup }}, true)
 
       # ====================================================================
+      # START COSMOS DB EMULATOR (Docker)
+      # We startup early to allow the container to spin up to speed
+      # while we're building the project.
+      # ====================================================================
+      - bash: |
+          echo "Starting Azure CosmosDB emulator..."
+          chmod +x $(System.DefaultWorkingDirectory)/tests/setup-emulator.sh
+          $(System.DefaultWorkingDirectory)/tests/setup-emulator.sh
+        displayName: Start Azure CosmosDB Emulator
+        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
+
+      # ====================================================================
       # VERSION DETECTION
       # ====================================================================
       - task: gitversion-setup@4
@@ -144,13 +156,6 @@ jobs:
       # ====================================================================
       # TESTING
       # ====================================================================
-      - bash: |
-          echo "Starting Azure CosmosDB emulator..."
-          chmod +x $(System.DefaultWorkingDirectory)/tests/setup-emulator.sh
-          $(System.DefaultWorkingDirectory)/tests/setup-emulator.sh
-        displayName: Start Azure CosmosDB Emulator
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
-
       - task: CMake@1
         displayName: Run Tests
         inputs:
