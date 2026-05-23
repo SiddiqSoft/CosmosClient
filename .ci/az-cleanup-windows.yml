@@ -25,6 +25,13 @@ parameters:
 jobs:
   - job: Cleanup
     displayName: ${{ parameters.displayName }}
+
+    pool:
+      name: Default
+      demands:
+        - Agent.OS -equals Windows_NT
+        #- Agent.OSArchitecture -equals ${{ arch }}
+        # add additional demands here
     
     steps: 
       - task: PowerShell@2
