@@ -25,15 +25,7 @@ parameters:
 jobs:
   - job: Cleanup
     displayName: ${{ parameters.displayName }}
-    
-    workspace:
-      clean: all
-    
-    pool:
-      name: Default
-      demands:
-        - Agent.OS -equals ${{ parameters.BuildOperatingSystem }}
-    
+
     steps:
       # ====================================================================
       # CHECKOUT & CLEANUP
