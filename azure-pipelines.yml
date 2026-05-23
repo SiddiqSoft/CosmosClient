@@ -3,15 +3,16 @@
 # ============================================================================
 #
 # This pipeline:
-# 1. Builds the library on Windows (x64 and arm64)
-# 2. Builds the library on Linux (Clang and GCC)
-# 3. Runs tests on all platforms
-# 4. Publishes to NuGet and GitHub (on main/master branches)
+# 1. Builds the library across multiple platforms with a build matrix
+#    - Windows (x64, arm64) with MSVC
+#    - Linux (x64) with Clang and GCC
+# 2. Runs tests on all platforms (configurable)
+# 3. Publishes to NuGet and GitHub (on main/master branches)
 #
 # Pipeline Stages:
-# 1. StgBldWindows - Builds on Windows with MSVC
-# 2. StgBldLinux   - Builds on Linux with Clang/GCC
-# 3. Publication   - Publishes to NuGet and GitHub
+# 1. Windows - Cleanup, build, and test for Windows with matrix for architecture and compiler
+# 2. Linux - Cleanup, build, and test for Linux with matrix for architecture and compiler
+# 3. Publication - Publishes to NuGet and GitHub
 #
 # Documentation: See PIPELINE_DOCUMENTATION_INDEX.md for detailed information
 # ============================================================================
@@ -50,32 +51,48 @@ resources:
 # PARAMETERS
 # ============================================================================
 parameters:
-  # Platform Selection
-  - name: RunWindows
+  - name: Architectures
+    type: stringList
+    default: [ arm64 ]
+    values: [ arm64, x64 ]
+    displayName: "Architectures to build (x64, arm64)"
+  
+  - name: Platforms
+    type: stringList
+    default: [ Windows, Linux ]
+    values: [ Windows, Linux, Darwin ]
+    displayName: "Platforms to build (Windows, Linux)"
+  
+  # Compiler Selection per Platform
+  - name: Compilers_Windows
+    type: stringList
+    default: [ MSVC ]
+    values: [ MSVC ]
+    displayName: "Windows compilers to build (MSVC)"
+
+  - name: Compilers_Linux
+    type: stringList
+    default: [ Clang, GCC ]
+    values: [ Clang, GCC ]
+    displayName: "Linux compilers to build (Clang, GCC)"
+
+  - name: Compilers_Darwin
+    type: stringList
+    default: [ Clang ]
+    values: [ Clang ]
+    displayName: "Darwin compilers to build (Clang, GCC)"
+
+  - name: BuildTypes
+    type: stringList
+    default: [ Release ]
+    values: [ Release, Debug ]
+    displayName: "Build types to build (Release, Debug)"
+  
+  # Testing
+  - name: RunTests
     type: boolean
     default: true
-    displayName: "Run Windows builds (x64 and arm64)"
-
-  - name: RunLinux
-    type: boolean
-    default: true
-    displayName: "Run Linux builds (Clang and GCC)"
-
-  - name: RunLinuxClangOnly
-    type: boolean
-    default: true
-    displayName: "Linux Clang only (skip GCC for faster CI)"
-
-  # Build Configuration
-  - name: BuildX64
-    type: boolean
-    default: false
-    displayName: "Enable x64 builds (Windows)"
-
-  - name: BuildDebug
-    type: boolean
-    default: false
-    displayName: "Enable Debug builds"
+    displayName: "Run tests after building"
 
   # Publishing
   - name: PublishNuGet
@@ -88,12 +105,7 @@ parameters:
     default: false
     displayName: "Create GitHub release (auto-enabled on main/master)"
 
-  # Testing & Cleanup
-  - name: RunTests
-    type: boolean
-    default: true
-    displayName: "Run tests after building"
-
+  # Cleanup
   - name: Cleanup
     type: boolean
     default: false
@@ -115,16 +127,10 @@ variables:
   AgentOS: $(Agent.OS)
   AgentArch: $(Agent.OSArchitecture)
 
-  # Some global variables
-  # Windows uses a batch file to start the emulator, Linux uses a docker image directly in the pipeline
-  dockerImageUri: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
-  dockerContainerName: linux-emulator
-  emulatorName: linux-emulator
-  emulatorWaitSeconds: 60
-  emulatorUrl: http://localhost:8081
+  # Build paths
   cpmCachePath: $(Agent.HomeDirectory)/.cpmcache
-  buildOutputPath: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)
-  testResultsPath: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results
+  buildOutputPat_h: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)
+  testResultsPat_h: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results
 
 # ============================================================================
 # STAGES
@@ -133,88 +139,51 @@ stages:
   # ==========================================================================
   # STAGE 1: WINDOWS BUILD
   # ==========================================================================
-  - stage: StgBldWindows
+  - stage: Windows
     displayName: Windows
+    condition: ${{ containsValue(parameters.Platforms, 'Windows') }}
     dependsOn: []
-    condition: eq(${{ parameters.RunWindows }}, true)
+
     jobs:
-      # Windows x64
-      - template: .ci/az-build-windows.yml
+    - ${{ if eq(parameters.Cleanup, true) }}:
+      - template: .ci/az-cleanup-windows.yml
         parameters:
-          displayName: Windows x64
-          architecture: x64
-          runTests: false # disable due to docker issues ${{ parameters.RunTests }}
-          publishNuGet: ${{ parameters.PublishNuGet }}
-          BuildX64: ${{ parameters.BuildX64 }}
-          BuildDebug: ${{ parameters.BuildDebug }}
-          Cleanup: ${{ parameters.Cleanup }}
-          matrixConfigs:
-            Windows_x64_Release:
-              BuildType: Release
-              BuildArchitecture: x64
-              cmake.preset: Windows-x64-Release
-            ${{ if eq(parameters.BuildDebug, true) }}:
-              Windows_x64_Debug:
-                BuildType: Debug
-                BuildArchitecture: x64
-                cmake.preset: Windows-x64-Debug
+          displayName: "Windows Cleanup"
+          BuildOperatingSystem: $(Agent.OS)
+          CleanupDirectory: ${{ variables.cpmCachePath }}
 
-      # Windows arm64 (Docker unavailable, skip tests)
-      - template: .ci/az-build-windows.yml
-        parameters:
-          displayName: Windows arm64
-          architecture: arm64
-          runTests: false
-          publishNuGet: ${{ parameters.PublishNuGet }}
-          BuildX64: ${{ parameters.BuildX64 }}
-          BuildDebug: ${{ parameters.BuildDebug }}
-          Cleanup: ${{ parameters.Cleanup }}
-          matrixConfigs:
-            Windows_arm64_Release:
-              BuildType: Release
-              BuildArchitecture: arm64
-              cmake.preset: Windows-arm64-Release
-            ${{ if eq(parameters.BuildDebug, true) }}:
-              Windows_arm64_Debug:
-                BuildType: Debug
-                BuildArchitecture: arm64
-                cmake.preset: Windows-arm64-Debug
+    - template: .ci/az-build-windows.yml
+      parameters:
+        displayName: "Windows Build and Test"
+        architectures: ${{ parameters.Architectures }}
+        compilers: ${{ parameters.Compilers_Windows }}
+        buildTypes: ${{ parameters.BuildTypes }}
+        runTests: ${{ parameters.RunTests }}
+        publishNuGet: ${{ variables.PublishNuGet }}
 
   # ==========================================================================
-  # STAGE 2: LINUX BUILD
+  # STAGE 1: LINUX BUILD
   # ==========================================================================
-  - stage: StgBldLinux
+  - stage: Linux
     displayName: Linux
+    condition: ${{ containsValue(parameters.Platforms, 'Linux') }}
     dependsOn: []
-    condition: eq(${{ parameters.RunLinux }}, true)
+
     jobs:
-      - template: .ci/az-build-linux.yml
+    - ${{ if eq(parameters.Cleanup, true) }}:
+      - template: .ci/az-cleanup-linux.yml
         parameters:
-          displayName: Linux Builds (Clang & GCC)
-          runTests: ${{ parameters.RunTests }}
-          Cleanup: ${{ parameters.Cleanup }}
-          matrixConfigs:
-            # Clang builds (always included)
-            Linux_Clang_Release:
-              BuildType: Release
-              LinuxCompiler: Clang
-              cmake.preset: Linux-Clang-Release
-            ${{ if eq(parameters.BuildDebug, true) }}:
-              Linux_Clang_Debug:
-                BuildType: Debug
-                LinuxCompiler: Clang
-                cmake.preset: Linux-Clang-Debug
-            # GCC builds (conditional on RunLinuxClangOnly)
-            ${{ if eq(parameters.RunLinuxClangOnly, false) }}:
-              Linux_GCC_Release:
-                BuildType: Release
-                LinuxCompiler: GCC
-                cmake.preset: Linux-GCC-Release
-            ${{ if and(eq(parameters.RunLinuxClangOnly, false), eq(parameters.BuildDebug, true)) }}:
-              Linux_GCC_Debug:
-                BuildType: Debug
-                LinuxCompiler: GCC
-                cmake.preset: Linux-GCC-Debug
+          displayName: "Linux Cleanup"
+          BuildOperatingSystem: $(Agent.OS)
+          CleanupDirectory: ${{ variables.cpmCachePath }}
+
+    - template: .ci/az-build-linux.yml
+      parameters:
+        displayName: "Linux Build and Test"
+        architectures: ${{ parameters.Architectures }}
+        compilers: ${{ parameters.Compilers_Linux }}
+        buildTypes: ${{ parameters.BuildTypes }}
+        runTests: ${{ parameters.RunTests }}
 
   # ==========================================================================
   # STAGE 3: PUBLICATION
@@ -222,17 +191,16 @@ stages:
   - stage: Publication
     displayName: Publication
     dependsOn:
-      - StgBldWindows
-      - StgBldLinux
-    condition: and(ne(${{ parameters.Cleanup }}, true), succeeded())
+      - Windows
+      - Linux
+    condition: and(or(eq(${{ variables.PublishGitHub }}, true), eq(${{ variables.PublishNuGet }}, true)), succeeded())
     jobs:
-      # NuGet Release
-      - template: .ci/az-publish-nuget.yml
-        parameters:
-          displayName: NuGet Release
-          PublishNuGet: ${{ variables.PublishNuGet }}
-
-      # GitHub Release
+      - ${{ if eq(variables.PublishNuGet, true) }}:
+        - template: .ci/az-publish-nuget.yml
+          parameters:
+            displayName: NuGet Release
+            PublishNuGet: ${{ variables.PublishNuGet }}
+  
       - template: .ci/az-publish-github.yml
         parameters:
           displayName: GitHub Release

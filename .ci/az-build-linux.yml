@@ -19,7 +19,6 @@
 # - Saves version to files for cross-stage sharing
 # - Supports both Clang and GCC compilers
 # - ASAN and code coverage for Debug builds
-# - Docker-based Cosmos DB emulator for testing
 #
 # Requirements:
 # - Self-hosted Linux build agents
@@ -34,179 +33,179 @@
 parameters:
   - name: displayName
     type: string
-    
+
+  - name: architectures
+    type: stringList
+    default: [ x64, arm64 ]
+    values: [ x64, arm64 ]
+
+  - name: compilers
+    type: stringList
+    default: [ Clang ]
+    values: [ Clang, GCC ]
+
+  - name: buildTypes
+    type: stringList
+    default: [ Release, Debug ]
+    values: [ Release, Debug ]
+
   - name: runTests
     type: boolean
     default: true
-    
-  - name: Cleanup
-    type: boolean
-    default: false
-    
-  - name: matrixConfigs
-    type: object
 
 
 # ============================================================================
 # JOBS
 # ============================================================================
 jobs:
-  - job: JobLinuxBuild
-    displayName: ${{ parameters.displayName }}
+  - ${{ each arch in parameters.architectures }}:
+    - ${{ each compiler in parameters.compilers }}:
+        - ${{ each buildType in parameters.buildTypes }}:
+          - job: Job_Linux_${{ arch }}_${{ compiler }}_${{ buildType }}
+            displayName: "Build Linux ${{ arch }} with ${{ compiler }} (${{ buildType }})"
     
-    workspace:
-      clean: all
-    
-    pool:
-      name: Default
-      demands:
-        - Agent.OS -equals Linux
-        - docker
-    
-    strategy:
-      matrix: ${{ parameters.matrixConfigs }}
-    
-    steps:
-      # ====================================================================
-      # CHECKOUT & CLEANUP
-      # ====================================================================
-      - checkout: self
-        name: step1
+            workspace:
+              clean: all
+            
+            pool:
+              name: Default
+        
+              demands:
+                - Agent.OS -equals Linux
+                #- Agent.OSArchitecture -equals ${{ arch }}
+                # add additional demands here
+            
+            variables:
+              cmakePreset: Linux-${{ compiler }}-${{ buildType }}
+              buildType: ${{ buildType }}
+            
+            steps:
+              # ====================================================================
+              # Checkout & Pre-test setup
+              # We launch pre-test early to allow for such things to spool up in
+              # parallel during the build stage.
+              # ====================================================================
+              - checkout: self
+                name: step1
 
-      - bash: |
-          echo "Cleaning CPM cache directory..."
-          rm -rdf "$(cpmCachePath)"
-          echo "Cleanup successful"
-        displayName: Cleanup CPM Cache
-        condition: eq(${{ parameters.Cleanup }}, true)
+              - template: az-pretest-linux.yml
+                parameters:
+                  architecture: ${{ arch }}
+                  runTests: ${{ parameters.runTests }}
+            
+              # ====================================================================
+              # VERSION DETECTION
+              # ====================================================================
+              - task: gitversion-setup@4
+                displayName: Install GitVersion
+                inputs:
+                  versionSpec: 6.x
+                  preferLatestVersion: true
 
-      # ====================================================================
-      # START COSMOS DB EMULATOR (Docker)
-      # We startup early to allow the container to spin up to speed
-      # while we're building the project.
-      # ====================================================================
-      - bash: |
-          echo "Starting Azure CosmosDB emulator..."
-          chmod +x $(System.DefaultWorkingDirectory)/tests/setup-emulator.sh
-          $(System.DefaultWorkingDirectory)/tests/setup-emulator.sh
-        displayName: Start Azure CosmosDB Emulator
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
+              - task: gitversion-execute@4
+                displayName: Determine Version
+                name: version_step
+                inputs:
+                  useConfigFile: true
+                  configFilePath: GitVersion.yml
+                  updateBuildNumber: true
 
-      # ====================================================================
-      # VERSION DETECTION
-      # ====================================================================
-      - task: gitversion-setup@4
-        displayName: Install GitVersion
-        inputs:
-          versionSpec: 6.x
-          preferLatestVersion: true
+              - bash: |
+                  echo "$(GITVERSION_MAJORMINORPATCH)" > TagVersion.txt
+                  echo "$(GITVERSION_FULLSEMVER)" > FullSemVer.txt
+                  echo "Version: $(GITVERSION_MAJORMINORPATCH)"
+                  echo "Full SemVer: $(GITVERSION_FULLSEMVER)"
+                displayName: Save Version Information
 
-      - task: gitversion-execute@4
-        displayName: Determine Version
-        name: version_step
-        inputs:
-          useConfigFile: true
-          configFilePath: GitVersion.yml
-          updateBuildNumber: true
+              # ====================================================================
+              # SET BUILD NUMBER
+              # ====================================================================
+              - bash: |
+                  echo "##vso[build.updateBuildNumber]$(GITVERSION_MAJORMINORPATCH)"
+                displayName: Set Build Number (Release)
+                condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
 
-      - bash: |
-          echo "$(GITVERSION_MAJORMINORPATCH)" > TagVersion.txt
-          echo "$(GITVERSION_FULLSEMVER)" > FullSemVer.txt
-          echo "Version: $(GITVERSION_MAJORMINORPATCH)"
-          echo "Full SemVer: $(GITVERSION_FULLSEMVER)"
-        displayName: Save Version Information
+              - bash: |
+                  echo "##vso[build.updateBuildNumber]$(GITVERSION_SEMVER)"
+                displayName: Set Build Number (Pre-release)
+                condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
 
-      # ====================================================================
-      # BUILD
-      # ====================================================================
-      - task: CMake@1
-        displayName: CMake Configure
-        inputs:
-          cmakeArgs: "--preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
-          workingDirectory: $(System.DefaultWorkingDirectory)
+              # ====================================================================
+              # BUILD
+              # ====================================================================
+              - task: CMake@1
+                displayName: CMake Configure
+                inputs:
+                  cmakeArgs: "--preset $(cmakePreset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
+                  workingDirectory: $(System.DefaultWorkingDirectory)
 
-      - task: CMake@1
-        displayName: CMake Build
-        inputs:
-          cmakeArgs: "--build --preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
-          workingDirectory: $(System.DefaultWorkingDirectory)
-        condition: succeeded()
+              - task: CMake@1
+                displayName: CMake Build
+                inputs:
+                  cmakeArgs: "--build --preset $(cmakePreset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
+                  workingDirectory: $(System.DefaultWorkingDirectory)
+                condition: succeeded()
 
-      - task: PublishBuildArtifacts@1
-        displayName: Publish Build Artifacts
-        inputs:
-          PathtoPublish: $(buildOutputPath)
-          ArtifactName: build-$(cmake.preset)
-          publishLocation: Container
-        condition: succeeded()
+              - task: PublishBuildArtifacts@1
+                displayName: Publish Build Artifacts
+                inputs:
+                  PathtoPublish: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)
+                  ArtifactName: build-$(cmakePreset)
+                  publishLocation: Container
+                condition: succeeded()
 
-      # ====================================================================
-      # SET BUILD NUMBER
-      # ====================================================================
-      - bash: |
-          echo "##vso[build.updateBuildNumber]$(GITVERSION_MAJORMINORPATCH)"
-        displayName: Set Build Number (Release)
-        condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
+              # ====================================================================
+              # TESTING
+              # ====================================================================
+              - task: CMake@1
+                displayName: Run Tests
+                inputs:
+                  cmakeArgs: "-E chdir $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests ctest --output-junit $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results/$(cmakePreset)_test_detail.xml --output-on-failure"
+                  workingDirectory: $(System.DefaultWorkingDirectory)
+                continueOnError: true
+                condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
 
-      - bash: |
-          echo "##vso[build.updateBuildNumber]$(GITVERSION_SEMVER)"
-        displayName: Set Build Number (Pre-release)
-        condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
+              - template: az-posttest-linux.yml
+                parameters:
+                  runTests: ${{ parameters.runTests }}
+                  architecture: ${{ arch }}
+              
+              # ====================================================================
+              # CODE COVERAGE (Debug builds on x64 Linux only)
+              # ====================================================================
+              - bash: |
+                  echo "Collecting code coverage..."
+                  gcovr --delete \
+                    --root $(System.DefaultWorkingDirectory)/ \
+                    --print-summary \
+                    --xml-pretty \
+                    --xml $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results/coverage.xml \
+                    $(System.DefaultWorkingDirectory)/build/$(cmakePreset) \
+                    --filter='$(System.DefaultWorkingDirectory)/include/*' \
+                    --filter='$(System.DefaultWorkingDirectory)/tests/*' \
+                    --gcov-executable 'llvm-cov gcov'
+                displayName: Collect Code Coverage
+                workingDirectory: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)
+                condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), eq(variables['Agent.OSArchitecture'], 'X64'))
+                continueOnError: true
 
-      # ====================================================================
-      # TESTING
-      # ====================================================================
-      - task: CMake@1
-        displayName: Run Tests
-        inputs:
-          cmakeArgs: "-E chdir $(buildOutputPath)/tests ctest --output-junit $(testResultsPath)/$(cmake.preset)_test_detail.xml --output-on-failure"
-          workingDirectory: $(System.DefaultWorkingDirectory)
-        continueOnError: true
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
+              # ====================================================================
+              # PUBLISH RESULTS
+              # ====================================================================
+              - task: PublishTestResults@2
+                displayName: Publish Test Results
+                inputs:
+                  testResultsFormat: JUnit
+                  testRunTitle: Tests $(cmakePreset)
+                  testResultsFiles: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results/$(cmakePreset)_test_detail.xml
+                  mergeTestResults: false
+                  buildConfiguration: $(BuildType)
+                continueOnError: true
+                condition: and(succeeded(), eq(${{ parameters.runTests }}, true), or(eq(variables['BuildType'], 'Release'), failed()))
 
-      - bash: |
-          echo "Stopping emulator..."
-          docker stop $(emulatorName) || true
-        displayName: Stop Azure CosmosDB Emulator
-        condition: always()
-        continueOnError: true
-
-      # ====================================================================
-      # CODE COVERAGE (Debug builds on x64 Linux only)
-      # ====================================================================
-      - bash: |
-          echo "Collecting code coverage..."
-          gcovr --delete \
-            --root $(System.DefaultWorkingDirectory)/ \
-            --print-summary \
-            --xml-pretty \
-            --xml $(testResultsPath)/coverage.xml \
-            $(buildOutputPath) \
-            --filter='$(System.DefaultWorkingDirectory)/include/*' \
-            --filter='$(System.DefaultWorkingDirectory)/tests/*' \
-            --gcov-executable 'llvm-cov gcov'
-        displayName: Collect Code Coverage
-        workingDirectory: $(buildOutputPath)
-        condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), eq(variables['Agent.OSArchitecture'], 'X64'))
-        continueOnError: true
-
-      # ====================================================================
-      # PUBLISH RESULTS
-      # ====================================================================
-      - task: PublishTestResults@2
-        displayName: Publish Test Results
-        inputs:
-          testResultsFormat: JUnit
-          testRunTitle: Tests $(cmake.preset)
-          testResultsFiles: $(testResultsPath)/$(cmake.preset)_test_detail.xml
-          mergeTestResults: false
-          buildConfiguration: $(BuildType)
-        continueOnError: true
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), or(eq(variables['BuildType'], 'Release'), failed()))
-
-      - task: PublishCodeCoverageResults@2
-        displayName: Publish Code Coverage Results
-        inputs:
-          summaryFileLocation: $(testResultsPath)/coverage.*
-        condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), eq(variables['Agent.OSArchitecture'], 'X64'))
-        continueOnError: true
+              - task: PublishCodeCoverageResults@2
+                displayName: Publish Code Coverage Results
+                inputs:
+                  summaryFileLocation: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results/coverage.*
+                condition: and(succeeded(), eq(variables['BuildType'], 'Debug'), startsWith(variables['Agent.OS'], 'Linux'), eq(variables['Agent.OSArchitecture'], 'X64'))
+                continueOnError: true

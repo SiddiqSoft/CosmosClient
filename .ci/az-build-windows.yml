@@ -19,233 +19,192 @@
 parameters:
   - name: displayName
     type: string
-  - name: architecture
-    type: string
+
+  - name: architectures
+    type: stringList
+    default: [ x64, arm64 ]
+    values: [ x64, arm64 ]
+
+  - name: compilers
+    type: stringList
+    default: [ MSVC ]
+    values: [ MSVC ]
+
+  - name: buildTypes
+    type: stringList
+    default: [ Release, Debug ]
+    values: [ Release, Debug ]
+
   - name: runTests
     type: boolean
     default: true
-  - name: matrixConfigs
-    type: object
+
   - name: publishNuGet
     type: boolean
     default: false
-  - name: BuildX64
-    type: boolean
-    default: false
-  - name: BuildDebug
-    type: boolean
-    default: false
-  - name: Cleanup
-    type: boolean
-    default: false
+
 
 # ============================================================================
 # JOBS
 # ============================================================================
 jobs:
-  - job: JobWindowsBuild_${{ parameters.architecture }}
-    displayName: ${{ parameters.displayName }}
-    
-    condition: or( and(eq(${{parameters.BuildX64}}, true), eq('${{ parameters.architecture}}', 'x64')), eq('${{parameters.architecture}}', 'arm64') )
-    
-    workspace:
-      clean: all
-    
-    pool:
-      name: Default
-      demands:
-        - Agent.OS -equals Windows_NT
-        - Agent.OSArchitecture -equals ${{ parameters.architecture }}
+  - ${{ each arch in parameters.architectures }}:
+    - ${{ each compiler in parameters.compilers }}:
+        - ${{ each buildType in parameters.buildTypes }}:
+          - job: Job_Windows_${{ arch }}_${{ compiler }}_${{ buildType }}
+            displayName: "Build Windows ${{ arch }} with ${{ compiler }} (${{ buildType }})"
+            
+            #condition: eq('${{ arch }}', $(Agent.OSArchitecture))
+            
+            workspace:
+              clean: all
+            
+            pool:
+              name: Default
+              demands:
+                - Agent.OS -equals Windows_NT
+                #- Agent.OSArchitecture -equals ${{ arch }}
+                # add additional demands here
 
-    strategy:
-      matrix: ${{ parameters.matrixConfigs }}
-    
-    steps:
-      # ====================================================================
-      # Checkout & Cleanup
-      # ====================================================================
-      - checkout: self
-        name: step1
+            variables:
+              cmakePreset: Windows-${{ arch }}-${{ buildType }}
+              buildType: ${{ buildType }}
 
-      - task: PowerShell@2
-        displayName: Cleanup CPM Cache
-        inputs:
-          targetType: inline
-          script: |
-            Write-Host "Cleaning up CPM cache..."
-            if (Test-Path -Path $(cpmCachePath)) {
-              Remove-Item -Recurse -Force -LiteralPath $(cpmCachePath)
-              Write-Host "Cleanup successful"
-            } else {
-              Write-Host "No cleanup needed: path does not exist"
-            }
-        condition: eq(${{ parameters.Cleanup }}, true)
+            steps:
+              # ====================================================================
+              # Checkout & Cleanup
+              # ====================================================================
+              - checkout: self
+                name: step1
 
-      # ====================================================================
-      # Emulator Setup (for tests)
-      # ====================================================================
-      - task: BatchScript@1
-        displayName: Start Azure CosmosDB Emulator
-        inputs:
-          filename: $(System.DefaultWorkingDirectory)/tests/setup-linux-emulator.bat
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), ne('${{parameters.architecture}}', 'arm64')) # docker on arm64 not available yet    
+              # ====================================================================
+              # Environment Setup
+              # ====================================================================
+              - task: BatchScript@1
+                displayName: Detect Visual Studio paths
+                inputs:
+                  filename: $(System.DefaultWorkingDirectory)/.ci/pipeline_detect_vs_path.bat
+                  modifyEnvironment: true
+              
+              - task: BatchScript@1
+                displayName: Setup ${{ compiler }} environment
+                inputs:
+                  filename: $(VCVARS_PATH)
+                  arguments: $(AGENT_OSARCHITECTURE)
+                  modifyEnvironment: true
 
-      # ====================================================================
-      # Environment Setup
-      # ====================================================================
-      - task: BatchScript@1
-        displayName: Detect Visual Studio paths
-        inputs:
-          filename: $(System.DefaultWorkingDirectory)/.ci/pipeline_detect_vs_path.bat
-          modifyEnvironment: true
-      
-      - task: BatchScript@1
-        displayName: Setup MSVC environment
-        inputs:
-          filename: $(VCVARS_PATH)
-          arguments: $(AGENT_OSARCHITECTURE)
-          modifyEnvironment: true
-      
-      # ====================================================================
-      # Version Detection
-      # ====================================================================
-      - task: gitversion-setup@4
-        displayName: Install GitVersion
-        inputs:
-          versionSpec: 6.x
-          preferLatestVersion: true
+              - template: az-pretest-windows.yml
+                parameters:
+                  architecture: ${{ arch }}
+                  runTests: ${{ parameters.runTests }}
+              
+              # ====================================================================
+              # Version Detection
+              # ====================================================================
+              - task: gitversion-setup@4
+                displayName: Install GitVersion
+                inputs:
+                  versionSpec: 6.x
+                  preferLatestVersion: true
 
-      - task: gitversion-execute@4
-        displayName: Determine Version
-        name: version_step
-        inputs:
-          useConfigFile: true
-          configFilePath: GitVersion.yml
-          updateBuildNumber: true
-        
-      # ====================================================================
-      # Build
-      # ====================================================================
-      - task: CMake@1
-        displayName: CMake Configure
-        inputs:
-          cmakeArgs: "--preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
-          workingDirectory: $(System.DefaultWorkingDirectory)
-      
-      - task: CMake@1
-        displayName: CMake Build
-        inputs:
-          cmakeArgs: "--build --preset $(cmake.preset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
-          workingDirectory: $(System.DefaultWorkingDirectory)
-        condition: succeeded()
+              - task: gitversion-execute@4
+                displayName: Determine Version
+                name: version_step
+                inputs:
+                  useConfigFile: true
+                  configFilePath: GitVersion.yml
+                  updateBuildNumber: true
+              
+              # ====================================================================
+              # Build Number
+              # ====================================================================
+              - task: PowerShell@2
+                displayName: Set Build Number (Release)
+                inputs:
+                  targetType: inline
+                  script: Write-Host "##vso[build.updateBuildNumber]$(GITVERSION_MAJORMINORPATCH)"
+                condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
 
-      - task: PublishBuildArtifacts@1
-        displayName: Publish Build Artifacts
-        inputs:
-          PathtoPublish: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)
-          ArtifactName: build-$(cmake.preset)
-          publishLocation: Container
-        condition: succeeded()
-      
-      # ====================================================================
-      # Testing
-      # ====================================================================
-      - task: PowerShell@2
-        displayName: Wait for Emulator to be Ready
-        inputs:
-          targetType: inline
-          script: |
-            Write-Host "Waiting for Azure CosmosDB Emulator to be ready..."
-            $maxRetries = 10
-            $retryCount = 0
-            $emulatorReady = $false
+              - task: PowerShell@2
+                displayName: Set Build Number (Pre-release)
+                inputs:
+                  targetType: inline
+                  script: Write-Host "##vso[build.updateBuildNumber]$(GITVERSION_SEMVER)"
+                condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
 
-            while (-not $emulatorReady -and $retryCount -lt $maxRetries) {
-              try {
-                $response = Invoke-WebRequest -Uri "$(emulatorUrl)/_explorer/emulator.pem" -UseBasicParsing -TimeoutSec 5
-                if ($response.StatusCode -eq 200) {
-                  Write-Host "Emulator is ready!"
-                  $emulatorReady = $true
-                } else {
-                  throw "Unexpected status code: $($response.StatusCode)"
-                }
-              } catch {
-                Write-Host "Emulator not ready yet. Retrying in 6 seconds..."
-                Start-Sleep -Seconds 6
-                $retryCount++
-              }
-            }
+              # ====================================================================
+              # Build
+              # ====================================================================
+              - task: CMake@1
+                displayName: CMake Configure
+                inputs:
+                  cmakeArgs: "--preset $(cmakePreset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
+                  workingDirectory: $(System.DefaultWorkingDirectory)
+              
+              - task: CMake@1
+                displayName: CMake Build
+                inputs:
+                  cmakeArgs: "--build --preset $(cmakePreset) -DCI_BUILDID=$(GITVERSION_MAJORMINORPATCH) -DCPM_SOURCE_CACHE=$(cpmCachePath)"
+                  workingDirectory: $(System.DefaultWorkingDirectory)
+                condition: succeeded()
 
-            if (-not $emulatorReady) {
-              throw "Emulator did not become ready within the expected time."
-            }
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), ne('${{parameters.architecture}}', 'arm64')) # docker on arm64 not available yet
-        continueOnError: true
+              - task: PublishBuildArtifacts@1
+                displayName: Publish Build Artifacts
+                inputs:
+                  PathtoPublish: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)
+                  ArtifactName: build-$(cmakePreset)
+                  publishLocation: Container
+                condition: succeeded()
+              
+              # ====================================================================
+              # Testing
+              # ====================================================================
+              - task: CMake@1
+                displayName: CMake Tests
+                inputs:
+                  cmakeArgs: "-E chdir $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests ctest --output-junit $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results/$(cmakePreset)_test_detail.xml --output-on-failure"
+                continueOnError: true
+                condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
 
-      - task: CMake@1
-        displayName: CMake Tests
-        inputs:
-          cmakeArgs: "-E chdir $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests ctest --output-junit $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml --output-on-failure"
-        continueOnError: true
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true))
+              - template: az-posttest-windows.yml
+                parameters:
+                  runTests: ${{ parameters.runTests }}
+                  architecture: ${{ arch }}
+              
+              - task: PublishTestResults@2
+                displayName: Publish Test Results
+                inputs:
+                  testResultsFormat: JUnit
+                  testRunTitle: Tests $(cmakePreset)
+                  testResultsFiles: $(System.DefaultWorkingDirectory)/build/$(cmakePreset)/tests/results/$(cmakePreset)_test_detail.xml
+                  mergeTestResults: false
+                  buildConfiguration: $(BuildType)
+                continueOnError: true
+                condition: and(succeeded(), eq(${{ parameters.runTests }}, true), or(eq(variables['BuildType'], 'Release'), failed()))
+              
+              # ====================================================================
+              # NuGet Packaging
+              # ====================================================================
+              - task: NuGetToolInstaller@1
+                displayName: Install NuGet
+                inputs:
+                  versionSpec: ">=6.0.0-0"
+                  checkLatest: true
+                condition: succeeded()
 
-      - task: CmdLine@2
-        displayName: Stop Azure CosmosDB Emulator
-        inputs:
-          script: docker stop $(dockerContainerName)
-        condition: ne('${{parameters.architecture}}', 'arm64') # docker on arm64 not available yet
+              - task: NuGetCommand@2
+                displayName: NuGet Pack
+                inputs:
+                  command: pack
+                  packagesToPack: pack/*.nuspec
+                  versioningScheme: off
+                  buildProperties: VERSION=$(GITVERSION_MAJORMINORPATCH)
+                condition: succeeded()
 
-      - task: PublishTestResults@2
-        displayName: Publish Test Results
-        inputs:
-          testResultsFormat: JUnit
-          testRunTitle: Tests $(cmake.preset)
-          testResultsFiles: $(System.DefaultWorkingDirectory)/build/$(cmake.preset)/tests/results/$(cmake.preset)_test_detail.xml
-          mergeTestResults: false
-          buildConfiguration: $(BuildType)
-        continueOnError: true
-        condition: and(succeeded(), eq(${{ parameters.runTests }}, true), or(eq(variables['BuildType'], 'Release'), failed()))
-      
-      # ====================================================================
-      # Build Number
-      # ====================================================================
-      - task: PowerShell@2
-        displayName: Set Build Number (Release)
-        inputs:
-          targetType: inline
-          script: Write-Host "##vso[build.updateBuildNumber]$(GITVERSION_MAJORMINORPATCH)"
-        condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
-
-      - task: PowerShell@2
-        displayName: Set Build Number (Pre-release)
-        inputs:
-          targetType: inline
-          script: Write-Host "##vso[build.updateBuildNumber]$(GITVERSION_SEMVER)"
-        condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
-      
-      # ====================================================================
-      # NuGet Packaging
-      # ====================================================================
-      - task: NuGetToolInstaller@1
-        displayName: Install NuGet
-        inputs:
-          versionSpec: ">=6.0.0-0"
-          checkLatest: true
-        condition: succeeded()
-
-      - task: NuGetCommand@2
-        displayName: NuGet Pack
-        inputs:
-          command: pack
-          packagesToPack: pack/*.nuspec
-          versioningScheme: off
-          buildProperties: VERSION=$(GITVERSION_MAJORMINORPATCH)
-        condition: succeeded()
-
-      - task: PublishBuildArtifacts@1
-        displayName: Publish NuGet Artifacts
-        inputs:
-          PathtoPublish: $(Build.ArtifactStagingDirectory)
-          ArtifactName: nuget-packages
-          publishLocation: Container
-        condition: succeeded()
+              - task: PublishBuildArtifacts@1
+                displayName: Publish NuGet Artifacts
+                inputs:
+                  PathtoPublish: $(Build.ArtifactStagingDirectory)
+                  ArtifactName: nuget-packages
+                  publishLocation: Container
+                condition: succeeded()
