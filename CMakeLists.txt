@@ -26,7 +26,13 @@ project(cosmoscl
 # ____________________________________
 # Options; define and declare defaults
 option(${PROJECT_NAME}_BUILD_TESTS "${PROJECT_NAME} - Build tests. Uncheck for install only runs" OFF)
-option(CI_BUILDID "${PROJECT_NAME} - Build Version" "notset")
+option(CI_BUILDID "Version of this build" "0.0.0")
+
+set( CMAKE_CXX_STANDARD 23)
+set( CMAKE_CXX_STANDARD_REQUIRED On)
+set( CMAKE_CXX_EXTENSIONS OFF)
+# This will allow cmake aware IDE to pickup on library definitions
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ____________________________________
 #  Library Definition
@@ -39,37 +45,41 @@ target_include_directories(${PROJECT_NAME}
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)
 
-# For std::stop_token and std::jthread on Clang 18 and Clang 19 we need to enable
-# the experimental-library flag.
-target_compile_options( ${PROJECT_NAME}
-                        INTERFACE
-                        $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library> )
-
-set( CMAKE_CXX_STANDARD 23)
-set( CMAKE_CXX_STANDARD_REQUIRED On)
-set( CMAKE_CXX_EXTENSIONS Off)
-                        
 # ____________________________________
 # Dependencies
+if(((CMAKE_CXX_COMPILER_ID MATCHES [Cc][Ll][Aa][Nn][Gg]) 
+        OR (CMAKE_CXX_COMPILER_ID MATCHES [Gg][Nn][Uu])))
+    # Linux/Unix specific
+    # Make sure you install libcurl-devel on Linux
+    find_package(CURL 8.7 REQUIRED)
+    # Note: Do not use include_directories(${CURL_INCLUDE_DIRS}) here.
+    # The CURL::libcurl imported target already provides include paths as SYSTEM includes,
+    # which avoids conflicts between Homebrew LLVM's C++ headers and the macOS SDK C headers.
+    target_link_libraries(${PROJECT_NAME} INTERFACE CURL::libcurl)
+elseif((CMAKE_CXX_COMPILER_ID MATCHES [Mm][Ss][Vv][Cc]))
+    # Windows specific work
+    CPMAddPackage("gh:SiddiqSoft/acw32h#2.7.4")
+    target_link_libraries(${PROJECT_NAME} INTERFACE acw32h::acw32h)
+endif()
+
 CPMAddPackage("gh:nlohmann/json#v3.12.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE nlohmann_json::nlohmann_json)
-CPMAddPackage("gh:SiddiqSoft/SplitUri#3.0.3")
+CPMAddPackage("gh:SiddiqSoft/SplitUri#3.0.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE SplitUri::SplitUri)
-CPMAddPackage("gh:siddiqsoft/StringHelpers#1.2.2")
-target_link_libraries(${PROJECT_NAME} INTERFACE StringHelpers::StringHelpers)
-CPMAddPackage("gh:SiddiqSoft/AzureCppUtils#3.2.7")
+CPMAddPackage("gh:SiddiqSoft/AzureCppUtils#3.2.5")
 target_link_libraries(${PROJECT_NAME} INTERFACE AzureCppUtils::AzureCppUtils)
-CPMAddPackage("gh:SiddiqSoft/string2map#2.5.0")
+CPMAddPackage("gh:SiddiqSoft/string2map#2.6.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE string2map::string2map)
 CPMAddPackage("gh:SiddiqSoft/RunOnEnd#1.4.2")
 target_link_libraries(${PROJECT_NAME} INTERFACE RunOnEnd::RunOnEnd)
-
-CPMAddPackage("gh:SiddiqSoft/asynchrony#2.1.2")
+CPMAddPackage("gh:SiddiqSoft/asynchrony#2.1.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE asynchrony::asynchrony)
-CPMAddPackage("gh:SiddiqSoft/timethis#2.4.1")
+CPMAddPackage("gh:SiddiqSoft/GenProcessInfo#2.6.1")
+target_link_libraries(${PROJECT_NAME} INTERFACE GenProcessInfo::GenProcessInfo)
+CPMAddPackage("gh:SiddiqSoft/TimeThis#2.4.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/restcl#2.3.5")
+CPMAddPackage("gh:SiddiqSoft/restcl#2.3.6")
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 
 
@@ -79,6 +89,5 @@ target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 if(${${PROJECT_NAME}_BUILD_TESTS} AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests" AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests" )
     message(STATUS "${PROJECT_NAME} - Asked to build tests.. ${PROJECT_NAME}_BUILD_TESTS = ${${PROJECT_NAME}_BUILD_TESTS}")
     enable_testing()
-    
     add_subdirectory(tests)
 endif()
