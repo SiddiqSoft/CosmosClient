@@ -381,8 +381,6 @@ For more troubleshooting, see [DEVELOPER_BUILD_GUIDE.md#troubleshooting](DEVELOP
 - [x] Unified test suite (100+ tests)
 - [x] Cross-platform support (Windows, macOS, Linux)
 - [ ] Async operations with auto-retry
-- [ ] C++20 modules support
-- [ ] Co-routines support
 - [ ] OpenSSL for non-Windows platforms
 
 ---
