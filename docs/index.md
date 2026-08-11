@@ -1,7 +1,6 @@
 # CosmosClient: Azure Cosmos DB REST Client for Modern C++
 
 <div class="badge-container">
-  <a href="https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml"><img src="https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://dev.azure.com/siddiqsoft/siddiqsoft/_build/latest?definitionid=15&branchName=main"><img src="https://dev.azure.com/siddiqsoft/siddiqsoft/_apis/build/status/SiddiqSoft.CosmosClient?branchName=main" alt="Build Status"></a>
   <a href="https://github.com/SiddiqSoft/CosmosClient/tags"><img src="https://img.shields.io/github/v/tag/SiddiqSoft/CosmosClient" alt="GitHub Tag"></a>
   <a href="https://www.nuget.org/packages/SiddiqSoft.CosmosClient"><img src="https://img.shields.io/nuget/v/SiddiqSoft.CosmosClient" alt="NuGet Version"></a>
