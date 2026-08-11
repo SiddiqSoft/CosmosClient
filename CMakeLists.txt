@@ -43,7 +43,7 @@ target_include_directories(${PROJECT_NAME}
                             INTERFACE
                             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
 
 # ____________________________________
 # Dependencies
@@ -64,24 +64,20 @@ endif()
 
 CPMAddPackage("gh:nlohmann/json#v3.12.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE nlohmann_json::nlohmann_json)
+
 CPMAddPackage("gh:SiddiqSoft/SplitUri#3.0.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE SplitUri::SplitUri)
-CPMAddPackage("gh:SiddiqSoft/AzureCppUtils#3.2.8")
-target_link_libraries(${PROJECT_NAME} INTERFACE AzureCppUtils::AzureCppUtils)
 CPMAddPackage("gh:SiddiqSoft/string2map#2.6.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE string2map::string2map)
-CPMAddPackage("gh:SiddiqSoft/RunOnEnd#1.4.5")
-target_link_libraries(${PROJECT_NAME} INTERFACE RunOnEnd::RunOnEnd)
-CPMAddPackage("gh:SiddiqSoft/asynchrony#2.1.4")
-target_link_libraries(${PROJECT_NAME} INTERFACE asynchrony::asynchrony)
 CPMAddPackage("gh:SiddiqSoft/GenProcessInfo#2.6.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE GenProcessInfo::GenProcessInfo)
 CPMAddPackage("gh:SiddiqSoft/TimeThis#2.4.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/restcl#2.3.7")
+# This will bring in a set of dependencies that are required for the restcl library to work.
+# arrp, asynchrony, azurecpputils, runonend and ctre
+CPMAddPackage("gh:SiddiqSoft/restcl#2.3.9")
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
-
 
 # ____________________________________
 # Testing
