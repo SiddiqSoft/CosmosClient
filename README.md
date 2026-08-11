@@ -1,4 +1,4 @@
-# CosmosClient: Azure Cosmos REST-API Client for Modern C++
+# CosmosClient: Azure Cosmos DB REST Client for Modern C++
 
 <!-- badges -->
 [![CodeQL](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/SiddiqSoft/CosmosClient/actions/workflows/codeql-analysis.yml)
@@ -10,108 +10,94 @@
 ![](https://img.shields.io/github/license/siddiqsoft/CosmosClient)
 <!-- end badges -->
 
----
+## Overview
 
-## 🎯 Quick Links
-
-**New to the project?** Start here:
-- 📖 **[START_HERE.md](START_HERE.md)** - Main entry point for all developers
-- ⚡ **[QUICK_START.md](QUICK_START.md)** - Get started in 5 minutes
-- 📚 **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Find what you need
-
-**Want to build and test?**
-- 🔧 **[DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md)** - Complete build guide
-- 🚀 **[SCRIPTS_README.md](SCRIPTS_README.md)** - Automated build script
-
-**Need API documentation?**
-- 📖 **[API Documentation](https://siddiqsoft.github.io/CosmosClient/)** - Full API reference
-
----
-
-## 📋 Overview
-
-A lightweight, modern C++ client for Azure Cosmos DB REST API. Designed for C++ developers who want a simple, functional interface without unnecessary abstractions.
+**`CosmosClient`** is a header-only Modern C++23 client library for the Azure Cosmos DB REST API. Designed with `nlohmann::json` as a first-class API metaphor, it abstracts token signature calculation, regional endpoint resolution, payload serialization, and pagination behind a clean, expressive C++ interface.
 
 ### Key Features
 
-- **C++23 Native** - Modern C++ with structured bindings and initializer lists
-- **JSON-First** - Configuration, I/O, and results all use JSON
-- **Simple Interface** - Minimal abstractions, maximum clarity
-- **Full Cosmos SQL API** - Complete REST API implementation
-- **Single Header** - Easy integration
-- **Cross-Platform** - Windows, macOS, and Linux support
-- **Async Operations** - Built-in async/await support
-- **Zero-Cost Abstractions** - Only pay for what you use
+- **JSON-First API**: `nlohmann::json` is a first-class citizen for documents, configuration, queries, and headers.
+- **Modern C++23**: Utilizes C++23 standard features (`std::format`, aggregate initialization, structured bindings, `std::expected`).
+- **Header-Only**: Easy integration with no compilation overhead.
+- **Cross-Platform**: Built on top of `restcl`, supporting native `WinHTTP` on Windows and `libcurl` on Unix/Linux/macOS.
+- **Full Cosmos SQL API**: Complete support for Databases, Containers (Collections), Documents, SQL Queries, and Stored Procedures.
+- **Async Operations**: Built-in non-blocking asynchronous operation dispatch via thread pool.
+- **Auto Token Signing**: Automatic HMAC-SHA256 authorization token generation for Azure Cosmos DB REST requests.
 
-### Dependencies
+## Table of Contents
 
-- [nlohmann/json](https://github.com/nlohmann/json) - JSON library
-- [SplitUri](https://github.com/SiddiqSoft/SplitUri) - URI parsing utilities
-- [StringHelpers](https://github.com/siddiqsoft/StringHelpers) - String manipulation utilities
-- [AzureCppUtils](https://github.com/SiddiqSoft/AzureCppUtils) - Azure utilities
-- [string2map](https://github.com/SiddiqSoft/string2map) - String to map conversion
-- [RunOnEnd](https://github.com/SiddiqSoft/RunOnEnd) - RAII scope guard utility
-- [asynchrony](https://github.com/SiddiqSoft/asynchrony) - Async/await support
-- [timethis](https://github.com/SiddiqSoft/timethis) - Timing utilities
-- [restcl](https://github.com/SiddiqSoft/restcl) - REST client library
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Usage Examples](#usage-examples)
+- [Architecture](#architecture)
+- [Dependencies](#dependencies)
+- [Building](#building)
+- [Testing](#testing)
+- [License](#license)
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/SiddiqSoft/CosmosClient.git
-cd CosmosClient
-git submodule update --init --recursive
-```
-
-### Build
-
-```bash
-# macOS
-mkdir -p build && cd build
-cmake --preset Apple-Debug ..
-cmake --build .
-
-# Linux
-mkdir -p build && cd build
-cmake --preset Linux-Clang-Debug ..
-cmake --build .
-```
-
-### Usage Example
+### Create Document
 
 ```cpp
 #include "nlohmann/json.hpp"
 #include "siddiqsoft/cosmoscl.hpp"
 
 int main() {
-    // Create client instance
-    siddiqsoft::CosmosClient cc;
+    siddiqsoft::CosmosClient client;
 
-    // Configure with connection strings
-    cc.configure({
-        {"partitionKeyNames", {"__pk"}},
-        {"connectionStrings", {primaryCS, secondaryCS}}
+    // Configure client with Azure Portal connection string
+    client.configure({
+        {"connectionStrings", {"AccountEndpoint=https://myaccount.documents.azure.com:443/;AccountKey=dGhpcyBpcyBhIHNhbXBsZSBrZXk=;"}},
+        {"partitionKeyNames", {"/id"}}
     });
 
-    // Create a document
-    auto response = cc.createDocument({
-        .database   = "mydb",
-        .collection = "mycoll",
-        .document   = {
-            {"id", "doc1"},
-            {"__pk", "partition1"},
-            {"name", "My Document"},
-            {"value", 42}
+    // Create a new document
+    auto resp = client.createDocument({
+        .database     = "mydb",
+        .collection   = "items",
+        .partitionKey = "item-101",
+        .document     = {
+            {"id", "item-101"},
+            {"name", "Modern C++ Sensor"},
+            {"status", "active"}
         }
     });
 
-    if (response.statusCode == 201) {
-        std::cout << "Document created!" << std::endl;
+    if (resp.statusCode == 201) {
+        std::cout << "Document created! Request Charge (RUs): " << resp.requestCharge << std::endl;
+    }
+
+    return 0;
+}
+```
+
+### SQL Query with Parameters
+
+```cpp
+#include "nlohmann/json.hpp"
+#include "siddiqsoft/cosmoscl.hpp"
+
+int main() {
+    siddiqsoft::CosmosClient client;
+    client.configure({
+        {"connectionStrings", {"AccountEndpoint=https://myaccount.documents.azure.com:443/;AccountKey=...;"}},
+        {"partitionKeyNames", {"/id"}}
+    });
+
+    auto resp = client.queryDocuments({
+        .database   = "mydb",
+        .collection = "items",
+        .query      = "SELECT * FROM c WHERE c.status = @status",
+        .parameters = { {{"name", "@status"}, {"value", "active"}} }
+    });
+
+    if (resp.statusCode == 200) {
+        for (const auto& doc : resp.document["Documents"]) {
+            std::cout << "Doc ID: " << doc["id"] << ", Name: " << doc["name"] << std::endl;
+        }
     }
 
     return 0;
@@ -120,322 +106,80 @@ int main() {
 
 ---
 
-## 📚 Documentation
+## Installation
 
-### For Developers
+### Via NuGet (Windows)
 
-| Document | Purpose | Time |
-|----------|---------|------|
-| [START_HERE.md](START_HERE.md) | Main entry point | 2 min |
-| [QUICK_START.md](QUICK_START.md) | 5-minute quick start | 5 min |
-| [DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md) | Comprehensive guide | 30 min |
-| [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) | Navigation hub | 5 min |
-| [SCRIPTS_README.md](SCRIPTS_README.md) | Automated scripts | 2 min |
-
-### For Understanding Changes
-
-| Document | Purpose | Time |
-|----------|---------|------|
-| [TEST_CONSOLIDATION_SUMMARY.md](TEST_CONSOLIDATION_SUMMARY.md) | Test consolidation | 10 min |
-| [PIPELINE_CONSOLIDATION_UPDATE.md](PIPELINE_CONSOLIDATION_UPDATE.md) | CI/CD updates | 10 min |
-| [COMPLETE_CONSOLIDATION_SUMMARY.md](COMPLETE_CONSOLIDATION_SUMMARY.md) | Complete overview | 15 min |
-
-### API Reference
-
-- **[Full API Documentation](https://siddiqsoft.github.io/CosmosClient/)** - Complete API reference
-
----
-
-## 🛠️ Development
-
-### Prerequisites
-
-**macOS:**
-```bash
-brew install cmake llvm docker
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get install cmake clang-15 docker.io
-```
-
-### Build & Test
+> **WARNING**
+>
+> This package has dependencies that must be satisfied via CPM / CMake when compiling.
 
 ```bash
-# Automated build and test
-./build_and_test.sh debug macos  # or linux
-
-# Manual build
-mkdir -p build && cd build
-cmake --preset Apple-Debug ..
-cmake --build . -j$(nproc)
-
-# Run tests
-ctest --output-on-failure --verbose
+nuget install SiddiqSoft.CosmosClient
 ```
 
-### Test Suite
+### Via CMake & CPM (Recommended)
 
-- **100+ Tests** - Comprehensive test coverage
-- **5 Categories** - Validation, Connection, Endpoint, Integration, Comprehensive
-- **Unified Setup** - Single shared database for all tests
-- **No Emulator Required** - Validation tests run without Azure Cosmos Emulator
+Add to your `CMakeLists.txt`:
 
-#### Windows Docker Tests
+```cmake
+include(pack/CMakeCommonHelpers.cmake)
 
-Docker-based tests are **disabled on Windows** in the CI/CD pipeline. This is because the Azure Cosmos DB Emulator Docker image is only available for Linux containers, and Windows agents cannot run Linux containers without additional virtualization overhead. Windows builds focus on compilation and packaging validation. For full integration testing, use macOS or Linux environments.
+CPMAddPackage("gh:SiddiqSoft/CosmosClient#3.2.0")
 
-For detailed testing information, see [DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md#running-tests).
-
----
-
-## 📖 API Usage
-
-### Basic Operations
-
-```cpp
-// Create document
-auto resp = cc.createDocument({
-    .database   = "db",
-    .collection = "coll",
-    .document   = {{"id", "1"}, {"__pk", "pk1"}}
-});
-
-// Find document
-auto resp = cc.findDocument({
-    .database     = "db",
-    .collection   = "coll",
-    .id           = "1",
-    .partitionKey = "pk1"
-});
-
-// Update document
-auto resp = cc.updateDocument({
-    .database     = "db",
-    .collection   = "coll",
-    .id           = "1",
-    .partitionKey = "pk1",
-    .document     = updatedDoc
-});
-
-// Delete document
-auto resp = cc.removeDocument({
-    .database     = "db",
-    .collection   = "coll",
-    .id           = "1",
-    .partitionKey = "pk1"
-});
-
-// Query documents
-auto resp = cc.queryDocuments({
-    .database       = "db",
-    .collection     = "coll",
-    .partitionKey   = "*",
-    .queryStatement = "SELECT * FROM c WHERE c.status = @status",
-    .queryParameters = {{{"name", "@status"}, {"value", "active"}}}
-});
-```
-
-### Async Operations
-
-```cpp
-cc.async({
-    .operation  = siddiqsoft::CosmosOperation::create,
-    .database   = "db",
-    .collection = "coll",
-    .document   = {{"id", "1"}, {"__pk", "pk1"}},
-    .onResponse = [](auto const& ctx, auto const& resp) {
-        if (resp.statusCode == 201) {
-            std::cout << "Document created!" << std::endl;
-        }
-    }
-});
-```
-
-For complete API documentation, see [https://siddiqsoft.github.io/CosmosClient/](https://siddiqsoft.github.io/CosmosClient/).
-
----
-
-## 🏗️ Architecture
-
-### Design Principles
-
-- **Simplicity First** - Minimal abstractions, maximum clarity
-- **JSON Everywhere** - Configuration, I/O, and results use JSON
-- **Modern C++** - Leverage C++23 features
-- **Zero-Cost** - Only pay for what you use
-- **Functional** - Focus on solving problems, not performance
-
-### Project Structure
-
-```
-CosmosClient/
-├── include/
-│   └── siddiqsoft/
-│       └── cosmoscl.hpp          # Main header
-├── tests/
-│   ├── testall.cpp               # Unified test suite (100+ tests)
-│   ├── test_common.hpp           # Test utilities
-│   └── CMakeLists.txt            # Test configuration
-├── CMakeLists.txt                # Build configuration
-├── CMakePresets.json             # CMake presets
-└── [Documentation files]         # See below
+target_link_libraries(your_target PRIVATE cosmoscl::cosmoscl)
 ```
 
 ---
 
-## 📚 Documentation Files
+## Architecture
 
-### Getting Started
-- **[START_HERE.md](START_HERE.md)** - Main entry point
-- **[QUICK_START.md](QUICK_START.md)** - 5-minute quick start
-- **[DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md)** - Comprehensive guide
-- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Navigation hub
+`CosmosClient` is structured into core header components:
 
-### Development
-- **[SCRIPTS_README.md](SCRIPTS_README.md)** - Automated scripts
-- **[build_and_test.sh](build_and_test.sh)** - Build script
-
-### Project Information
-- **[TEST_CONSOLIDATION_SUMMARY.md](TEST_CONSOLIDATION_SUMMARY.md)** - Test consolidation
-- **[PIPELINE_CONSOLIDATION_UPDATE.md](PIPELINE_CONSOLIDATION_UPDATE.md)** - CI/CD updates
-- **[COMPLETE_CONSOLIDATION_SUMMARY.md](COMPLETE_CONSOLIDATION_SUMMARY.md)** - Complete overview
+- **`CosmosEndpoint`**: Parses Azure connection strings (`AccountEndpoint`, `AccountKey`), calculates HMAC-SHA256 signatures, and routes requests to primary or read-replica endpoints.
+- **`CosmosClient`**: Primary client instance handling database, collection, document, query, and stored procedure REST calls.
+- **`CosmosResponseType`**: Encloses response HTTP status, response headers, JSON body, request charge (RUs), and pagination tokens.
+- **`CosmosIterableResponseType`**: Wrapper for iterating over paged query results seamlessly.
 
 ---
 
-## 🔄 Development Workflow
+## Dependencies
 
-### 1. Setup (One-time)
+`CosmosClient` depends on lightweight header-only libraries and platform HTTP components.
+
+See [**`dependencies.md`**](dependencies.md) or [**`docs/integration/dependencies.md`**](docs/integration/dependencies.md) for the full interactive Mermaid diagram and breakdown.
+
+---
+
+## Building
 
 ```bash
-# Install tools
-brew install cmake llvm docker  # macOS
-# or
-sudo apt-get install cmake clang-15 docker.io  # Linux
-
 # Clone repository
 git clone https://github.com/SiddiqSoft/CosmosClient.git
 cd CosmosClient
-git submodule update --init --recursive
+
+# Build with CMake preset
+cmake --preset default
+cmake --build --preset default
 ```
 
-### 2. Build
+---
+
+## Testing
 
 ```bash
-mkdir -p build && cd build
-cmake --preset Apple-Debug ..
-cmake --build . -j$(nproc)
+ctest --preset default
 ```
 
-### 3. Test
+---
 
-```bash
-# Start emulator
-docker run --publish 8081:8081 --publish 10250-10255:10250-10255 \
-  --name cosmos-emulator --rm --detach \
-  mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
-sleep 60
+## Documentation
 
-# Run tests
-ctest --output-on-failure --verbose
-
-# Stop emulator
-docker stop cosmos-emulator
-```
-
-### 4. Develop
-
-```bash
-# Make changes
-# Rebuild
-cmake --build build/Apple-Debug -j$(nproc)
-
-# Run specific tests
-ctest --output-on-failure -R "YourTestName"
-```
-
-For detailed instructions, see [DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md).
+Full documentation site is built with Material MkDocs and published to GitHub Pages:
+- 📖 [**CosmosClient Documentation Site**](https://siddiqsoft.github.io/CosmosClient/)
 
 ---
 
-## 🐛 Troubleshooting
+## License
 
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| CMake not found | `brew install cmake` (macOS) or `sudo apt-get install cmake` (Linux) |
-| Compiler not found | `brew install llvm` (macOS) or `sudo apt-get install clang-15` (Linux) |
-| Emulator not reachable | Check: `docker ps`, `docker logs cosmos-emulator` |
-| Tests timeout | Increase timeout: `ctest --timeout 1800` |
-| Docker permission denied | `sudo usermod -aG docker $USER && newgrp docker` |
-
-For more troubleshooting, see [DEVELOPER_BUILD_GUIDE.md#troubleshooting](DEVELOPER_BUILD_GUIDE.md#troubleshooting).
-
----
-
-## 🗺️ Roadmap
-
-- [x] Documentation
-- [x] Unified test suite (100+ tests)
-- [x] Cross-platform support (Windows, macOS, Linux)
-- [ ] Async operations with auto-retry
-- [ ] OpenSSL for non-Windows platforms
-
----
-
-## 📊 Project Statistics
-
-- **100+ Tests** - Comprehensive test coverage
-- **5 Test Categories** - Validation, Connection, Endpoint, Integration, Comprehensive
-- **Single Database** - Unified test setup
-- **Cross-Platform** - Windows, macOS, Linux
-- **Modern C++** - C++23 features
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `ctest --output-on-failure --verbose`
-5. Submit a pull request
-
-For development guidelines, see [DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md).
-
----
-
-## 📄 License
-
-This project is licensed under the BSD 3-Clause License. See [LICENSE](LICENSE) file for details.
-
----
-
-## 📞 Support
-
-- **Documentation**: See [START_HERE.md](START_HERE.md)
-- **API Reference**: [https://siddiqsoft.github.io/CosmosClient/](https://siddiqsoft.github.io/CosmosClient/)
-- **Issues**: [GitHub Issues](https://github.com/SiddiqSoft/CosmosClient/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/SiddiqSoft/CosmosClient/discussions)
-
----
-
-## 🎯 Quick Navigation
-
-**I want to...**
-
-- **Build and test RIGHT NOW** → [QUICK_START.md](QUICK_START.md)
-- **Understand the complete process** → [DEVELOPER_BUILD_GUIDE.md](DEVELOPER_BUILD_GUIDE.md)
-- **Use automated scripts** → [SCRIPTS_README.md](SCRIPTS_README.md)
-- **Find specific documentation** → [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
-- **Understand the API** → [API Documentation](https://siddiqsoft.github.io/CosmosClient/)
-
----
-
-<p align="right">
-&copy; 2021 Siddiq Software LLC. All rights reserved.
-</p>
+`CosmosClient` is licensed under the [BSD 3-Clause License](LICENSE).
