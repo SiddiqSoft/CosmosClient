@@ -22,20 +22,16 @@
  * The emulator must be started before running tests (use setup-emulator.sh).
  */
 
-static const std::string        EMULATOR_CONNECTION_STRING = "AccountEndpoint=http://127.0.0.1:8081/;AccountKey=C2y6yDjf5/"
-                                                             "R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
-static const std::string        EMULATOR_KEY               = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-static const std::string        EMULATOR_ENDPOINT          = "localhost:8081";
+static const std::string EMULATOR_CONNECTION_STRING =
+        "AccountEndpoint=http://127.0.0.1:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
+static const std::string        EMULATOR_KEY      = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+static const std::string        EMULATOR_ENDPOINT = "localhost:8081";
 
 static const int                SEED_DOCUMENT_COUNT {10};
 static std::string              testDBName          = "cosmoscl_test_DB";
 static std::string              testDBName0         = "cosmoscl_DB_0";
 static std::string              testDBName1         = "cosmoscl_DB_1";
-static std::vector<std::string> testCollectionNames = {
-    "cosmoscl_test_COLL_0",
-    "cosmoscl_test_COLL_1",
-    "cosmoscl_test_COLL_2"
-};
+static std::vector<std::string> testCollectionNames = {"cosmoscl_test_COLL_0", "cosmoscl_test_COLL_1", "cosmoscl_test_COLL_2"};
 static std::string              testDocName0        = "cosmoscl_test_Doc0_";
 
 
@@ -66,7 +62,8 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
     }
 
     // No env vars set — use emulator connection string
-    std::print(std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}\n", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
+    std::print(
+            std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}\n", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
     return std::make_pair(EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
 }
 

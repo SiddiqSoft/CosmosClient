@@ -18,9 +18,10 @@ $CONTAINER_RUNTIME container stop linux-emulator 2>/dev/null || true
 echo "Removing any existing linux-emulator container..."
 $CONTAINER_RUNTIME container rm linux-emulator 2>/dev/null || true
 
+# https://devblogs.microsoft.com/cosmosdb/announcing-general-availability-of-the-azure-cosmos-db-vnext-emulator/
 echo "Pulling latest Azure Cosmos DB Emulator image..."
-echo "The version vnext-EN20260331 support arm64"
-$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+echo "The version vnext-preview support arm64"
+$CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
 
 echo "Starting Azure Cosmos DB Emulator..."
 $CONTAINER_RUNTIME run \
@@ -29,7 +30,7 @@ $CONTAINER_RUNTIME run \
         --name=linux-emulator \
         --rm \
         --detach \
-        mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20260331
+        mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
 
 echo "Waiting for emulator to be ready..."
 sleep 10
