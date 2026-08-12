@@ -53,3 +53,15 @@ Azure Cosmos DB REST API requires a master key signature in the `Authorization` 
 $$\text{Signature} = \text{HMAC-SHA256}(\text{Key}, \text{Verb} + \text{ResourceType} + \text{ResourceLink} + \text{Date})$$
 
 `CosmosClient` builds and encodes this authorization header dynamically for each REST call, ensuring seamless access.
+
+---
+
+## HTTP Payload Debug Tracing (`restcl_DEBUG_TRACE`)
+
+To inspect raw HTTP request headers, REST verbs, endpoints, and response payloads during troubleshooting, build your application with the CMake option `restcl_DEBUG_TRACE=ON`:
+
+```bash
+cmake -B build -Drestcl_DEBUG_TRACE=ON
+```
+
+When enabled, `restcl` outputs detailed diagnostics to `std::cerr` for every outgoing REST request and incoming HTTP response.

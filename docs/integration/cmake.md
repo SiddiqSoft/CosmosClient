@@ -56,3 +56,27 @@ In `CMakeLists.txt`:
 add_subdirectory(3rdparty/CosmosClient)
 target_link_libraries(your_target PRIVATE cosmoscl::cosmoscl)
 ```
+
+---
+
+## CMake Build Options & Debug Tracing
+
+`CosmosClient` relies on `restcl` for HTTP transport. You can enable HTTP request/response payload tracing by configuring the `restcl_DEBUG_TRACE` option:
+
+```cmake
+# Enable HTTP payload debug tracing in CMake
+set(restcl_DEBUG_TRACE ON CACHE BOOL "" FORCE)
+```
+
+Or configure via the command line:
+
+```bash
+cmake -B build -Drestcl_DEBUG_TRACE=ON
+```
+
+### Options Matrix
+
+| Option | Default | Description |
+| :--- | :--- | :--- |
+| `cosmoscl_BUILD_TESTS` | `OFF` | Build unit and integration test suite (`BUILD_TESTS`). |
+| `restcl_DEBUG_TRACE` | `OFF` | Enable verbose HTTP header and payload trace logging to `std::cerr`. |

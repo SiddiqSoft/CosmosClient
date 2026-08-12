@@ -162,6 +162,13 @@ cmake --preset default
 cmake --build --preset default
 ```
 
+### CMake Options
+
+| Option | Default | Description |
+| :--- | :--- | :--- |
+| `cosmoscl_BUILD_TESTS` | `OFF` | Build unit and integration test suite (`BUILD_TESTS`). |
+| `restcl_DEBUG_TRACE` | `OFF` | Enable detailed HTTP header and payload trace logging to `std::cerr`. |
+
 ---
 
 ## Testing
