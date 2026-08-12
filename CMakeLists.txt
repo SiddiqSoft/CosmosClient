@@ -28,7 +28,9 @@ project(cosmoscl
 option(${PROJECT_NAME}_BUILD_TESTS "${PROJECT_NAME} - Build tests. Uncheck for install only runs" OFF)
 option(CI_BUILDID "Version of this build" "0.0.0")
 
-set( CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+if(NOT DEFINED CMAKE_CXX_STANDARD OR "${CMAKE_CXX_STANDARD}" STREQUAL "")
+    set(CMAKE_CXX_STANDARD 23)
+endif()
 set( CMAKE_CXX_STANDARD_REQUIRED On)
 set( CMAKE_CXX_EXTENSIONS OFF)
 # This will allow cmake aware IDE to pickup on library definitions
