@@ -19,9 +19,9 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
         message(STATUS "Using sanitizers for leak and address on ${CMAKE_CXX_COMPILER_ID}")
         target_compile_options(${TESTPROJ} PRIVATE "SHELL:-fsanitize=address,undefined -fprofile-instr-generate -fcoverage-mapping")
         target_link_options(${TESTPROJ} PRIVATE "SHELL:-fsanitize=address,undefined -fprofile-instr-generate -fcoverage-mapping")
-        message(STATUS "Enable instrumentation for code coverage")
-        target_compile_options(${TESTPROJ} PRIVATE -coverage -O0 -g)
-        target_link_options(${TESTPROJ} PRIVATE -coverage)
+        #message(STATUS "Enable instrumentation for code coverage")
+        #target_compile_options(${TESTPROJ} PRIVATE -coverage -O0 -g)
+        #target_link_options(${TESTPROJ} PRIVATE -coverage)
     endif()
 
     if( CMAKE_BUILD_TYPE MATCHES [Dd][Ee][Bb][Uu][Gg])
@@ -30,7 +30,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     endif()
     # Our tests depend on this preprocessor definition during CI/test mode to enable
     # access to protected members.
-    target_compile_definitions(${TESTPROJ} PRIVATE cosmoscl_TESTING_MODE=1)
+    target_compile_definitions(${TESTPROJ} PRIVATE ${PROJECT_NAME}_TESTING_MODE=1)
 
     # Dependencies
     message(STATUS "  Adding dependencies for CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")

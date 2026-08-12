@@ -67,48 +67,50 @@ protected:
 
     static void SetUpTestCase()
     {
+        LF lf(__func__);
+
         if (!IsCosmosReachable()) {
-            std::print(std::cerr, "SetUpTestCase: Cosmos service is not reachable, skipping setup\n");
+            lf.warn("Cosmos service is not reachable, skipping setup");
             return;
         }
 
-        std::print(std::cerr, "SetUpTestCase: Configuring test suite client...\n");
+        lf.msg("Configuring test suite client...");
         testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
         // Clean up any existing test database from previous runs
-        std::print(std::cerr, "SetUpTestCase: Cleaning up existing database '{}' if it exists...\n", testDBName0);
+        lf.msg("Cleaning up existing database '{}' if it exists...", testDBName0);
         auto deleteRc = TSdeleteDatabase(testDBName0);
         if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
-            std::print(std::cerr, "SetUpTestCase: Database cleanup completed (status: {})\n", deleteRc.statusCode);
+            lf.msg("Database cleanup completed (status: {})", deleteRc.statusCode);
         }
 
         // Wait a moment for deletion to propagate
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         // Create test database
-        std::print(std::cerr, "SetUpTestCase: Creating test database '{}'\n", testDBName0);
+        lf.msg("Creating test database '{}'", testDBName0);
         auto createDbRc = TScreateDatabase(testDBName0);
         if (createDbRc.statusCode != 201) {
-            std::print(std::cerr, "SetUpTestCase: ERROR - Failed to create database '{}' (status: {})\n", testDBName0, createDbRc.statusCode);
+            lf.err("ERROR - Failed to create database '{}' (status: {})", testDBName0, createDbRc.statusCode);
             throw std::runtime_error(std::format("Failed to create test database '{}' with status code {}", testDBName0, createDbRc.statusCode));
         }
-        std::print(std::cerr, "SetUpTestCase: Database '{}' created successfully\n", testDBName0);
+        lf.msg("Database '{}' created successfully", testDBName0);
 
         // Create test collections
-        std::print(std::cerr, "SetUpTestCase: Creating {} test collections...\n", testCollectionNames.size());
+        lf.msg("Creating {} test collections...", testCollectionNames.size());
         for (size_t idx = 0; idx < testCollectionNames.size(); ++idx) {
             auto& collName = testCollectionNames[idx];
-            std::print(std::cerr, "SetUpTestCase: Creating collection '{}' in database '{}'\n", collName, testDBName0);
+            lf.msg("Creating collection '{}' in database '{}'", collName, testDBName0);
 
             auto createCollRc = TScreateCollection(testDBName0, collName);
             if (createCollRc.statusCode != 201) {
-                std::print(std::cerr, "SetUpTestCase: ERROR - Failed to create collection '{}' (status: {})\n", collName, createCollRc.statusCode);
+                lf.err("ERROR - Failed to create collection '{}' (status: {})", collName, createCollRc.statusCode);
                 throw std::runtime_error(std::format("Failed to create test collection '{}' with status code {}", collName, createCollRc.statusCode));
             }
-            std::print(std::cerr, "SetUpTestCase: Collection '{}' created successfully\n", collName);
+            lf.msg("Collection '{}' created successfully", collName);
 
             // Seed with test documents
-            std::print(std::cerr, "SetUpTestCase: Seeding collection '{}' with {} documents...\n", collName, SEED_DOCUMENT_COUNT);
+            lf.msg("Seeding collection '{}' with {} documents...", collName, SEED_DOCUMENT_COUNT);
             for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
                 auto seedRc = testSuiteClient.createDocument({.database   = testDBName0,
                                                               .collection = collName,
@@ -119,20 +121,23 @@ protected:
                                                                              {"extra", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")},
                                                                              {"source", std::format("{:0X}-{}-{}", i, getpid(), (i % 2) == 0 ? "even" : "odd")}}});
                 if (seedRc.statusCode != 201) {
-                    std::print(std::cerr, "SetUpTestCase: Warning - Failed to seed document {} in collection '{}' (status: {})\n", i, collName, seedRc.statusCode);
+                    lf.warn("Warning - Failed to seed document {} in collection '{}' (status: {})", i, collName, seedRc.statusCode);
                 }
             }
-            std::print(std::cerr, "SetUpTestCase: Collection '{}' seeding completed\n", collName);
+            lf.msg("Collection '{}' seeding completed", collName);
         }
-        std::print(std::cerr, "SetUpTestCase: Test suite setup completed successfully\n");
     }
 
     static void TearDownTestCase()
     {
-        std::print(std::cerr, "TearDownTestCase: Cleaning up test database '{}'\n", testDBName0);
-        auto deleteRc = TSdeleteDatabase(testDBName0);
-        if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
-            std::print(std::cerr, "TearDownTestCase: Database cleanup completed (status: {})\n", deleteRc.statusCode);
+        {
+            LF lf(__func__);
+
+            lf.msg("Cleaning up test database '{}'", testDBName0);
+            auto deleteRc = TSdeleteDatabase(testDBName0);
+            if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
+                lf.warn("Database cleanup completed (status: {})", deleteRc.statusCode);
+            }
         }
     }
 
@@ -145,6 +150,7 @@ protected:
     // Helper to create test document
     static nlohmann::json CreateTestDocument(const std::string& id, const std::string& pk = "siddiqsoft.com")
     {
+        LF lf(__func__);
         return {{"id", id},
                 {"__pk", pk},
                 {"name", std::format("Document {}", id)},
@@ -242,7 +248,7 @@ TEST(Validation, discoverRegions)
     EXPECT_EQ(5, info.size()) << info.dump(3);
 
     auto rc = cc.discoverRegions();
-    std::print(std::cerr, "{} - ....rc:-\n{}\n", __func__, rc.document.dump(4));
+    std::print(std::cerr, "{} - ....rc:-\n{}", __func__, rc.document.dump(4));
 
     EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
     EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
@@ -448,6 +454,8 @@ TEST(CosmosEndpoint, test2_n)
 /// @test Validates create (201), find (200), and delete (204) operations
 TEST_F(CosmosIntegrationTests, CreateDatabase)
 {
+    LF   lf(__func__);
+
     auto rc1 = TScreateDatabase(testDBName);
     EXPECT_EQ(201, rc1.statusCode);
 
@@ -873,7 +881,7 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
 
-    std::cerr << "Setting up the clients..\n";
+    std::cerr << "Setting up the clients..";
     for (auto i = 0; i < 4; i++) {
         clients.emplace_back(siddiqsoft::CosmosClient {})
                 .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
@@ -883,7 +891,7 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
 
     std::atomic_uint passTest {0};
 
-    std::cerr << "Setting up the clients..configuring..\n";
+    std::cerr << "Setting up the clients..configuring..";
     std::ranges::for_each(clients, [&](auto& cc) {
         auto& currentConfig = cc.configuration();
 
@@ -897,7 +905,7 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
         passTest++;
     });
 
-    std::cerr << "Completed.\n";
+    std::cerr << "Completed.";
 
     EXPECT_EQ(4, passTest.load());
 }
@@ -919,7 +927,7 @@ TEST_F(CosmosIntegrationTests, CreateDocumentThreaded)
     std::latch           endLatch {threadCount};
     std::barrier         creatorsBarrier(threadCount, [&]() noexcept -> void {
 #if defined(DEBUG)
-        std::cerr << std::format("!! Barrier hit. DOCS:{} x threadCount:{} -> addDocsCount:{} removeDocsCount:{} ttx:{}!!\n",
+        std::cerr << std::format("!! Barrier hit. DOCS:{} x threadCount:{} -> addDocsCount:{} removeDocsCount:{} ttx:{}!!",
                                  DOCS,
                                  threadCount,
                                  addDocsCount.load(),
@@ -1692,9 +1700,9 @@ TEST_F(CosmosIntegrationTests, DocumentTTLExpiration)
 {
     std::string docId = GenerateDocId("ttl_doc");
 
-    auto        rc = testSuiteClient.createDocument({.database   = testDBName0,
-                                                     .collection = testCollectionNames[0],
-                                                     .document   = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"ttl", 1}, {"data", "This document will expire"}}});
+    auto        rc    = testSuiteClient.createDocument({.database   = testDBName0,
+                                                        .collection = testCollectionNames[0],
+                                                        .document   = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"ttl", 1}, {"data", "This document will expire"}}});
 
     EXPECT_EQ(201, rc.statusCode);
     EXPECT_TRUE(rc.document.contains("ttl"));

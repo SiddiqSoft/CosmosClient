@@ -12,6 +12,8 @@
 #include <chrono>
 #include <thread>
 #include <print>
+#include <source_location>
+#include <print>
 
 /*
  * Connection resolution order:
@@ -34,6 +36,53 @@ static std::string              testDBName1         = "cosmoscl_DB_1";
 static std::vector<std::string> testCollectionNames = {"cosmoscl_test_COLL_0", "cosmoscl_test_COLL_1", "cosmoscl_test_COLL_2"};
 static std::string              testDocName0        = "cosmoscl_test_Doc0_";
 
+// Colors for output
+static const std::string RED = "\033[0;31m";
+static const std::string BLU = "\033[0;34m";
+static const std::string GRN = "\033[0;32m";
+static const std::string YLW = "\033[1;33m";
+static const std::string NOC = "\033[0m"; // No Color
+
+
+class LF
+{
+    std::source_location m_location;
+    std::string          m_function {};
+
+public:
+    LF(const std::source_location& location = std::source_location::current())
+        : m_location(location)
+    {
+        std::println(std::cerr, "{}{} - STARTED - {}", BLU, m_function.empty() ? m_location.file_name() : m_function, NOC);
+    }
+
+    LF(const std::string& fn, const std::source_location& location = std::source_location::current())
+        : m_location(location)
+        , m_function(fn)
+    {
+        std::println(std::cerr, "{}{} - STARTED -{}", YLW, m_function.empty() ? m_location.file_name() : m_function, NOC);
+    }
+
+    template <typename... Args>
+    void warn(std::format_string<Args...> fmt, Args&&... args)
+    {
+        std::println(std::cerr, "{}{} - {}{}", YLW, m_function.empty() ? m_location.file_name() : m_function, std::format(fmt, std::forward<Args>(args)...), NOC);
+    }
+
+    template <typename... Args>
+    void err(std::format_string<Args...> fmt, Args&&... args)
+    {
+        std::println(std::cerr, "{}{} - {}{}", RED, m_function.empty() ? m_location.file_name() : m_function, std::format(fmt, std::forward<Args>(args)...), NOC);
+    }
+
+    template <typename... Args>
+    void msg(std::format_string<Args...> fmt, Args&&... args)
+    {
+        std::println(std::cerr, "{}{} - {}{}", NOC, m_function.empty() ? m_location.file_name() : m_function, std::format(fmt, std::forward<Args>(args)...), NOC);
+    }
+
+    ~LF() { std::println(std::cerr, "{}{} - COMPLETED - {}", BLU, m_function.empty() ? m_location.file_name() : m_function, NOC); }
+};
 
 ///
 // Helpers
@@ -52,18 +101,19 @@ static siddiqsoft::CosmosClient testSuiteClient;
  */
 static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 {
+    LF   lf(__func__);
+
     auto pcs = std::getenv("CCTEST_PRIMARY_CS");
     auto scs = std::getenv("CCTEST_SECONDARY_CS");
 
     if (pcs) {
         // User provided explicit connection strings
-        std::print(std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}\n", pcs, scs);
+        // std::print(std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}", pcs, scs);
         return std::make_pair(std::string(pcs), scs ? std::string(scs) : std::string(pcs));
     }
 
     // No env vars set — use emulator connection string
-    std::print(
-            std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}\n", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
+    lf.msg("GetConnectionStrings: Using environment settings...primary={}  and secondary={}", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
     return std::make_pair(EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
 }
 
@@ -71,20 +121,21 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 /// @return true when Cosmos DB (emulator or cloud) is reachable.
 static bool IsCosmosReachable()
 {
+    LF                         lf(__func__);
     static std::optional<bool> cached;
     if (cached.has_value()) return *cached;
 
-    std::print(std::cerr, "IsCosmosReachable: Attempting to connect to Cosmos DB (emulator or cloud)...\n");
+    lf.msg("IsCosmosReachable: Attempting to connect to Cosmos DB (emulator or cloud)...");
 
     // Try to connect with retries
     for (int attempt = 0; attempt < 5; ++attempt) {
         siddiqsoft::CosmosClient probe;
         probe.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
         auto rc = probe.discoverRegions();
-        std::print(std::cerr, "IsCosmosReachable: discoverRegions attempt {} returned status code: {}\n", attempt + 1, rc.statusCode);
+        lf.msg("IsCosmosReachable: discoverRegions attempt {} returned status code: {}", attempt + 1, rc.statusCode);
 
         if (rc.statusCode == 200) {
-            std::print(std::cerr, "IsCosmosReachable: Successfully connected to Cosmos DB\n");
+            lf.msg("IsCosmosReachable: Successfully connected to Cosmos DB");
             cached = true;
             return true;
         }
@@ -94,7 +145,7 @@ static bool IsCosmosReachable()
         }
     }
 
-    std::print(std::cerr, "IsCosmosReachable: Failed to connect to Cosmos DB after 5 attempts\n");
+    lf.err("IsCosmosReachable: Failed to connect to Cosmos DB after 5 attempts");
     cached = false;
     return false;
 }

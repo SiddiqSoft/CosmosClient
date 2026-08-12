@@ -903,7 +903,7 @@ namespace siddiqsoft
                                             {"x-ms-cosmos-allow-tentative-writes", "true"}},
                                            {{"id", ctx.database}}};
             return make_CosmosResponseType(
-                    tt, GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}})->send(req));
+                    tt, GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", true}})->send(req));
         }
 
 
@@ -963,7 +963,7 @@ namespace siddiqsoft
             auto ts   = DateUtils::RFC7231();
             auto path = cnxn.current().currentReadUri() + "dbs";
             auto req  = rest_request<char>(HttpMethodType::METHOD_GET,
-                                           path,
+                                          path,
                                            {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "dbs", "", ts)},
                                             {"x-ms-date", ts},
                                             {"x-ms-version", config["apiVersion"]}});
