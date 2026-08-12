@@ -45,6 +45,15 @@ target_include_directories(${PROJECT_NAME}
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
 
+# The following is needed to make the .natvis file available to the IDE for debugging
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SiddiqSoft.CosmosClient.natvis>)
+
+# Install natvis file for Visual Studio debugger visualization
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/SiddiqSoft.CosmosClient.natvis
+        DESTINATION share/natvis
+        OPTIONAL
+        COMPONENT natvis)
+
 # ____________________________________
 # Dependencies
 if(((CMAKE_CXX_COMPILER_ID MATCHES [Cc][Ll][Aa][Nn][Gg]) 

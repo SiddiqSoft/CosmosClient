@@ -5,4 +5,7 @@
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <Natvis Include="$(MSBuildThisFileDirectory)SiddiqSoft.CosmosClient.natvis" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SiddiqSoft.CosmosClient NATVIS Debugger Visualizations
+
+    This file provides custom visualizations for CosmosClient types in Visual Studio debugger.
+    Place this file in:
+    - %VSINSTALLDIR%\Common7\Packages\Debugger\Visualizers\
+    - Or reference it in your MSBuild / CMake project target.
+
+    BSD 3-Clause License
+    Copyright (c) 2021, Siddiq Software LLC
+-->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- ============================================================================
+       siddiqsoft::CosmosEndpoint Visualization
+       ============================================================================ -->
+  <Type Name="siddiqsoft::CosmosEndpoint">
+    <DisplayString Condition="BaseUri._Mypair._Myval2._Mysize == 0">CosmosEndpoint {{empty}}</DisplayString>
+    <DisplayString>CosmosEndpoint {{{BaseUri,s}}}</DisplayString>
+    <Expand>
+      <Item Name="BaseUri">BaseUri</Item>
+      <Item Name="EncodedKey">EncodedKey</Item>
+      <Item Name="Key">Key</Item>
+      <Item Name="ReadableUris">ReadableUris</Item>
+      <Item Name="CurrentReadUriId">CurrentReadUriId</Item>
+      <Item Name="WritableUris">WritableUris</Item>
+      <Item Name="CurrentWriteUriId">CurrentWriteUriId</Item>
+    </Expand>
+  </Type>
+
+  <!-- ============================================================================
+       siddiqsoft::CosmosConnection Visualization
+       ============================================================================ -->
+  <Type Name="siddiqsoft::CosmosConnection">
+    <DisplayString>CosmosConnection mode={CurrentConnectionId} Primary={Primary.BaseUri,s}</DisplayString>
+    <Expand>
+      <Item Name="CurrentConnectionId">CurrentConnectionId</Item>
+      <Item Name="Primary">Primary</Item>
+      <Item Name="Secondary">Secondary</Item>
+    </Expand>
+  </Type>
+
+  <!-- ============================================================================
+       siddiqsoft::CosmosResponseType Visualization
+       ============================================================================ -->
+  <Type Name="siddiqsoft::CosmosResponseType">
+    <DisplayString Condition="statusCode &gt;= 200 &amp;&amp; statusCode &lt; 300">CosmosResponse [HTTP {statusCode} OK] ttx={ttx._MyRep}µs</DisplayString>
+    <DisplayString>CosmosResponse [HTTP {statusCode} Error] ttx={ttx._MyRep}µs</DisplayString>
+    <Expand>
+      <Item Name="statusCode">statusCode</Item>
+      <Item Name="ttx">ttx</Item>
+      <Item Name="document">document</Item>
+    </Expand>
+  </Type>
+
+  <!-- ============================================================================
+       siddiqsoft::CosmosIterableResponseType Visualization
+       ============================================================================ -->
+  <Type Name="siddiqsoft::CosmosIterableResponseType">
+    <DisplayString Condition="statusCode &gt;= 200 &amp;&amp; statusCode &lt; 300 &amp;&amp; continuationToken._Mypair._Myval2._Mysize &gt; 0">CosmosIterableResponse [HTTP {statusCode} OK] continuationToken={continuationToken,s}</DisplayString>
+    <DisplayString Condition="statusCode &gt;= 200 &amp;&amp; statusCode &lt; 300">CosmosIterableResponse [HTTP {statusCode} OK] (end of pages)</DisplayString>
+    <DisplayString>CosmosIterableResponse [HTTP {statusCode} Error]</DisplayString>
+    <Expand>
+      <Item Name="statusCode">statusCode</Item>
+      <Item Name="continuationToken">continuationToken</Item>
+      <Item Name="ttx">ttx</Item>
+      <Item Name="document">document</Item>
+    </Expand>
+  </Type>
+
+  <!-- ============================================================================
+       siddiqsoft::CosmosArgumentType Visualization
+       ============================================================================ -->
+  <Type Name="siddiqsoft::CosmosArgumentType">
+    <DisplayString>CosmosArgument op={operation} db={database,s} coll={collection,s} id={id,s}</DisplayString>
+    <Expand>
+      <Item Name="operation">operation</Item>
+      <Item Name="database">database</Item>
+      <Item Name="collection">collection</Item>
+      <Item Name="id">id</Item>
+      <Item Name="partitionKey">partitionKey</Item>
+      <Item Name="continuationToken">continuationToken</Item>
+      <Item Name="queryStatement">queryStatement</Item>
+      <Item Name="queryParameters">queryParameters</Item>
+      <Item Name="document">document</Item>
+    </Expand>
+  </Type>
+
+  <!-- ============================================================================
+       siddiqsoft::CosmosClient Visualization
+       ============================================================================ -->
+  <Type Name="siddiqsoft::CosmosClient">
+    <DisplayString>CosmosClient Primary={cnxn.Primary.BaseUri,s} configured={isConfigured._My_val}</DisplayString>
+    <Expand>
+      <Item Name="isConfigured">isConfigured</Item>
+      <Item Name="connection">cnxn</Item>
+      <Item Name="config">config</Item>
+      <Item Name="serviceSettings">serviceSettings</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>
