@@ -32,9 +32,10 @@ PLATFORM="${2:-macos}"
 BUILD_DIR="$PROJECT_ROOT/build"
 EMULATOR_NAME="cosmos-emulator"
 EMULATOR_PORT="8081"
+EMULATOR_HOST="lws2.siddiq.org"
 # This is the emulator connection string for the vnext emulator. It uses the default key and endpoint.
-CCTEST_PRIMARY_CS="AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
-CCTEST_SECONDARY_CS="AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
+CCTEST_PRIMARY_CS="AccountEndpoint=https://${EMULATOR_HOST}:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
+CCTEST_SECONDARY_CS="AccountEndpoint=https://${EMULATOR_HOST}:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
 
 
 # Validate inputs
@@ -112,7 +113,7 @@ start_emulator() {
     sleep 60
     
     # Verify emulator is running
-    if curl -s -k https://localhost:$EMULATOR_PORT/_explorer/index.html > /dev/null; then
+    if curl -s -k https://${EMULATOR_HOST}:$EMULATOR_PORT/_explorer/index.html > /dev/null; then
         echo -e "${GREEN}✓ Emulator is ready${NC}"
     else
         echo -e "${RED}✗ Emulator failed to start${NC}"

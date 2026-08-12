@@ -53,13 +53,11 @@
 #include "siddiqsoft/encryption-utils.hpp"
 
 /// @brief Provides the all important Rest Client using WinHTTP
+#define DEBUG_TRACE 1
 #include "siddiqsoft/restcl.hpp"
 
 /// @brief Add asynchrony to our library
 #include "siddiqsoft/simple_pool.hpp"
-
-/// @brief Add the json formatter
-// #include "siddiqsoft/formatters.hpp"
 
 #include "siddiqsoft/timethis.hpp"
 
