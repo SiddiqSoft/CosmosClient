@@ -6,7 +6,9 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
     set( CMAKE_CXX_EXTENSIONS Off)
     # This will allow cmake aware IDE to pickup on library definitions
     set( CMAKE_EXPORT_COMPILE_COMMANDS ON)
-    
+    # Allow us to see the IO trace output from the restcl library during test runs.
+    set( restcl_DEBUG_TRACE ON)
+
     add_executable(${TESTPROJ})
 
     target_compile_features(${TESTPROJ} PRIVATE cxx_std_${CMAKE_CXX_STANDARD})
