@@ -150,6 +150,18 @@ static bool IsCosmosReachable()
     return false;
 }
 
+static auto CheckEmulatorLivenessProbe() -> bool
+{
+    LF lf(__func__);
+    auto [primaryCS, secondaryCS] = GetConnectionStrings();
+    if (primaryCS == EMULATOR_CONNECTION_STRING) {
+        // Emulator connection string is being used, check if emulator is reachable
+        auto wrc = siddiqsoft::GetRESTClient();
+        
+    }
+    return true; // Not using emulator, assume reachable
+}
+
 /// @brief Returns the active connection strings.
 static auto GetActiveConnectionStrings() -> std::pair<std::string, std::string>
 {

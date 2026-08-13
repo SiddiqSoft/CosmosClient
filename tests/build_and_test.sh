@@ -188,7 +188,7 @@ run_tests() {
     else
         echo ""
         echo -e "${YELLOW}⚠ Emulator not running, skipping integration tests${NC}"
-        echo "Start emulator with: docker run --publish 8081:8081 --publish 10250-10255:10250-10255 --name cosmos-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest"
+        echo "Start emulator with: docker run --publish 8081:8081 --publish 8080:8080 --publish 1234:1234 --publish 10250-10255:10250-10255 --name cosmos-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest"
     fi
     
     cd "$PROJECT_ROOT"

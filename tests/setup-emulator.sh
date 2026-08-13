@@ -26,6 +26,8 @@ $CONTAINER_RUNTIME pull mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:v
 echo "Starting Azure Cosmos DB Emulator..."
 $CONTAINER_RUNTIME run \
         --publish 8081:8081 \
+        --publish 8080:8080 \
+        --publish 1234:1234 \
         --publish 10250-10255:10250-10255 \
         --name=linux-emulator \
         --rm \
@@ -39,8 +41,8 @@ echo "Checking container status..."
 $CONTAINER_RUNTIME ps | grep linux-emulator || echo "Warning: Container may not be running"
 
 sleep 15
-if curl -fsI https://localhost:8081 > /dev/null; then
-  echo "Azure Cosmos DB Emulator is ready on https://localhost:8081"
+if curl -fsI http://localhost:8080/alive > /dev/null; then
+  echo "Azure Cosmos DB Emulator is ready on http://localhost:8080"
 else
   echo "Azure Cosmos DB Emulator is NOT ready"
 fi
