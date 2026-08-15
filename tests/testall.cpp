@@ -68,7 +68,7 @@ protected:
 
     static void SetUpTestCase()
     {
-        LF lf(__func__);
+        siddiqsoft::ScopeTrace  lf;
 
         if (!IsCosmosReachable()) {
             lf.warn("Cosmos service is not reachable, skipping setup");
@@ -132,7 +132,7 @@ protected:
     static void TearDownTestCase()
     {
         {
-            LF lf(__func__);
+            siddiqsoft::ScopeTrace  lf;
 
             lf.msg("Cleaning up test database '{}'", testDBName0);
             auto deleteRc = TSdeleteDatabase(testDBName0);
@@ -151,7 +151,7 @@ protected:
     // Helper to create test document
     static nlohmann::json CreateTestDocument(const std::string& id, const std::string& pk = "siddiqsoft.com")
     {
-        LF lf(__func__);
+        siddiqsoft::ScopeTrace  lf;
         return {{"id", id},
                 {"__pk", pk},
                 {"name", std::format("Document {}", id)},
@@ -455,7 +455,7 @@ TEST(CosmosEndpoint, test2_n)
 /// @test Validates create (201), find (200), and delete (204) operations
 TEST_F(CosmosIntegrationTests, CreateDatabase)
 {
-    LF   lf(__func__);
+    siddiqsoft::ScopeTrace    lf;
 
     auto rc1 = TScreateDatabase(testDBName);
     EXPECT_EQ(201, rc1.statusCode);

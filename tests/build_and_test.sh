@@ -32,7 +32,7 @@ PLATFORM="${2:-macos}"
 BUILD_DIR="$PROJECT_ROOT/build"
 EMULATOR_NAME="cosmos-emulator"
 EMULATOR_PORT="8081"
-EMULATOR_HOST="lws2.siddiq.org"
+EMULATOR_HOST="localhost"
 # This is the emulator connection string for the vnext emulator. It uses the default key and endpoint.
 CCTEST_PRIMARY_CS="AccountEndpoint=https://${EMULATOR_HOST}:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
 CCTEST_SECONDARY_CS="AccountEndpoint=https://${EMULATOR_HOST}:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"

@@ -50,6 +50,7 @@ if(${${PROJECT_NAME}_BUILD_TESTS})
             string2map::string2map
             asynchrony::asynchrony
             timethis::timethis
+            ScopeTrace::ScopeTrace
             AzureCppUtils::AzureCppUtils
             StringHelpers::StringHelpers)
 
