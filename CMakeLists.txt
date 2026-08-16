@@ -85,12 +85,12 @@ target_link_libraries(${PROJECT_NAME} INTERFACE GenProcessInfo::GenProcessInfo)
 CPMAddPackage("gh:SiddiqSoft/TimeThis#2.4.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/ScopeTrace#master")
+CPMAddPackage("gh:SiddiqSoft/ScopeTrace#0.50.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE ScopeTrace::ScopeTrace)
 
 # This will bring in a set of dependencies that are required for the restcl library to work.
 # arrp, asynchrony, azurecpputils, runonend and ctre
-CPMAddPackage("gh:SiddiqSoft/restcl#2.3.13")
+CPMAddPackage("gh:SiddiqSoft/restcl#a828feca36ea009998affe61f6803e10b34f0534")
 set(restcl_DEBUG_TRACE ON CACHE BOOL "Enable debug trace for restcl library" FORCE)
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 

@@ -44,6 +44,8 @@ static std::string              testDocName0        = "cosmoscl_test_Doc0_";
 #pragma region Test Suite Helpers
 static siddiqsoft::CosmosClient testSuiteClient;
 
+static auto                     st = siddiqsoft::ScopeTrace::GetInstance().sub_scope("test_common", siddiqsoft::LogLevel::trace);
+
 /**
  * @brief Get the Connection Strings object.
  *
@@ -55,10 +57,8 @@ static siddiqsoft::CosmosClient testSuiteClient;
  */
 static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 {
-    siddiqsoft::ScopeTrace st;
-
-    auto                   pcs = std::getenv("CCTEST_PRIMARY_CS");
-    auto                   scs = std::getenv("CCTEST_SECONDARY_CS");
+    auto pcs = std::getenv("CCTEST_PRIMARY_CS");
+    auto scs = std::getenv("CCTEST_SECONDARY_CS");
 
     if (pcs) {
         // User provided explicit connection strings
@@ -67,7 +67,7 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
     }
 
     // No env vars set — use emulator connection string
-    st.msg("GetConnectionStrings: Using environment settings...primary={}  and secondary={}", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
+    st.info("GetConnectionStrings: Using environment settings...primary={}  and secondary={}", EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
     return std::make_pair(EMULATOR_CONNECTION_STRING, EMULATOR_CONNECTION_STRING);
 }
 
@@ -75,21 +75,20 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 /// @return true when Cosmos DB (emulator or cloud) is reachable.
 static bool IsCosmosReachable()
 {
-    siddiqsoft::ScopeTrace st(__func__);
     static std::optional<bool> cached;
     if (cached.has_value()) return *cached;
 
-    st.msg("IsCosmosReachable: Attempting to connect to Cosmos DB (emulator or cloud)...");
+    st.info("IsCosmosReachable: Attempting to connect to Cosmos DB (emulator or cloud)...");
 
     // Try to connect with retries
     for (int attempt = 0; attempt < 5; ++attempt) {
         siddiqsoft::CosmosClient probe;
         probe.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
         auto rc = probe.discoverRegions();
-        st.msg("IsCosmosReachable: discoverRegions attempt {} returned status code: {}", attempt + 1, rc.statusCode);
+        st.info("IsCosmosReachable: discoverRegions attempt {} returned status code: {}", attempt + 1, rc.statusCode);
 
         if (rc.statusCode == 200) {
-            st.msg("IsCosmosReachable: Successfully connected to Cosmos DB");
+            st.info("IsCosmosReachable: Successfully connected to Cosmos DB");
             cached = true;
             return true;
         }
@@ -106,7 +105,6 @@ static bool IsCosmosReachable()
 
 static auto CheckEmulatorLivenessProbe() -> bool
 {
-    siddiqsoft::ScopeTrace st(__func__);
     auto [primaryCS, secondaryCS] = GetConnectionStrings();
     if (primaryCS == EMULATOR_CONNECTION_STRING) {
         // Emulator connection string is being used, check if emulator is reachable

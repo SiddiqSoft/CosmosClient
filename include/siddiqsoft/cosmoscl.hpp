@@ -52,6 +52,7 @@
 #include "siddiqsoft/conversion-utils.hpp"
 #include "siddiqsoft/encryption-utils.hpp"
 
+#include "siddiqsoft/ScopeTrace.hpp"
 /// @brief Provides the all important Rest Client using WinHTTP
 #define DEBUG_TRACE 1
 #include "siddiqsoft/restcl.hpp"
@@ -64,6 +65,9 @@
 
 namespace siddiqsoft
 {
+    /// @brief The global logging instance for the cosmoscl library.
+    static auto& gCLog = siddiqsoft::ScopeTrace::GetInstance("cosmoscl", siddiqsoft::LogLevel::error);
+
 #pragma region CosmosEndpoint
     /// @brief Cosmos Connection String as available in the Azure Portal
     struct CosmosEndpoint
@@ -961,7 +965,7 @@ namespace siddiqsoft
             auto ts   = DateUtils::RFC7231();
             auto path = cnxn.current().currentReadUri() + "dbs";
             auto req  = rest_request<char>(HttpMethodType::METHOD_GET,
-                                          path,
+                                           path,
                                            {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "dbs", "", ts)},
                                             {"x-ms-date", ts},
                                             {"x-ms-version", config["apiVersion"]}});

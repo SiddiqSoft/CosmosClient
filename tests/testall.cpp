@@ -58,6 +58,8 @@
 // UNIFIED TEST FIXTURE - Single Setup/Teardown for All Tests
 // ============================================================================
 
+static auto lf = siddiqsoft::ScopeTrace::GetInstance().sub_scope("CosmosIntegrationTests", siddiqsoft::LogLevel::trace);
+
 class CosmosIntegrationTests : public ::testing::Test
 {
 protected:
@@ -68,50 +70,48 @@ protected:
 
     static void SetUpTestCase()
     {
-        siddiqsoft::ScopeTrace  lf;
-
         if (!IsCosmosReachable()) {
             lf.warn("Cosmos service is not reachable, skipping setup");
             return;
         }
 
-        lf.msg("Configuring test suite client...");
+        lf.info("Configuring test suite client...");
         testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
 
         // Clean up any existing test database from previous runs
-        lf.msg("Cleaning up existing database '{}' if it exists...", testDBName0);
+        lf.info("Cleaning up existing database '{}' if it exists...", testDBName0);
         auto deleteRc = TSdeleteDatabase(testDBName0);
         if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
-            lf.msg("Database cleanup completed (status: {})", deleteRc.statusCode);
+            lf.info("Database cleanup completed (status: {})", deleteRc.statusCode);
         }
 
         // Wait a moment for deletion to propagate
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         // Create test database
-        lf.msg("Creating test database '{}'", testDBName0);
+        lf.info("Creating test database '{}'", testDBName0);
         auto createDbRc = TScreateDatabase(testDBName0);
         if (createDbRc.statusCode != 201) {
             lf.err("ERROR - Failed to create database '{}' (status: {})", testDBName0, createDbRc.statusCode);
             throw std::runtime_error(std::format("Failed to create test database '{}' with status code {}", testDBName0, createDbRc.statusCode));
         }
-        lf.msg("Database '{}' created successfully", testDBName0);
+        lf.info("Database '{}' created successfully", testDBName0);
 
         // Create test collections
-        lf.msg("Creating {} test collections...", testCollectionNames.size());
+        lf.info("Creating {} test collections...", testCollectionNames.size());
         for (size_t idx = 0; idx < testCollectionNames.size(); ++idx) {
             auto& collName = testCollectionNames[idx];
-            lf.msg("Creating collection '{}' in database '{}'", collName, testDBName0);
+            lf.info("Creating collection '{}' in database '{}'", collName, testDBName0);
 
             auto createCollRc = TScreateCollection(testDBName0, collName);
             if (createCollRc.statusCode != 201) {
                 lf.err("ERROR - Failed to create collection '{}' (status: {})", collName, createCollRc.statusCode);
                 throw std::runtime_error(std::format("Failed to create test collection '{}' with status code {}", collName, createCollRc.statusCode));
             }
-            lf.msg("Collection '{}' created successfully", collName);
+            lf.info("Collection '{}' created successfully", collName);
 
             // Seed with test documents
-            lf.msg("Seeding collection '{}' with {} documents...", collName, SEED_DOCUMENT_COUNT);
+            lf.info("Seeding collection '{}' with {} documents...", collName, SEED_DOCUMENT_COUNT);
             for (auto i = 0; i < SEED_DOCUMENT_COUNT; i++) {
                 auto seedRc = testSuiteClient.createDocument({.database   = testDBName0,
                                                               .collection = collName,
@@ -125,16 +125,14 @@ protected:
                     lf.warn("Warning - Failed to seed document {} in collection '{}' (status: {})", i, collName, seedRc.statusCode);
                 }
             }
-            lf.msg("Collection '{}' seeding completed", collName);
+            lf.info("Collection '{}' seeding completed", collName);
         }
     }
 
     static void TearDownTestCase()
     {
         {
-            siddiqsoft::ScopeTrace  lf;
-
-            lf.msg("Cleaning up test database '{}'", testDBName0);
+            lf.info("Cleaning up test database '{}'", testDBName0);
             auto deleteRc = TSdeleteDatabase(testDBName0);
             if (deleteRc.statusCode == 204 || deleteRc.statusCode == 404) {
                 lf.warn("Database cleanup completed (status: {})", deleteRc.statusCode);
@@ -151,7 +149,6 @@ protected:
     // Helper to create test document
     static nlohmann::json CreateTestDocument(const std::string& id, const std::string& pk = "siddiqsoft.com")
     {
-        siddiqsoft::ScopeTrace  lf;
         return {{"id", id},
                 {"__pk", pk},
                 {"name", std::format("Document {}", id)},
@@ -455,9 +452,7 @@ TEST(CosmosEndpoint, test2_n)
 /// @test Validates create (201), find (200), and delete (204) operations
 TEST_F(CosmosIntegrationTests, CreateDatabase)
 {
-    siddiqsoft::ScopeTrace    lf;
-
-    auto rc1 = TScreateDatabase(testDBName);
+    auto                   rc1 = TScreateDatabase(testDBName);
     EXPECT_EQ(201, rc1.statusCode);
 
     auto rc2 = TSfindDatabase(testDBName);
@@ -1701,9 +1696,9 @@ TEST_F(CosmosIntegrationTests, DocumentTTLExpiration)
 {
     std::string docId = GenerateDocId("ttl_doc");
 
-    auto        rc    = testSuiteClient.createDocument({.database   = testDBName0,
-                                                        .collection = testCollectionNames[0],
-                                                        .document   = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"ttl", 1}, {"data", "This document will expire"}}});
+    auto        rc = testSuiteClient.createDocument({.database   = testDBName0,
+                                                     .collection = testCollectionNames[0],
+                                                     .document   = {{"id", docId}, {"__pk", "siddiqsoft.com"}, {"ttl", 1}, {"data", "This document will expire"}}});
 
     EXPECT_EQ(201, rc.statusCode);
     EXPECT_TRUE(rc.document.contains("ttl"));
