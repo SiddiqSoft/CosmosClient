@@ -890,7 +890,6 @@ namespace siddiqsoft
                                            std::format("{}dbs", cnxn.current().currentWriteUri()),
                                            {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "POST", "dbs", "", ts)},
                                             {"x-ms-date", ts},
-                                            {"x-ms-session-token", ts},
                                             {"x-ms-version", config["apiVersion"]},
                                             {"x-ms-cosmos-allow-tentative-writes", "true"}},
                                            {{"id", ctx.database}}};
@@ -914,7 +913,6 @@ namespace siddiqsoft
                     std::format("{}dbs/{}", cnxn.current().currentWriteUri(), ctx.database),
                     {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "DELETE", "dbs", std::format("dbs/{}", ctx.database), ts)},
                      {"x-ms-date", ts},
-                     {"x-ms-session-token", ts},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
             return make_CosmosResponseType(
@@ -936,7 +934,6 @@ namespace siddiqsoft
                     std::format("{}dbs/{}", cnxn.current().currentReadUri(), ctx.database),
                     {{"Authorization", EncryptionUtils::CosmosToken<char>(cnxn.current().Key, "GET", "dbs", std::format("dbs/{}", ctx.database), ts)},
                      {"x-ms-date", ts},
-                     {"x-ms-session-token", ts},
                      {"x-ms-version", config["apiVersion"]},
                      {"x-ms-cosmos-allow-tentative-writes", "true"}}};
             return make_CosmosResponseType(
