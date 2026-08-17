@@ -62,7 +62,7 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 
     if (pcs) {
         // User provided explicit connection strings
-        // std::print(std::cerr, "GetConnectionStrings: Using environment settings...primary={}  and secondary={}", pcs, scs);
+        // st.info("GetConnectionStrings: Using environment settings...primary={}  and secondary={}", pcs, scs);
         return std::make_pair(std::string(pcs), scs ? std::string(scs) : std::string(pcs));
     }
 

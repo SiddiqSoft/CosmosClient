@@ -13,6 +13,18 @@ cmake_minimum_required(VERSION 3.29)
 # Figures out the value ${CURRENT_PROJECT_VERSION} and therefore the ${PROJECT_VERSION}
 # Brings in the CPM module into pack/CPM.make
 include(pack/CMakeCommonHelpers.cmake)
+if(WIN32)
+    if(DEFINED ENV{LOCALAPPDATA})
+        set(CPM_SOURCE_CACHE "$ENV{LOCALAPPDATA}/CPM/.cpmcache")
+    elseif(DEFINED ENV{USERPROFILE})
+        set(CPM_SOURCE_CACHE "$ENV{USERPROFILE}/AppData/Local/CPM/.cpmcache")
+    else()
+        set(CPM_SOURCE_CACHE "${CMAKE_BINARY_DIR}/.cpmcache")
+    endif()
+else()
+    set(CPM_SOURCE_CACHE "$ENV{HOME}/.cache/.cpmcache")
+endif()
+set(CPM_SOURCE_CACHE ${CPM_SOURCE_CACHE} CACHE PATH "CPM source cache")
 
 # ______________________
 # Project Metadata block
@@ -84,9 +96,6 @@ CPMAddPackage("gh:SiddiqSoft/GenProcessInfo#2.6.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE GenProcessInfo::GenProcessInfo)
 CPMAddPackage("gh:SiddiqSoft/TimeThis#2.4.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
-
-CPMAddPackage("gh:SiddiqSoft/ScopeTrace#0.50.0")
-target_link_libraries(${PROJECT_NAME} INTERFACE ScopeTrace::ScopeTrace)
 
 # This will bring in a set of dependencies that are required for the restcl library to work.
 # arrp, asynchrony, azurecpputils, runonend and ctre

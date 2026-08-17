@@ -367,14 +367,11 @@ namespace siddiqsoft
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 
-#if defined(azcosmoscl_TESTING_MODE)
-            std::println(std::cerr, "{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
-#endif
+            gCLog.trace("{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
         }
         else if (ret.has_value()) {
-#if defined(azcosmoscl_TESTING_MODE)
-            std::println(std::cerr, "{} - Raw response (failed):\n{}", __func__, ret);
-#endif
+            gCLog.trace("{} - Raw response (failed):\n{}", __func__, *ret);
+
             // Has value but not successful, return the code
             std::tie(crt.statusCode, std::ignore) = ret->status();
         }
@@ -511,9 +508,8 @@ namespace siddiqsoft
 
         iterableRespFromCosmos.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-#if defined(azcosmoscl_TESTING_MODE)
-            std::cerr << std::format("{} - Raw response (good):\n{}", __func__, *ret);
-#endif
+            gCLog.trace("{} - Raw response (good):\n{}", __func__, *ret);
+
             iterableRespFromCosmos.statusCode = ret->statusCode();
             iterableRespFromCosmos.document   = std::move(ret->getContentBodyJSON());
             try {
@@ -522,14 +518,10 @@ namespace siddiqsoft
             catch (...) {
             }
 
-#if defined(azcosmoscl_TESTING_MODE)
-            std::cerr << std::format("{} - CIRT (good)  statusCode:{}\n{}", __func__, iterableRespFromCosmos.statusCode, iterableRespFromCosmos.document.dump(4));
-#endif
+            gCLog.trace("{} - CIRT (good)  statusCode:{}\n{}", __func__, iterableRespFromCosmos.statusCode, iterableRespFromCosmos.document.dump(4));
         }
         else if (ret.has_value()) {
-#if defined(azcosmoscl_TESTING_MODE)
-            std::cerr << std::format("{} - Raw response (failed):\n{}", __func__, *ret);
-#endif
+            gCLog.trace("{} - Raw response (failed):\n{}", __func__, *ret);
             // Has value but not successful, return the code
             std::tie(iterableRespFromCosmos.statusCode, std::ignore) = ret->status();
         }
@@ -634,13 +626,13 @@ namespace siddiqsoft
                     if (req.onResponse) req.onResponse(req, resp);
                     if (resp.success() && !resp.continuationToken.empty()) {
                         req.continuationToken = resp.continuationToken;
-#if defined(DEBUG)
-                        std::cerr << std::format("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue\n",
-                                                 resp.statusCode,
-                                                 resp.continuationToken,
-                                                 resp.document.value("_count", 0),
-                                                 resp.ttx);
-#endif
+
+                        gCLog.trace("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue",
+                                    resp.statusCode,
+                                    resp.continuationToken,
+                                    resp.document.value("_count", 0),
+                                    resp.ttx);
+
                         // Queue the next instance.
                         // This approach allows for controlled shutdown as the thread is able to listen and handle
                         // stop requests.
@@ -681,13 +673,13 @@ namespace siddiqsoft
                     if (req.onResponse) req.onResponse(req, resp);
                     if (resp.success() && !resp.continuationToken.empty()) {
                         req.continuationToken = resp.continuationToken;
-#if defined(DEBUG)
-                        std::cerr << std::format("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue\n",
-                                                 resp.statusCode,
-                                                 resp.continuationToken,
-                                                 resp.document.value("_count", 0),
-                                                 resp.ttx);
-#endif
+
+                        gCLog.trace("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue",
+                                    resp.statusCode,
+                                    resp.continuationToken,
+                                    resp.document.value("_count", 0),
+                                    resp.ttx);
+
                         // Queue the next instance.
                         // This approach allows for controlled shutdown as the thread is able to listen and handle
                         // stop requests.
@@ -695,9 +687,7 @@ namespace siddiqsoft
                     }
                 } break;
                 default: {
-#if defined(DEBUG)
-                    std::cerr << std::format("....Operation `{}` NOT SUPPORTED\n", std::to_underlying(req.operation));
-#endif
+                    gCLog.warn("....Operation `{}` NOT SUPPORTED", std::to_underlying(req.operation));
                 }
             }
         }
@@ -707,7 +697,7 @@ namespace siddiqsoft
         inline static const std::string CosmosClientUserAgentString {"SiddiqSoft.CosmosClient/0.10.0"};
 
         /// @brief Default constructor
-        CosmosClient() { }
+        CosmosClient() = default;
 
         /// @brief Move constructor
         /// @param src Other client instance
@@ -742,42 +732,35 @@ namespace siddiqsoft
         CosmosClient& configure(const nlohmann::json& src = {}) noexcept(false)
         {
             if (!src.empty()) {
-                if (src.is_array()) throw std::invalid_argument("src is array instead of object");
+                if (src.is_array()) gCLog.err_throw<std::invalid_argument>("src is array instead of object");
                 // The minimum is that the ConnectionStrings exist with at least one element; a string from the Azure portal with
                 // the Primary Connection String.
-                if (!src.contains("connectionStrings")) throw std::invalid_argument("connectionStrings missing");
+                if (!src.contains("connectionStrings")) gCLog.err_throw<std::invalid_argument>("connectionStrings missing");
                 // The current implementation requires that the Azure Cosmos service be configured with
                 // partition keys--most non-trivial implementations use Geo-spatial deployments and partition keys
                 // are required during setup.
-                if (!src.contains("partitionKeyNames")) throw std::invalid_argument("partitionKeyNames missing");
+                if (!src.contains("partitionKeyNames")) gCLog.err_throw<std::invalid_argument>("partitionKeyNames missing");
 
-#if defined(DEBUG0)
-                std::print(std::cerr, "{} - Contents of existing configuraion\n{}\nIncoming Configuration:\n{}\n", __func__, config.dump(2), src.dump(2));
-#endif
+                gCLog.trace("- Contents of existing configuraion\n{}\nIncoming Configuration:\n{}", config.dump(), src.dump());
 
                 // Update our local configuration
                 // config.update(src);
                 config["connectionStrings"] = src["connectionStrings"];
                 config["partitionKeyNames"] = src["partitionKeyNames"];
 
-#if defined(DEBUG0)
-                std::print(std::cerr, "{} - Contents of Updated configuraion\n{}\n", __func__, config.dump(2));
-#endif
+                gCLog.trace("- Contents of Updated configuraion\n{}", config.dump());
 
                 // We continue configuring..
                 // After the update we must ensure that the requirements are still met: ConnectionStrings array
-                if (!config["connectionStrings"].is_array()) throw std::invalid_argument("connectionStrings must be array");
-                if (config["connectionStrings"].size() < 1) throw std::invalid_argument("connectionStrings array must contain atleast primary element");
+                if (!config["connectionStrings"].is_array()) gCLog.err_throw<std::invalid_argument>("connectionStrings must be array");
+                if (config["connectionStrings"].size() < 1) gCLog.err_throw<std::invalid_argument>("connectionStrings array must contain atleast primary element");
 
                 // Update the database configuration
-#if defined(DEBUG0)
-                std::print(std::cerr, "{} - Contents of connection configuraion\n{}\n", __func__, nlohmann::json(cnxn).dump(2));
-#endif
+                gCLog.trace("- Contents of connection configuraion\n{}", nlohmann::json(cnxn).dump());
                 cnxn.configure(config);
 
-#if defined(DEBUG0)
-                std::print(std::cerr, "{} - Contents of Updated connection configuraion\n{}\n", __func__, nlohmann::json(cnxn).dump(2));
-#endif
+                gCLog.trace("- Contents of Updated connection configuraion\n{}", nlohmann::json(cnxn).dump());
+
                 // Discover the regions..
                 if (auto resp = discoverRegions(); resp.statusCode == 200 && !resp.document.empty()) {
                     serviceSettings = resp.document;
@@ -804,57 +787,57 @@ namespace siddiqsoft
                 case CosmosOperation::listDatabases: break;
 
                 case CosmosOperation::createDatabase: {
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
                 } break;
 
                 case CosmosOperation::createCollection: {
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
-                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
+                    if (op.collection.empty()) gCLog.err_throw<std::invalid_argument>("op.collection required");
                 } break;
 
                 case CosmosOperation::listDocuments:
-                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
+                    if (op.collection.empty()) gCLog.err_throw<std::invalid_argument>("op.collection required");
                     [[fallthrough]];
                 case CosmosOperation::listCollections:
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
                     break;
                     // Create and Upsert have same validation requirements
                 case CosmosOperation::create:
                 case CosmosOperation::upsert:
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
-                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
-                    if (op.document.empty()) throw std::invalid_argument("op.document required");
-                    if (op.document.value("id", "").empty()) throw std::invalid_argument("op.document[id] required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
+                    if (op.collection.empty()) gCLog.err_throw<std::invalid_argument>("op.collection required");
+                    if (op.document.empty()) gCLog.err_throw<std::invalid_argument>("op.document required");
+                    if (op.document.value("id", "").empty()) gCLog.err_throw<std::invalid_argument>("op.document[id] required");
                     if (!op.document.contains(config.at("/partitionKeyNames/0"_json_pointer)))
-                        throw std::invalid_argument("op.document[] must contain partition key");
+                        gCLog.err_throw<std::invalid_argument>("op.document[] must contain partition key");
                     break;
                 case CosmosOperation::update:
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
-                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
-                    if (op.id.empty()) throw std::invalid_argument("op.id required");
-                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
-                    if (op.document.empty()) throw std::invalid_argument("op.document required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
+                    if (op.collection.empty()) gCLog.err_throw<std::invalid_argument>("op.collection required");
+                    if (op.id.empty()) gCLog.err_throw<std::invalid_argument>("op.id required");
+                    if (op.partitionKey.empty()) gCLog.err_throw<std::invalid_argument>("op.partitionKey required");
+                    if (op.document.empty()) gCLog.err_throw<std::invalid_argument>("op.document required");
                     break;
                     // Query has same requirement as remove and find except for id so we need to split its check
                 case CosmosOperation::query:
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
-                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
-                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
-                    if (op.queryStatement.empty()) throw std::invalid_argument("op.queryStatement required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
+                    if (op.collection.empty()) gCLog.err_throw<std::invalid_argument>("op.collection required");
+                    if (op.partitionKey.empty()) gCLog.err_throw<std::invalid_argument>("op.partitionKey required");
+                    if (op.queryStatement.empty()) gCLog.err_throw<std::invalid_argument>("op.queryStatement required");
                     break;
                     // Remove and find have same requirements
                 case CosmosOperation::remove:
                 case CosmosOperation::find:
-                    if (op.database.empty()) throw std::invalid_argument("op.database required");
-                    if (op.collection.empty()) throw std::invalid_argument("op.collection required");
-                    if (op.id.empty()) throw std::invalid_argument("op.id required");
-                    if (op.partitionKey.empty()) throw std::invalid_argument("op.partitionKey required");
+                    if (op.database.empty()) gCLog.err_throw<std::invalid_argument>("op.database required");
+                    if (op.collection.empty()) gCLog.err_throw<std::invalid_argument>("op.collection required");
+                    if (op.id.empty()) gCLog.err_throw<std::invalid_argument>("op.id required");
+                    if (op.partitionKey.empty()) gCLog.err_throw<std::invalid_argument>("op.partitionKey required");
                     break;
                 case CosmosOperation::notset:
-                default: throw std::invalid_argument(std::format("{} requires op.operation be valid: {}", __func__, nlohmann::json(op.operation).dump()));
+                default: gCLog.err_throw<std::invalid_argument>("requires op.operation be valid: {}", nlohmann::json(op.operation).dump());
             }
 
-            if (!op.onResponse) throw std::invalid_argument("async requires op.onResponse be valid callback");
+            if (!op.onResponse) gCLog.err_throw<std::invalid_argument>("async requires op.onResponse be valid callback");
 
             // We can now queue the request..
             asyncWorkers.queue(std::move(op));
@@ -891,7 +874,7 @@ namespace siddiqsoft
             timethis tt {};
             auto     ts = DateUtils::RFC7231();
 
-            if (ctx.database.empty()) throw std::invalid_argument(std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
+            if (ctx.database.empty()) gCLog.err_throw<std::invalid_argument>("Need `partitionId` for db: {}", nlohmann::json(ctx).dump());
 
             /* Signature:
              * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
@@ -914,7 +897,7 @@ namespace siddiqsoft
             timethis tt {};
             auto     ts = DateUtils::RFC7231();
 
-            if (ctx.database.empty()) throw std::invalid_argument(std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
+            if (ctx.database.empty()) gCLog.err_throw<std::invalid_argument>("Need `partitionId` for db: {}", nlohmann::json(ctx).dump());
 
             /* Signature:
              * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN
@@ -936,7 +919,7 @@ namespace siddiqsoft
             timethis tt {};
             auto     ts = DateUtils::RFC7231();
 
-            if (ctx.database.empty()) throw std::invalid_argument(std::format("{} - Need `partitionId` for db: {}", __func__, nlohmann::json(ctx).dump()));
+            if (ctx.database.empty()) gCLog.err_throw<std::invalid_argument>("Need `database` for db: {}", nlohmann::json(ctx).dump());
 
             /* Signature:
              * https://learn.microsoft.com/en-us/rest/api/cosmos-db/access-control-on-cosmosdb-resources?redirectedfrom=MSDN

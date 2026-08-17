@@ -71,7 +71,7 @@ protected:
     static void SetUpTestCase()
     {
         if (!IsCosmosReachable()) {
-            lf.warn("Cosmos service is not reachable, skipping setup");
+            lf.err("Cosmos service is not reachable, skipping setup");
             return;
         }
 
@@ -92,8 +92,7 @@ protected:
         lf.info("Creating test database '{}'", testDBName0);
         auto createDbRc = TScreateDatabase(testDBName0);
         if (createDbRc.statusCode != 201) {
-            lf.err("ERROR - Failed to create database '{}' (status: {})", testDBName0, createDbRc.statusCode);
-            throw std::runtime_error(std::format("Failed to create test database '{}' with status code {}", testDBName0, createDbRc.statusCode));
+            lf.err_throw<std::runtime_error>("Failed to create database '{}' (status: {})", testDBName0, createDbRc.statusCode);
         }
         lf.info("Database '{}' created successfully", testDBName0);
 
@@ -105,8 +104,7 @@ protected:
 
             auto createCollRc = TScreateCollection(testDBName0, collName);
             if (createCollRc.statusCode != 201) {
-                lf.err("ERROR - Failed to create collection '{}' (status: {})", collName, createCollRc.statusCode);
-                throw std::runtime_error(std::format("Failed to create test collection '{}' with status code {}", collName, createCollRc.statusCode));
+                lf.err_throw<std::runtime_error>("Failed to create collection '{}' (status: {})", collName, createCollRc.statusCode);
             }
             lf.info("Collection '{}' created successfully", collName);
 
@@ -128,7 +126,6 @@ protected:
             lf.info("Collection '{}' seeding completed", collName);
         }
     }
-
     static void TearDownTestCase()
     {
         {
@@ -214,7 +211,7 @@ TEST(Validation, configure_1)
     EXPECT_NO_THROW(cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}}));
 
     auto& currentConfig = cc.configuration();
-    std::print(std::cerr, "{} - Contents of current configuration\n{}", __func__, currentConfig.dump(2));
+    lf.trace("{} - Contents of current configuration\n{}", __func__, currentConfig.dump(2));
 
 #if defined(cosmoscl_TESTING_MODE)
     EXPECT_TRUE(cc.serviceSettings["writableLocations"].is_array());
@@ -246,9 +243,9 @@ TEST(Validation, discoverRegions)
     EXPECT_EQ(5, info.size()) << info.dump(3);
 
     auto rc = cc.discoverRegions();
-    std::print(std::cerr, "{} - ....rc:-\n{}", __func__, rc.document.dump(4));
+    lf.trace("regions found - ....rc:-\n{}", rc.document.dump());
 
-    EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
+    EXPECT_EQ(200, rc.statusCode) << rc.document.dump();
     EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());
     EXPECT_LE(1, cc.cnxn.current().ReadableUris.size());
     EXPECT_LE(1, cc.serviceSettings["writableLocations"].size());
@@ -271,17 +268,17 @@ TEST(Validation, discoverRegions_BadPrimary)
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
 
     auto rc = cc.discoverRegions();
-    std::cerr << "1/3....rc:" << rc.statusCode << " Expect failure." << rc.document << std::endl;
+    lf.info("1/3....rc:{} Expect failure.{}", rc.statusCode, rc.document.dump());
     EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 
     cc.cnxn.rotate();
     rc = cc.discoverRegions();
-    std::cerr << "2/3....rc:" << rc.statusCode << " Expect success." << std::endl;
+    lf.info("2/3....rc:{} Expect success.", rc.statusCode);
     EXPECT_EQ(200, rc.statusCode) << rc.document.dump(3);
 
     cc.cnxn.rotate();
     rc = cc.discoverRegions();
-    std::cerr << "3/3....rc:" << rc.statusCode << " Expect failure." << rc.document << std::endl;
+    lf.info("3/3....rc:{} Expect failure.{}", rc.statusCode, rc.document.dump());
     EXPECT_NE(200, rc.statusCode) << rc.document.dump(3);
 }
 
@@ -452,7 +449,7 @@ TEST(CosmosEndpoint, test2_n)
 /// @test Validates create (201), find (200), and delete (204) operations
 TEST_F(CosmosIntegrationTests, CreateDatabase)
 {
-    auto                   rc1 = TScreateDatabase(testDBName);
+    auto rc1 = TScreateDatabase(testDBName);
     EXPECT_EQ(201, rc1.statusCode);
 
     auto rc2 = TSfindDatabase(testDBName);
@@ -808,7 +805,7 @@ TEST_F(CosmosIntegrationTests, QueryDocument_odd)
     nlohmann::json                         allDocs = nlohmann::json::array();
     uint32_t                               allDocsCount {};
 
-    std::println(std::cerr, "{} -- Query documents in {}:{}...", __func__, testDBName0, testCollectionNames[1]);
+    lf.info("{} -- Query documents in {}:{}...", __func__, testDBName0, testCollectionNames[1]);
 
     do {
         irt = testSuiteClient.queryDocuments({.database          = testDBName0,
@@ -839,7 +836,7 @@ TEST_F(CosmosIntegrationTests, QueryDocument_even)
     nlohmann::json                         allDocs = nlohmann::json::array();
     uint32_t                               allDocsCount {};
 
-    std::println(std::cerr, "{} -- Query documents in {}:{}...", __func__, testDBName0, testCollectionNames[1]);
+    lf.info("{} -- Query documents in {}:{}...", __func__, testDBName0, testCollectionNames[1]);
 
     do {
         irt = testSuiteClient.queryDocuments({.database          = testDBName0,
@@ -877,7 +874,7 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
 {
     std::vector<siddiqsoft::CosmosClient> clients;
 
-    std::cerr << "Setting up the clients..";
+    lf.info("Setting up the clients..");
     for (auto i = 0; i < 4; i++) {
         clients.emplace_back(siddiqsoft::CosmosClient {})
                 .configure(nlohmann::json {{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
@@ -887,7 +884,7 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
 
     std::atomic_uint passTest {0};
 
-    std::cerr << "Setting up the clients..configuring..";
+    lf.info("Setting up the clients..configuring..");
     std::ranges::for_each(clients, [&](auto& cc) {
         auto& currentConfig = cc.configuration();
 
@@ -901,7 +898,7 @@ TEST_F(CosmosIntegrationTests, ConfigureMulti)
         passTest++;
     });
 
-    std::cerr << "Completed.";
+    lf.info("Completed.");
 
     EXPECT_EQ(4, passTest.load());
 }
@@ -923,12 +920,12 @@ TEST_F(CosmosIntegrationTests, CreateDocumentThreaded)
     std::latch           endLatch {threadCount};
     std::barrier         creatorsBarrier(threadCount, [&]() noexcept -> void {
 #if defined(DEBUG)
-        std::cerr << std::format("!! Barrier hit. DOCS:{} x threadCount:{} -> addDocsCount:{} removeDocsCount:{} ttx:{}!!",
-                                 DOCS,
-                                 threadCount,
-                                 addDocsCount.load(),
-                                 removeDocsCount.load(),
-                                 std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - ttx));
+        lf.debug("!! Barrier hit. DOCS:{} x threadCount:{} -> addDocsCount:{} removeDocsCount:{} ttx:{}!!",
+                 DOCS,
+                 threadCount,
+                 addDocsCount.load(),
+                 removeDocsCount.load(),
+                 std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - ttx));
 #endif
     });
 
