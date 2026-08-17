@@ -173,9 +173,19 @@ cmake --build --preset default
 
 ## Testing
 
+To run tests against the local Azure Cosmos DB Emulator (using Docker or Podman):
+
 ```bash
-ctest --preset default
+# 1. Start the Linux vNext Emulator container
+./tests/setup-emulator.sh
+
+# 2. Build and run tests using script or CMake
+./tests/build_and_test.sh debug macos
 ```
+
+> **Note on Emulator Protocols (`http://` vs `https://`)**:
+> - **vNext Linux Emulator** (`azure-cosmos-emulator:vnext-latest`): Serves unencrypted **HTTP** on port 8081 (`AccountEndpoint=http://localhost:8081/;`).
+> - **Windows / Classic Emulator**: Serves **HTTPS** on port 8081 with a self-signed TLS certificate (`AccountEndpoint=https://localhost:8081/;`).
 
 ---
 
