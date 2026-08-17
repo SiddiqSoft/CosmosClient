@@ -12,7 +12,6 @@ cmake_minimum_required(VERSION 3.29)
 # Version detection; must preceed the declaration of the actual project()
 # Figures out the value ${CURRENT_PROJECT_VERSION} and therefore the ${PROJECT_VERSION}
 # Brings in the CPM module into pack/CPM.make
-include(pack/CMakeCommonHelpers.cmake)
 if(WIN32)
     if(DEFINED ENV{LOCALAPPDATA})
         set(CPM_SOURCE_CACHE "$ENV{LOCALAPPDATA}/CPM/.cpmcache")
@@ -25,6 +24,7 @@ else()
     set(CPM_SOURCE_CACHE "$ENV{HOME}/.cache/.cpmcache")
 endif()
 set(CPM_SOURCE_CACHE ${CPM_SOURCE_CACHE} CACHE PATH "CPM source cache")
+include(pack/CMakeCommonHelpers.cmake)
 
 # ______________________
 # Project Metadata block
@@ -99,7 +99,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
 # This will bring in a set of dependencies that are required for the restcl library to work.
 # arrp, asynchrony, azurecpputils, runonend and ctre
-CPMAddPackage("gh:SiddiqSoft/restcl#a828feca36ea009998affe61f6803e10b34f0534")
+CPMAddPackage("gh:SiddiqSoft/restcl#b07d9b7e7d702bf77ecfeb7baa6e94e8d644e5fc")
 set(restcl_DEBUG_TRACE ON CACHE BOOL "Enable debug trace for restcl library" FORCE)
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 

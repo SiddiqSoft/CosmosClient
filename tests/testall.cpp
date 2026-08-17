@@ -76,7 +76,7 @@ protected:
         }
 
         lf.info("Configuring test suite client...");
-        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetActiveConnectionStrings()}});
+        testSuiteClient.configure({{"partitionKeyNames", {"__pk"}}, {"trace", true}, {"connectionStrings", GetActiveConnectionStrings()}});
 
         // Clean up any existing test database from previous runs
         lf.info("Cleaning up existing database '{}' if it exists...", testDBName0);
@@ -228,10 +228,13 @@ TEST(Validation, configure_1)
 /// @test Ensures status code is 200 and regions are discovered
 TEST(Validation, discoverRegions)
 {
-    if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+    auto ll = lf.sub_scope("discoverRegions", siddiqsoft::LogLevel::trace);
+    
+    //if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
 
     auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
     ASSERT_FALSE(priConnStr.empty());
+    ll.trace("Using connection strings - primary: {}", priConnStr);
 
     siddiqsoft::CosmosClient cc;
     cc.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, secConnStr}}});
@@ -242,8 +245,9 @@ TEST(Validation, discoverRegions)
     EXPECT_TRUE(info.contains("configuration"));
     EXPECT_EQ(5, info.size()) << info.dump(3);
 
+    ll.trace("Configured client:\n{}", info.dump(2));
     auto rc = cc.discoverRegions();
-    lf.trace("regions found - ....rc:-\n{}", rc.document.dump());
+    ll.trace("regions found - ....rc:-\n{}", rc.document.dump());
 
     EXPECT_EQ(200, rc.statusCode) << rc.document.dump();
     EXPECT_LE(1, cc.serviceSettings["readableLocations"].size());

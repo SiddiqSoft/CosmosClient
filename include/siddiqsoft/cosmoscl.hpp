@@ -367,7 +367,7 @@ namespace siddiqsoft
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 
-            gCLog.trace("{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump(4));
+            gCLog.trace("{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump());
         }
         else if (ret.has_value()) {
             gCLog.trace("{} - Raw response (failed):\n{}", __func__, *ret);
@@ -508,7 +508,7 @@ namespace siddiqsoft
 
         iterableRespFromCosmos.ttx = std::chrono::microseconds(tt.elapsed().count());
         if (ret.has_value() && ret->success()) {
-            gCLog.trace("{} - Raw response (good):\n{}", __func__, *ret);
+            gCLog.trace("- Raw response (good):\n{}", *ret);
 
             iterableRespFromCosmos.statusCode = ret->statusCode();
             iterableRespFromCosmos.document   = std::move(ret->getContentBodyJSON());
@@ -518,10 +518,10 @@ namespace siddiqsoft
             catch (...) {
             }
 
-            gCLog.trace("{} - CIRT (good)  statusCode:{}\n{}", __func__, iterableRespFromCosmos.statusCode, iterableRespFromCosmos.document.dump(4));
+            gCLog.trace("- CIRT (good)  statusCode:{}\n{}", iterableRespFromCosmos.statusCode, iterableRespFromCosmos.document.dump(4));
         }
         else if (ret.has_value()) {
-            gCLog.trace("{} - Raw response (failed):\n{}", __func__, *ret);
+            gCLog.trace("- Raw response (failed):\n{}", *ret);
             // Has value but not successful, return the code
             std::tie(iterableRespFromCosmos.statusCode, std::ignore) = ret->status();
         }
@@ -858,8 +858,15 @@ namespace siddiqsoft
                                      {"x-ms-date", ts},
                                      {"x-ms-version", config["apiVersion"]}}};
 
-            return make_CosmosResponseType(
-                    tt, GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}})->send(req));
+            gCLog.trace("....DiscoverRegions - request this is our request: {}", req);
+
+            return make_CosmosResponseType(tt,
+                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
+                                                          {"trace", true},
+                                                          {"verifyPeer", 0L},
+                                                          {"useTLSv1_2", true},
+                                                          {"freshConnect", false}})
+                                                   ->send(req));
         }
 
 
@@ -953,6 +960,7 @@ namespace siddiqsoft
                                             {"x-ms-date", ts},
                                             {"x-ms-version", config["apiVersion"]}});
 
+            gCLog.trace("- Sending request to Cosmos: {}", req);
             return make_CosmosResponseType(
                     tt, GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}})->send(req));
         }
@@ -1056,7 +1064,7 @@ namespace siddiqsoft
 
             auto req = rest_request<char>(HttpMethodType::METHOD_GET, path, headers);
             return make_CosmosIterableResponseType(
-                    tt, GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", false}, {"verifyPeer", 0L}, {"freshConnect", false}})->send(req));
+                    tt, GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"freshConnect", false}})->send(req));
         }
 
 

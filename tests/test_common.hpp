@@ -27,9 +27,9 @@
  */
 
 static const std::string EMULATOR_CONNECTION_STRING =
-        "AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
+        "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;";
 static const std::string        EMULATOR_KEY      = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-static const std::string        EMULATOR_ENDPOINT = "localhost:8081";
+static const std::string        EMULATOR_ENDPOINT = "https://localhost:8081";
 
 static const int                SEED_DOCUMENT_COUNT {10};
 static std::string              testDBName          = "cosmoscl_test_DB";
@@ -75,30 +75,33 @@ static auto GetConnectionStrings() -> std::pair<std::string, std::string>
 /// @return true when Cosmos DB (emulator or cloud) is reachable.
 static bool IsCosmosReachable()
 {
+    auto ll = st.sub_scope("IsCosmosReachable", siddiqsoft::LogLevel::trace);
+    
     static std::optional<bool> cached;
     if (cached.has_value()) return *cached;
 
-    st.info("IsCosmosReachable: Attempting to connect to Cosmos DB (emulator or cloud)...");
+    ll.info("Attempting connection (emulator or cloud)...");
 
     // Try to connect with retries
-    for (int attempt = 0; attempt < 5; ++attempt) {
+    for (int attempt = 0; attempt < 2; ++attempt) {
         siddiqsoft::CosmosClient probe;
+
         probe.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", GetConnectionStrings()}});
         auto rc = probe.discoverRegions();
-        st.info("IsCosmosReachable: discoverRegions attempt {} returned status code: {}", attempt + 1, rc.statusCode);
+        ll.trace("Attempt {} returned rc: {}", attempt + 1, rc.statusCode);
 
         if (rc.statusCode == 200) {
-            st.info("IsCosmosReachable: Successfully connected to Cosmos DB");
+            ll.info("IsCosmosReachable: Successfully connected to Cosmos DB");
             cached = true;
             return true;
         }
 
-        if (attempt < 4) {
+        if (attempt < 1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }
 
-    st.err("IsCosmosReachable: Failed to connect to Cosmos DB after 5 attempts");
+    ll.err("IsCosmosReachable: Failed to connect to Cosmos DB after 2 attempts");
     cached = false;
     return false;
 }
