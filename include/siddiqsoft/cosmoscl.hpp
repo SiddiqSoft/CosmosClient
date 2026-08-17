@@ -66,7 +66,7 @@
 namespace siddiqsoft
 {
     /// @brief The global logging instance for the cosmoscl library.
-    static auto& gCLog = siddiqsoft::ScopeTrace::GetInstance("cosmoscl", siddiqsoft::LogLevel::error);
+    inline auto& gCLog = siddiqsoft::ScopeTrace::GetInstance("cosmoscl", siddiqsoft::LogLevel::error);
 
 #pragma region CosmosEndpoint
     /// @brief Cosmos Connection String as available in the Azure Portal

@@ -44,7 +44,7 @@ static std::string              testDocName0        = "cosmoscl_test_Doc0_";
 #pragma region Test Suite Helpers
 static siddiqsoft::CosmosClient testSuiteClient;
 
-static auto                     st = siddiqsoft::ScopeTrace::GetInstance().sub_scope("test_common", siddiqsoft::LogLevel::trace);
+inline auto                     st = siddiqsoft::ScopeTrace::GetInstance().sub_scope("test_common", siddiqsoft::LogLevel::trace);
 
 /**
  * @brief Get the Connection Strings object.

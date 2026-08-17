@@ -99,7 +99,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
 # This will bring in a set of dependencies that are required for the restcl library to work.
 # arrp, asynchrony, azurecpputils, runonend and ctre
-CPMAddPackage("gh:SiddiqSoft/restcl#b07d9b7e7d702bf77ecfeb7baa6e94e8d644e5fc")
+CPMAddPackage("gh:SiddiqSoft/restcl#d256b9d8eba6f6bdb272c0fd73d89e6858842800")
 set(restcl_DEBUG_TRACE ON CACHE BOOL "Enable debug trace for restcl library" FORCE)
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 

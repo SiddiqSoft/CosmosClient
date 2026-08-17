@@ -58,7 +58,7 @@
 // UNIFIED TEST FIXTURE - Single Setup/Teardown for All Tests
 // ============================================================================
 
-static auto lf = siddiqsoft::ScopeTrace::GetInstance().sub_scope("CosmosIntegrationTests", siddiqsoft::LogLevel::trace);
+inline auto lf = siddiqsoft::ScopeTrace::GetInstance().sub_scope("CosmosIntegrationTests", siddiqsoft::LogLevel::trace);
 
 class CosmosIntegrationTests : public ::testing::Test
 {
@@ -230,7 +230,7 @@ TEST(Validation, discoverRegions)
 {
     auto ll = lf.sub_scope("discoverRegions", siddiqsoft::LogLevel::trace);
     
-    //if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
+    if (!IsCosmosReachable()) GTEST_SKIP() << "Cosmos service is not reachable";
 
     auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
     ASSERT_FALSE(priConnStr.empty());
