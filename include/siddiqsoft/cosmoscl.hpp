@@ -353,7 +353,7 @@ namespace siddiqsoft
     /// @brief Serializer for CosmosResponseType
     /// @param dest Destination json object
     /// @param src CosmosResponseType
-    static void to_json(nlohmann::json& dest, CosmosResponseType const& src)
+    inline void to_json(nlohmann::json& dest, CosmosResponseType const& src)
     {
         dest["statusCode"] = src.statusCode;
         dest["document"]   = src.document;
@@ -361,7 +361,7 @@ namespace siddiqsoft
     }
 
 
-    [[nodiscard]] static auto make_CosmosResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosResponseType
+    [[nodiscard]] inline auto make_CosmosResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosResponseType
     {
         CosmosResponseType crt;
 
@@ -505,7 +505,7 @@ namespace siddiqsoft
         std::string continuationToken;
     };
 
-    [[nodiscard]] static auto make_CosmosIterableResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosIterableResponseType
+    [[nodiscard]] inline auto make_CosmosIterableResponseType(timethis& tt, std::expected<siddiqsoft::rest_response<char>, int>&& ret) -> CosmosIterableResponseType
     {
         CosmosIterableResponseType iterableRespFromCosmos;
 
@@ -539,7 +539,7 @@ namespace siddiqsoft
     /// @brief Serializer for CosmosIterableResponseType uses the serializer for CosmosResponseType
     /// @param dest Destination json object
     /// @param src CosmosIterableResponseType
-    static void to_json(nlohmann::json& dest, CosmosIterableResponseType const& src)
+    inline void to_json(nlohmann::json& dest, CosmosIterableResponseType const& src)
     {
         to_json(dest, CosmosResponseType(src));
         dest["continuationToken"] = src.continuationToken;
@@ -1380,7 +1380,7 @@ struct std::formatter<siddiqsoft::CosmosEndpoint> : std::formatter<std::basic_st
 /// @param os Detination ostream object
 /// @param s Reference to CosmosEndpoint object
 /// @return ostream object
-static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosEndpoint& s)
+inline std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosEndpoint& s)
 {
     os << std::basic_string<char>(s);
     return os;
@@ -1407,7 +1407,7 @@ struct std::formatter<siddiqsoft::CosmosConnection> : std::formatter<std::basic_
 /// @param os The output stream
 /// @param s The CosmosConnection object
 /// @return The output stream
-static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosConnection& s)
+inline std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosConnection& s)
 {
     os << std::format("{}", s);
     return os;
@@ -1434,7 +1434,7 @@ struct std::formatter<siddiqsoft::CosmosClient> : std::formatter<std::basic_stri
 /// @param os The output stream
 /// @param s Reference to source CosmosClient instance
 /// @return The output stream
-static std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosClient& s)
+inline std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const siddiqsoft::CosmosClient& s)
 {
     os << nlohmann::json(s).dump();
     return os;
