@@ -184,6 +184,18 @@ TEST(Validation, configure_Defaults)
     EXPECT_TRUE(currentConfig.contains("partitionKeyNames"));
 }
 
+/// @brief Verify client move constructor and move assignment
+TEST(Validation, move_semantics)
+{
+    siddiqsoft::CosmosClient cc1;
+    siddiqsoft::CosmosClient cc2(std::move(cc1));
+    EXPECT_EQ("2018-12-31", cc2.configuration().value("apiVersion", ""));
+
+    siddiqsoft::CosmosClient cc3;
+    cc3 = std::move(cc2);
+    EXPECT_EQ("2018-12-31", cc3.configuration().value("apiVersion", ""));
+}
+
 /// @brief Verify client can be serialized to JSON
 /// @details Converts CosmosClient to JSON and validates structure
 /// @test Ensures JSON contains serviceSettings, database, and configuration sections

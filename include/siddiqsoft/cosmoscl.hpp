@@ -720,7 +720,20 @@ namespace siddiqsoft
         {
         }
 
-        auto& operator=(CosmosClient&& src)  = delete;
+        /// @brief Move assignment operator
+        /// @param src Other client instance
+        /// @return Reference to self
+        CosmosClient& operator=(CosmosClient&& src) noexcept
+        {
+            if (this != &src) {
+                config          = std::move(src.config);
+                serviceSettings = std::move(src.serviceSettings);
+                isConfigured    = src.isConfigured.load();
+                cnxn            = std::move(src.cnxn);
+            }
+            return *this;
+        }
+
         CosmosClient(const CosmosClient&)    = delete;
         auto& operator=(const CosmosClient&) = delete;
 
