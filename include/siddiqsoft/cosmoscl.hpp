@@ -137,7 +137,7 @@ namespace siddiqsoft
 
 
         /// @brief Cast operator for string
-        operator std::basic_string<char>() const { return string(); }
+        explicit operator std::basic_string<char>() const { return string(); }
 
 
         /// @brief Encodes the contents back into the original connection string from Azure Portal
