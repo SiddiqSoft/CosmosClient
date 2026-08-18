@@ -39,6 +39,7 @@ project(cosmoscl
 # Options; define and declare defaults
 option(${PROJECT_NAME}_BUILD_TESTS "${PROJECT_NAME} - Build tests. Uncheck for install only runs" OFF)
 option(CI_BUILDID "Version of this build" "0.0.0")
+option(${PROJECT_NAME}_DEBUG_TRACE "${PROJECT_NAME} - Extended debug mode. Only enable for local debugging." OFF)
 
 if(NOT DEFINED CMAKE_CXX_STANDARD OR "${CMAKE_CXX_STANDARD}" STREQUAL "")
     set(CMAKE_CXX_STANDARD 23)
@@ -99,8 +100,8 @@ target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
 # This will bring in a set of dependencies that are required for the restcl library to work.
 # arrp, asynchrony, azurecpputils, runonend and ctre
-CPMAddPackage("gh:SiddiqSoft/restcl#d256b9d8eba6f6bdb272c0fd73d89e6858842800")
-set(restcl_DEBUG_TRACE ON CACHE BOOL "Enable debug trace for restcl library" FORCE)
+CPMAddPackage("gh:SiddiqSoft/restcl#2.4.2")
+target_compile_options(${PROJECT_NAME} PRIVATE restcl_DEBUG_TRACE ${${PROJECT_NAME}_DEBUG_TRACE})
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
 
 # ____________________________________
