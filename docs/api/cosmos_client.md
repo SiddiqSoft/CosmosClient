@@ -8,21 +8,36 @@ class CosmosClient;
 
 ---
 
+## Constructors & Rule of 5
+
+```cpp
+CosmosClient() = default;
+CosmosClient(CosmosClient&& src) noexcept;
+CosmosClient& operator=(CosmosClient&& src) noexcept;
+
+CosmosClient(const CosmosClient&) = delete;
+CosmosClient& operator=(const CosmosClient&) = delete;
+```
+
+`CosmosClient` is move-only, managing internal thread pools and connection state.
+
+---
+
 ## Member Functions
 
-### Configuration & Connection
+### Configuration & State
 
 #### `configure`
 ```cpp
-CosmosConnection configure(const nlohmann::json& config);
+CosmosClient& configure(const nlohmann::json& src = {}) noexcept(false);
 ```
 Configures the client with connection strings and partition key names.
 
-#### `primaryEndpoint`
+#### `configuration`
 ```cpp
-const CosmosEndpoint& primaryEndpoint() const;
+const nlohmann::json& configuration() const;
 ```
-Returns the configured `CosmosEndpoint`.
+Returns the active configuration JSON.
 
 ---
 
@@ -30,27 +45,33 @@ Returns the configured `CosmosEndpoint`.
 
 #### `createDocument`
 ```cpp
-CosmosResponseType createDocument(const CosmosArgumentType& arg);
+CosmosResponseType createDocument(CosmosArgumentType const& ctx);
 ```
-Creates a new document in the specified database and container.
+Creates a new document in the specified database and collection.
 
-#### `readDocument`
+#### `findDocument`
 ```cpp
-CosmosResponseType readDocument(const CosmosArgumentType& arg);
+CosmosResponseType findDocument(CosmosArgumentType const& ctx);
 ```
-Reads a document by `id` and `partitionKey`.
+Retrieves a single document by `id` and `partitionKey`.
 
-#### `replaceDocument`
+#### `updateDocument`
 ```cpp
-CosmosResponseType replaceDocument(const CosmosArgumentType& arg);
+CosmosResponseType updateDocument(CosmosArgumentType const& ctx);
 ```
-Replaces an existing document.
+Updates an existing document.
 
-#### `deleteDocument`
+#### `upsertDocument`
 ```cpp
-CosmosResponseType deleteDocument(const CosmosArgumentType& arg);
+CosmosResponseType upsertDocument(CosmosArgumentType const& ctx);
 ```
-Deletes a document by `id` and `partitionKey`.
+Inserts a new document or updates an existing document.
+
+#### `removeDocument`
+```cpp
+uint32_t removeDocument(CosmosArgumentType const& ctx);
+```
+Removes a document by `id` and `partitionKey`. Returns the HTTP status code (e.g. `204`).
 
 ---
 
@@ -58,50 +79,47 @@ Deletes a document by `id` and `partitionKey`.
 
 #### `queryDocuments`
 ```cpp
-CosmosResponseType queryDocuments(const CosmosArgumentType& arg);
+CosmosIterableResponseType queryDocuments(CosmosArgumentType const& ctx);
 ```
-Executes a SQL query against the container.
+Executes a SQL query against the collection, returning paged document arrays and continuation tokens.
 
-#### `queryDocumentsIterable`
+#### `listDocuments`
 ```cpp
-CosmosIterableResponseType queryDocumentsIterable(const CosmosArgumentType& arg);
+CosmosIterableResponseType listDocuments(CosmosArgumentType const& ctx);
 ```
-Returns an iterable response structure for navigating multi-page query results.
+Lists documents with pagination support.
 
 ---
 
-## Database Operations
+## Database & Collection Operations
 
-#### `createDatabase` / `getDatabase` / `listDatabases` / `deleteDatabase`
+#### `createDatabase` / `findDatabase` / `listDatabases` / `deleteDatabase`
 ```cpp
-CosmosResponseType createDatabase(const CosmosArgumentType& arg);
-CosmosResponseType getDatabase(const CosmosArgumentType& arg);
-CosmosResponseType listDatabases(const CosmosArgumentType& arg);
-CosmosResponseType deleteDatabase(const CosmosArgumentType& arg);
+CosmosResponseType createDatabase(CosmosArgumentType const& ctx);
+CosmosResponseType findDatabase(CosmosArgumentType const& ctx);
+CosmosResponseType listDatabases();
+CosmosResponseType deleteDatabase(CosmosArgumentType const& ctx);
 ```
 
----
-
-## Container Operations
-
-#### `createContainer` / `getContainer` / `listContainers` / `deleteContainer`
+#### `createCollection` / `listCollections`
 ```cpp
-CosmosResponseType createContainer(const CosmosArgumentType& arg);
-CosmosResponseType getContainer(const CosmosArgumentType& arg);
-CosmosResponseType listContainers(const CosmosArgumentType& arg);
-CosmosResponseType deleteContainer(const CosmosArgumentType& arg);
+CosmosResponseType createCollection(CosmosArgumentType const& ctx);
+CosmosResponseType listCollections(CosmosArgumentType const& ctx);
 ```
+
+#### `discoverRegions`
+```cpp
+CosmosResponseType discoverRegions();
+```
+Discovers regional read and write endpoints for failover routing.
 
 ---
 
 ## Asynchronous Execution
 
-#### `sendAsync`
+#### `async`
 ```cpp
-void sendAsync(
-    CosmosOperation op,
-    CosmosArgumentType arg,
-    std::function<void(CosmosResponseType)> callback
-);
+void async(CosmosArgumentType&& op) noexcept(false);
 ```
-Dispatches the operation to a background worker thread pool and invokes `callback` upon completion.
+Dispatches the operation payload to an internal asynchronous thread pool. Upon completion (or exception), the `op.onResponse` callback is safely invoked. Exceptions inside background workers are caught and logged without process termination.
+

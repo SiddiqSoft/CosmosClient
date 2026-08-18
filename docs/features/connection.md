@@ -32,16 +32,38 @@ int main()
 
 ---
 
-## Multi-Region Failover
+## Multi-Region Failover & Thread-Safe Endpoint Rotation
 
-`CosmosEndpoint` automatically segregates readable and writable URIs:
+`CosmosEndpoint` and `CosmosConnection` automatically manage primary and replica endpoints using lock-free atomic state (`std::atomic<CurrentConnectionIdType>`, `std::atomic<size_t>`):
 
+* **Primary / Secondary Failover**: Call `client.cnxn.rotate()` at any time on background monitor threads. Swapping active connections is atomic and thread-safe against concurrent HTTP operation workers.
 * **Primary Writable URI**: Used for write operations (create, replace, delete).
-* **Readable URIs**: Round-robined for read and query operations.
+* **Readable URIs**: Round-robined for read and query operations via `rotateReadUri()`.
 
 ```cpp
 // Inspect active endpoint info
-std::cout << "Primary Base URI: " << client.primaryEndpoint().BaseUri << std::endl;
+std::cout << "Primary Base URI: " << client.cnxn.current().BaseUri << std::endl;
+
+// Thread-safe endpoint rotation during active operations
+client.cnxn.rotate(); // Swaps Primary <-> Secondary atomically
+```
+
+---
+
+## Type Safety & Explicit Operators
+
+`CosmosEndpoint` provides explicit type conversion operators to prevent implicit string coercion and ambiguous conditional evaluation:
+
+```cpp
+CosmosEndpoint endpoint("AccountEndpoint=https://myaccount.documents.azure.com:443/;AccountKey=...;");
+
+// Explicit boolean check
+if (static_cast<bool>(endpoint)) {
+    // Valid endpoint
+}
+
+// Explicit string conversion
+std::string connStr = static_cast<std::string>(endpoint);
 ```
 
 ---

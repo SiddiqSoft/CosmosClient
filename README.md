@@ -17,10 +17,11 @@
 
 - **JSON-First API**: `nlohmann::json` is a first-class citizen for documents, configuration, queries, and headers.
 - **Modern C++23**: Utilizes C++23 standard features (`std::format`, aggregate initialization, structured bindings, `std::expected`).
+- **Thread-Safe Failover & Rotation**: Lock-free atomic connection rotation (`rotate()`, `rotateReadUri()`) safe under concurrent workloads.
 - **Header-Only**: Easy integration with no compilation overhead.
 - **Cross-Platform**: Built on top of `restcl`, supporting native `WinHTTP` on Windows and `libcurl` on Unix/Linux/macOS.
 - **Full Cosmos SQL API**: Complete support for Databases, Containers (Collections), Documents, SQL Queries, and Stored Procedures.
-- **Async Operations**: Built-in non-blocking asynchronous operation dispatch via thread pool.
+- **Async Operations**: Built-in non-blocking asynchronous operation dispatch via thread pool with worker exception safety.
 - **Auto Token Signing**: Automatic HMAC-SHA256 authorization token generation for Azure Cosmos DB REST requests.
 
 ## Table of Contents
