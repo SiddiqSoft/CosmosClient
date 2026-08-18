@@ -65,8 +65,12 @@
 
 namespace siddiqsoft
 {
-    /// @brief The global logging instance for the cosmoscl library.
+/// @brief The global logging instance for the cosmoscl library.
+#if defined(DEBUG_TRACE) || defined(cosmoscl_DEBUG_TRACE)
+    inline auto& gCLog = siddiqsoft::ScopeTrace::GetInstance("cosmoscl", siddiqsoft::LogLevel::trace);
+#else
     inline auto& gCLog = siddiqsoft::ScopeTrace::GetInstance("cosmoscl", siddiqsoft::LogLevel::error);
+#endif
 
 #pragma region CosmosEndpoint
     /// @brief Cosmos Connection String as available in the Azure Portal
@@ -367,10 +371,10 @@ namespace siddiqsoft
             crt.statusCode = ret->statusCode();
             crt.document   = std::move(ret->getContentBodyJSON());
 
-            gCLog.trace("{} - CRT (good)  statusCode:{}\n{}", __func__, crt.statusCode, crt.document.dump());
+            gCLog.trace("- CRT (good)  statusCode:{}\n{}", crt.statusCode, crt.document.dump());
         }
         else if (ret.has_value()) {
-            gCLog.trace("{} - Raw response (failed):\n{}", __func__, *ret);
+            gCLog.trace("- Raw response (failed):\n{}", *ret);
 
             // Has value but not successful, return the code
             std::tie(crt.statusCode, std::ignore) = ret->status();
@@ -860,13 +864,10 @@ namespace siddiqsoft
 
             gCLog.trace("....DiscoverRegions - request this is our request: {}", req);
 
-            return make_CosmosResponseType(tt,
-                                           GetRESTClient({{"userAgent", CosmosClientUserAgentString},
-                                                          {"trace", true},
-                                                          {"verifyPeer", 0L},
-                                                          {"useTLSv1_2", true},
-                                                          {"freshConnect", false}})
-                                                   ->send(req));
+            return make_CosmosResponseType(
+                    tt,
+                    GetRESTClient({{"userAgent", CosmosClientUserAgentString}, {"trace", true}, {"verifyPeer", 0L}, {"useTLSv1_2", true}, {"freshConnect", false}})
+                            ->send(req));
         }
 
 
