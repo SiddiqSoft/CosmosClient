@@ -40,6 +40,7 @@
 
 
 #include <string>
+#include <string_view>
 #include <iostream>
 #include <functional>
 #include <format>
@@ -109,8 +110,8 @@ namespace siddiqsoft
         /// @return Self
         CosmosEndpoint& operator=(const std::basic_string<char>& s)
         {
-            std::basic_string<char> MatchAccountEndpoint = "AccountEndpoint=";
-            std::basic_string<char> MatchAccountKey      = ";AccountKey=";
+            constexpr std::string_view MatchAccountEndpoint = "AccountEndpoint=";
+            constexpr std::string_view MatchAccountKey      = ";AccountKey=";
 
             // The Azure Cosmos Connection string has the following format
             // AccountEndpoint=BaseUri;AccountKey=Key
