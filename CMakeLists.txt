@@ -12,6 +12,18 @@ cmake_minimum_required(VERSION 3.29)
 # Version detection; must preceed the declaration of the actual project()
 # Figures out the value ${CURRENT_PROJECT_VERSION} and therefore the ${PROJECT_VERSION}
 # Brings in the CPM module into pack/CPM.make
+if(WIN32)
+    if(DEFINED ENV{LOCALAPPDATA})
+        set(CPM_SOURCE_CACHE "$ENV{LOCALAPPDATA}/CPM/.cpmcache")
+    elseif(DEFINED ENV{USERPROFILE})
+        set(CPM_SOURCE_CACHE "$ENV{USERPROFILE}/AppData/Local/CPM/.cpmcache")
+    else()
+        set(CPM_SOURCE_CACHE "${CMAKE_BINARY_DIR}/.cpmcache")
+    endif()
+else()
+    set(CPM_SOURCE_CACHE "$ENV{HOME}/.cache/.cpmcache")
+endif()
+set(CPM_SOURCE_CACHE ${CPM_SOURCE_CACHE} CACHE PATH "CPM source cache")
 include(pack/CMakeCommonHelpers.cmake)
 
 # ______________________
@@ -27,8 +39,11 @@ project(cosmoscl
 # Options; define and declare defaults
 option(${PROJECT_NAME}_BUILD_TESTS "${PROJECT_NAME} - Build tests. Uncheck for install only runs" OFF)
 option(CI_BUILDID "Version of this build" "0.0.0")
+option(${PROJECT_NAME}_DEBUG_TRACE "${PROJECT_NAME} - Extended debug mode. Only enable for local debugging." OFF)
 
-set( CMAKE_CXX_STANDARD 23)
+if(NOT DEFINED CMAKE_CXX_STANDARD OR "${CMAKE_CXX_STANDARD}" STREQUAL "")
+    set(CMAKE_CXX_STANDARD 23)
+endif()
 set( CMAKE_CXX_STANDARD_REQUIRED On)
 set( CMAKE_CXX_EXTENSIONS OFF)
 # This will allow cmake aware IDE to pickup on library definitions
@@ -43,7 +58,16 @@ target_include_directories(${PROJECT_NAME}
                             INTERFACE
                             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
+
+# The following is needed to make the .natvis file available to the IDE for debugging
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SiddiqSoft.CosmosClient.natvis>)
+
+# Install natvis file for Visual Studio debugger visualization
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/SiddiqSoft.CosmosClient.natvis
+        DESTINATION share/natvis
+        OPTIONAL
+        COMPONENT natvis)
 
 # ____________________________________
 # Dependencies
@@ -64,24 +88,21 @@ endif()
 
 CPMAddPackage("gh:nlohmann/json#v3.12.0")
 target_link_libraries(${PROJECT_NAME} INTERFACE nlohmann_json::nlohmann_json)
+
 CPMAddPackage("gh:SiddiqSoft/SplitUri#3.0.3")
 target_link_libraries(${PROJECT_NAME} INTERFACE SplitUri::SplitUri)
-CPMAddPackage("gh:SiddiqSoft/AzureCppUtils#3.2.8")
-target_link_libraries(${PROJECT_NAME} INTERFACE AzureCppUtils::AzureCppUtils)
 CPMAddPackage("gh:SiddiqSoft/string2map#2.6.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE string2map::string2map)
-CPMAddPackage("gh:SiddiqSoft/RunOnEnd#1.4.5")
-target_link_libraries(${PROJECT_NAME} INTERFACE RunOnEnd::RunOnEnd)
-CPMAddPackage("gh:SiddiqSoft/asynchrony#2.1.4")
-target_link_libraries(${PROJECT_NAME} INTERFACE asynchrony::asynchrony)
 CPMAddPackage("gh:SiddiqSoft/GenProcessInfo#2.6.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE GenProcessInfo::GenProcessInfo)
 CPMAddPackage("gh:SiddiqSoft/TimeThis#2.4.1")
 target_link_libraries(${PROJECT_NAME} INTERFACE timethis::timethis)
 
-CPMAddPackage("gh:SiddiqSoft/restcl#2.3.7")
+# This will bring in a set of dependencies that are required for the restcl library to work.
+# arrp, asynchrony, azurecpputils, runonend and ctre
+CPMAddPackage("gh:SiddiqSoft/restcl#2.5.0")
+# target_compile_options(${PROJECT_NAME} INTERFACE restcl_DEBUG_TRACE ${${PROJECT_NAME}_DEBUG_TRACE})
 target_link_libraries(${PROJECT_NAME} INTERFACE restcl::restcl)
-
 
 # ____________________________________
 # Testing

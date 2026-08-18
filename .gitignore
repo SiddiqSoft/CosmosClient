@@ -379,3 +379,9 @@ build/**
 /test/validation_tests/test.nativecodeanalysis.xml
 *.filters
 *.gcov
+
+# MkDocs documentation build output and virtual environment
+site/
+.venv/
+__pycache__/
+

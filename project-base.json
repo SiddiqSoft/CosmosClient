@@ -6,6 +6,9 @@
             "displayName": "Project Base",
             "description": "Base preset for all project configurations.",
             "cacheVariables": {
+                "CMAKE_PROJECT_NAME": "cosmoscl",
+                "CMAKE_PROJECT_DESCRIPTION": "Azure Cosmos DB REST client for modern C++",
+                "CMAKE_CXX_STANDARD": "23",
                 "cosmoscl_BUILD_TESTS": "ON",
                 "CI_BUILDID": "0.0.0"
             },

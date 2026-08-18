@@ -32,6 +32,11 @@ PLATFORM="${2:-macos}"
 BUILD_DIR="$PROJECT_ROOT/build"
 EMULATOR_NAME="cosmos-emulator"
 EMULATOR_PORT="8081"
+EMULATOR_HOST="localhost"
+# This is the emulator connection string for the vnext emulator. It uses the default key and endpoint.
+CCTEST_PRIMARY_CS="AccountEndpoint=http://${EMULATOR_HOST}:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
+CCTEST_SECONDARY_CS="AccountEndpoint=http://${EMULATOR_HOST}:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;"
+
 
 # Validate inputs
 if [[ ! "$BUILD_TYPE" =~ ^(debug|release)$ ]]; then
@@ -102,13 +107,13 @@ start_emulator() {
         --name $EMULATOR_NAME \
         --rm \
         --detach \
-        mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest > /dev/null
+        mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest > /dev/null
     
-    echo "Waiting for emulator to start..."
+    echo -e "${YELLOW}Waiting for emulator to start...${NC}"
     sleep 60
     
     # Verify emulator is running
-    if curl -s -k https://localhost:$EMULATOR_PORT/_explorer/index.html > /dev/null; then
+    if curl -s -k https://${EMULATOR_HOST}:$EMULATOR_PORT/_explorer/index.html > /dev/null; then
         echo -e "${GREEN}✓ Emulator is ready${NC}"
     else
         echo -e "${RED}✗ Emulator failed to start${NC}"
@@ -136,10 +141,13 @@ stop_emulator() {
 # Function to configure build
 configure_build() {
     print_section "Configuring CMake..."
-    
     mkdir -p "$BUILD_DIR"
     cd "$BUILD_DIR"
-    
+
+    echo "Build Directory: $BUILD_DIR"
+    echo "Preset: $PRESET"
+    echo "Project Root: $PROJECT_ROOT"
+
     cmake --preset "$PRESET" "$PROJECT_ROOT" || {
         echo -e "${RED}✗ CMake configuration failed${NC}"
         return 1
@@ -169,18 +177,18 @@ run_tests() {
     
     # Run validation tests (no emulator required)
     echo ""
-    echo "Running validation tests (no emulator required)..."
+    echo -e "${YELLOW}Running validation tests (no emulator required)...${NC}"
     ctest --output-on-failure -R "Validation" || true
     
     # Check if emulator is running for integration tests
     if check_emulator; then
         echo ""
-        echo "Running integration tests (requires emulator)..."
+        echo -e "${YELLOW}Running integration tests (requires emulator)...${NC}"
         ctest --output-on-failure --verbose || true
     else
         echo ""
         echo -e "${YELLOW}⚠ Emulator not running, skipping integration tests${NC}"
-        echo "Start emulator with: docker run --publish 8081:8081 --publish 10250-10255:10250-10255 --name cosmos-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest"
+        echo "Start emulator with: docker run --publish 8081:8081 --publish 8080:8080 --publish 1234:1234 --publish 10250-10255:10250-10255 --name cosmos-emulator --rm --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest"
     fi
     
     cd "$PROJECT_ROOT"

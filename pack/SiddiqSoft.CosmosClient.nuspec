@@ -47,7 +47,8 @@
 		<file src="Siddiq-Software-Avatar.png" target="docs\" />
 		<file src="..\README.md" target="docs\" />
 
-		<!-- MSBuild .targets files -->
+		<!-- MSBuild .targets & natvis files -->
 		<file src="SiddiqSoft.CosmosClient.targets" target="build\native" />
+		<file src="SiddiqSoft.CosmosClient.natvis" target="build\native" />
 	</files>
 </package>

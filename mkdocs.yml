@@ -1,0 +1,98 @@
+site_name: CosmosClient
+site_description: Azure Cosmos DB REST client for modern C++
+site_author: Siddiq Software LLC
+site_url: https://siddiqsoft.github.io/CosmosClient/
+repo_url: https://github.com/SiddiqSoft/CosmosClient
+repo_name: SiddiqSoft/CosmosClient
+edit_uri: edit/main/docs/
+
+hooks:
+  - docs/hooks.py
+
+extra:
+  version: "0.0.0-dev"
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  
+extra_css:
+  - css/custom.css
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
+
+
+nav:
+  - Home: index.md
+  - Features:
+      - Overview: features/index.md
+      - Connection & Endpoint: features/connection.md
+      - Document Operations: features/documents.md
+      - SQL Querying & Iteration: features/queries.md
+      - Asynchronous Operations: features/async.md
+  - Integration:
+      - Quick Start: integration/index.md
+      - CMake & Submodules: integration/cmake.md
+      - Dependencies Diagram: integration/dependencies.md
+      - NuGet Package: integration/nuget.md
+  - API Reference:
+      - Overview: api/index.md
+      - CosmosClient: api/cosmos_client.md
+      - CosmosEndpoint: api/cosmos_endpoint.md
+      - CosmosResponseType: api/cosmos_response.md
+      - CosmosArgumentType: api/cosmos_argument.md
+  - License: license.md
