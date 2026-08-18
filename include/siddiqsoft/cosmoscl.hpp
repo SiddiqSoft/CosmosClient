@@ -41,6 +41,7 @@
 
 #include <string>
 #include <string_view>
+#include <atomic>
 #include <iostream>
 #include <functional>
 #include <format>
@@ -90,16 +91,70 @@ namespace siddiqsoft
         std::vector<std::basic_string<char>> ReadableUris {};
 
         /// @brief Current Read location within the ReadableUris
-        size_t CurrentReadUriId {};
+        std::atomic<size_t> CurrentReadUriId {0};
 
         /// @brief Write Locations for the region
         std::vector<std::basic_string<char>> WritableUris {};
 
         /// @brief Current Write Location within the WritableUris
-        size_t CurrentWriteUriId {};
+        std::atomic<size_t> CurrentWriteUriId {0};
 
         /// @brief Default constructor
         CosmosEndpoint() = default;
+
+        /// @brief Copy constructor
+        CosmosEndpoint(const CosmosEndpoint& src)
+            : BaseUri(src.BaseUri)
+            , EncodedKey(src.EncodedKey)
+            , Key(src.Key)
+            , ReadableUris(src.ReadableUris)
+            , CurrentReadUriId(src.CurrentReadUriId.load())
+            , WritableUris(src.WritableUris)
+            , CurrentWriteUriId(src.CurrentWriteUriId.load())
+        {
+        }
+
+        /// @brief Copy assignment operator
+        CosmosEndpoint& operator=(const CosmosEndpoint& src)
+        {
+            if (this != &src) {
+                BaseUri          = src.BaseUri;
+                EncodedKey       = src.EncodedKey;
+                Key              = src.Key;
+                ReadableUris     = src.ReadableUris;
+                CurrentReadUriId.store(src.CurrentReadUriId.load());
+                WritableUris     = src.WritableUris;
+                CurrentWriteUriId.store(src.CurrentWriteUriId.load());
+            }
+            return *this;
+        }
+
+        /// @brief Move constructor
+        CosmosEndpoint(CosmosEndpoint&& src) noexcept
+            : BaseUri(std::move(src.BaseUri))
+            , EncodedKey(std::move(src.EncodedKey))
+            , Key(std::move(src.Key))
+            , ReadableUris(std::move(src.ReadableUris))
+            , CurrentReadUriId(src.CurrentReadUriId.load())
+            , WritableUris(std::move(src.WritableUris))
+            , CurrentWriteUriId(src.CurrentWriteUriId.load())
+        {
+        }
+
+        /// @brief Move assignment operator
+        CosmosEndpoint& operator=(CosmosEndpoint&& src) noexcept
+        {
+            if (this != &src) {
+                BaseUri          = std::move(src.BaseUri);
+                EncodedKey       = std::move(src.EncodedKey);
+                Key              = std::move(src.Key);
+                ReadableUris     = std::move(src.ReadableUris);
+                CurrentReadUriId.store(src.CurrentReadUriId.load());
+                WritableUris     = std::move(src.WritableUris);
+                CurrentWriteUriId.store(src.CurrentWriteUriId.load());
+            }
+            return *this;
+        }
 
         /// @brief Construct the connection string object from the Connection String obtained from the Azure Portal
         /// @param s Connection String obtained from the Azure Portal
@@ -150,7 +205,8 @@ namespace siddiqsoft
         /// @return Current read endpoint or the base Uri
         const auto& currentReadUri() const
         {
-            if (!ReadableUris.empty() && CurrentReadUriId < ReadableUris.size()) return ReadableUris.at(CurrentReadUriId);
+            size_t id = CurrentReadUriId.load();
+            if (!ReadableUris.empty() && id < ReadableUris.size()) return ReadableUris.at(id);
             return BaseUri;
         }
 
@@ -158,7 +214,8 @@ namespace siddiqsoft
         /// @return Current write endpoint or the base Uri
         const auto& currentWriteUri() const
         {
-            if (!WritableUris.empty() && CurrentWriteUriId < WritableUris.size()) return WritableUris.at(CurrentWriteUriId);
+            size_t id = CurrentWriteUriId.load();
+            if (!WritableUris.empty() && id < WritableUris.size()) return WritableUris.at(id);
             return BaseUri;
         }
 
@@ -166,16 +223,13 @@ namespace siddiqsoft
         /// @return Self
         CosmosEndpoint& rotateReadUri()
         {
-            if (ReadableUris.empty()) // If empty; use the baseUri
-                CurrentReadUriId = 0;
-            else if (ReadableUris.size() == 1) // Do not increment if there is only one item
-                CurrentReadUriId = 0;
-            else if (ReadableUris.size() >= 2) {
-                // We have atleast two items
-                // Increment..and..Go back to the top if we reach past the last element.
-                if (++CurrentReadUriId >= ReadableUris.size()) CurrentReadUriId = 0;
+            if (!ReadableUris.empty()) {
+                size_t id = CurrentReadUriId.load();
+                CurrentReadUriId.store((id + 1) % ReadableUris.size());
             }
-
+            else {
+                CurrentReadUriId.store(0);
+            }
             return *this;
         }
 
@@ -183,16 +237,13 @@ namespace siddiqsoft
         /// @return Self
         CosmosEndpoint& rotateWriteUri()
         {
-            if (WritableUris.empty()) // If empty, use the baseUri
-                CurrentWriteUriId = 0;
-            else if (WritableUris.size() == 1) // Do not increment if there is only one item
-                CurrentWriteUriId = 0;
-            else if (WritableUris.size() >= 2) {
-                // We have atleast two items
-                // Increment..and..Go back to the top if we reach past the last element.
-                if (++CurrentWriteUriId >= WritableUris.size()) CurrentWriteUriId = 0;
+            if (!WritableUris.empty()) {
+                size_t id = CurrentWriteUriId.load();
+                CurrentWriteUriId.store((id + 1) % WritableUris.size());
             }
-
+            else {
+                CurrentWriteUriId.store(0);
+            }
             return *this;
         }
     };
@@ -206,9 +257,9 @@ namespace siddiqsoft
     {
         dest["baseUri"]           = src.BaseUri;
         dest["readUris"]          = src.ReadableUris;
-        dest["currentReadUriId"]  = src.CurrentReadUriId;
+        dest["currentReadUriId"]  = src.CurrentReadUriId.load();
         dest["writeUris"]         = src.WritableUris;
-        dest["currentWriteUriId"] = src.CurrentWriteUriId;
+        dest["currentWriteUriId"] = src.CurrentWriteUriId.load();
         dest["key"]               = src.EncodedKey;
     }
 #pragma endregion
@@ -231,7 +282,7 @@ namespace siddiqsoft
                                       {CurrentConnectionIdType::SecondaryConnection, "SecondaryConnection"}});
 
         /// @brief Current Connection: 0=Not Set 1=Primary 2=Secondary
-        CurrentConnectionIdType CurrentConnectionId {CurrentConnectionIdType::PrimaryConnection};
+        std::atomic<CurrentConnectionIdType> CurrentConnectionId {CurrentConnectionIdType::PrimaryConnection};
 
         /// @brief The Primary connection string from the Azure Portal
         CosmosEndpoint Primary {};
@@ -241,6 +292,44 @@ namespace siddiqsoft
 
         /// @brief Default constructor
         CosmosConnection() = default;
+
+        /// @brief Copy constructor
+        CosmosConnection(const CosmosConnection& src)
+            : CurrentConnectionId(src.CurrentConnectionId.load())
+            , Primary(src.Primary)
+            , Secondary(src.Secondary)
+        {
+        }
+
+        /// @brief Copy assignment operator
+        CosmosConnection& operator=(const CosmosConnection& src)
+        {
+            if (this != &src) {
+                CurrentConnectionId.store(src.CurrentConnectionId.load());
+                Primary   = src.Primary;
+                Secondary = src.Secondary;
+            }
+            return *this;
+        }
+
+        /// @brief Move constructor
+        CosmosConnection(CosmosConnection&& src) noexcept
+            : CurrentConnectionId(src.CurrentConnectionId.load())
+            , Primary(std::move(src.Primary))
+            , Secondary(std::move(src.Secondary))
+        {
+        }
+
+        /// @brief Move assignment operator
+        CosmosConnection& operator=(CosmosConnection&& src) noexcept
+        {
+            if (this != &src) {
+                CurrentConnectionId.store(src.CurrentConnectionId.load());
+                Primary   = std::move(src.Primary);
+                Secondary = std::move(src.Secondary);
+            }
+            return *this;
+        }
 
         /// @brief Constructor with Primary and optional Secondary.
         /// @param p Primary Connection String from Azure portal
@@ -263,7 +352,7 @@ namespace siddiqsoft
             // If we have readLocations then load them up for the current connection
             if (config.contains("readableLocations")) {
                 for (auto& item : config.at("readableLocations")) {
-                    if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
+                    if (CurrentConnectionId.load() == CurrentConnectionIdType::SecondaryConnection)
                         Secondary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
                     else
                         Primary.ReadableUris.push_back(item.value("databaseAccountEndpoint", ""));
@@ -273,7 +362,7 @@ namespace siddiqsoft
             // If we have writeLocations then load them up for the current connection
             if (config.contains("writableLocations")) {
                 for (auto& item : config.at("writableLocations")) {
-                    if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
+                    if (CurrentConnectionId.load() == CurrentConnectionIdType::SecondaryConnection)
                         Secondary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
                     else
                         Primary.WritableUris.push_back(item.value("databaseAccountEndpoint", ""));
@@ -287,7 +376,7 @@ namespace siddiqsoft
         /// @brief Get the current active connection string
         /// @return Cosmos connection string
         /// @return Reference to the current active Connection Primary/Secondary
-        const CosmosEndpoint& current() const { return (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) ? Secondary : Primary; }
+        const CosmosEndpoint& current() const { return (CurrentConnectionId.load() == CurrentConnectionIdType::SecondaryConnection) ? Secondary : Primary; }
 
 
         /// @brief Swaps the current connection by incrementing the current and if we hit past Secondary, we restart at Primary.
@@ -297,22 +386,23 @@ namespace siddiqsoft
         {
             if (c == 0) {
                 // Swap between Primary and Secondary
-                if (CurrentConnectionId == CurrentConnectionIdType::PrimaryConnection)
-                    CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
+                auto curr = CurrentConnectionId.load();
+                if (curr == CurrentConnectionIdType::PrimaryConnection)
+                    CurrentConnectionId.store(CurrentConnectionIdType::SecondaryConnection);
 
-                else if (CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection)
-                    CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
+                else if (curr == CurrentConnectionIdType::SecondaryConnection)
+                    CurrentConnectionId.store(CurrentConnectionIdType::PrimaryConnection);
             }
             else if (c == 1) {
-                CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
+                CurrentConnectionId.store(CurrentConnectionIdType::PrimaryConnection);
             }
             else if (c == 2) {
-                CurrentConnectionId = CurrentConnectionIdType::SecondaryConnection;
+                CurrentConnectionId.store(CurrentConnectionIdType::SecondaryConnection);
             }
 
             // If Secondary is empty; limit to Primary
-            if ((CurrentConnectionId == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty())
-                CurrentConnectionId = CurrentConnectionIdType::PrimaryConnection;
+            if ((CurrentConnectionId.load() == CurrentConnectionIdType::SecondaryConnection) && Secondary.EncodedKey.empty())
+                CurrentConnectionId.store(CurrentConnectionIdType::PrimaryConnection);
 
             return *this;
         }
@@ -321,9 +411,9 @@ namespace siddiqsoft
     /// @brief JSON serializer for the CosmosConnection object
     /// @param dest Output json object
     /// @param src The source CosmosConnection
-    static void to_json(nlohmann::json& dest, const CosmosConnection& src)
+    inline void to_json(nlohmann::json& dest, const CosmosConnection& src)
     {
-        dest["currentConnectionId"] = src.CurrentConnectionId;
+        dest["currentConnectionId"] = src.CurrentConnectionId.load();
         dest["primary"]             = src.Primary;
         dest["secondary"]           = src.Secondary;
         dest["currentConnection"]   = src.current();

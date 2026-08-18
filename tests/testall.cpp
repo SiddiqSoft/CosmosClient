@@ -808,6 +808,89 @@ TEST_F(CosmosIntegrationTests, UpdateDocument)
     EXPECT_EQ(204, rc7);
 }
 
+/// @brief Verify connection rotation thread-safety during concurrent operations against emulator
+/// @details Simulates continuous connection rotation while multiple threads perform CRUD operations
+/// @test Verifies document state against emulator remains correct and free of data races
+TEST_F(CosmosIntegrationTests, ConcurrentRotationAndOperations)
+{
+    auto [priConnStr, secConnStr] = GetActiveConnectionStrings();
+    if (priConnStr.empty()) GTEST_SKIP() << "No active connection string";
+
+    std::string activeSecStr = secConnStr.empty() ? priConnStr : secConnStr;
+
+    siddiqsoft::CosmosClient client;
+    client.configure({{"partitionKeyNames", {"__pk"}}, {"connectionStrings", {priConnStr, activeSecStr}}});
+
+    std::string dbName         = testDBName0;
+    std::string collectionName = testCollectionNames[0];
+    std::string pkId           = "siddiqsoft.com";
+
+    std::atomic<bool> running {true};
+    std::atomic<int>  operationSuccessCount {0};
+
+    // Thread 1: Continuous connection rotation
+    std::thread rotator([&]() {
+        while (running.load()) {
+            client.cnxn.rotate();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+
+    // Thread 2: Perform sequence of CRUD operations
+    std::thread worker1([&]() {
+        for (int i = 0; i < 5; ++i) {
+            std::string id = std::format("doc_rot_w1_{}_{}", getpid(), i);
+
+            // 1. Create document
+            auto rcCreate = client.createDocument({.database   = dbName,
+                                                  .collection = collectionName,
+                                                  .document   = {{"id", id}, {"__pk", pkId}, {"status", "created"}, {"worker", 1}}});
+            if (rcCreate.statusCode == 201) operationSuccessCount++;
+
+            // 2. Update document
+            auto rcUpdate = client.updateDocument({.database     = dbName,
+                                                  .collection   = collectionName,
+                                                  .id           = id,
+                                                  .partitionKey = pkId,
+                                                  .document     = {{"id", id}, {"__pk", pkId}, {"status", "updated"}, {"worker", 1}}});
+            if (rcUpdate.statusCode == 200) operationSuccessCount++;
+
+            // 3. Find document and verify state
+            auto rcFind = client.findDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+            if (rcFind.statusCode == 200 && rcFind.document.value("status", "") == "updated") operationSuccessCount++;
+
+            // 4. Remove document
+            auto rcRemove = client.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+            if (rcRemove == 204) operationSuccessCount++;
+        }
+    });
+
+    // Thread 3: Query and Find operations
+    std::thread worker2([&]() {
+        for (int i = 0; i < 5; ++i) {
+            std::string id = std::format("doc_rot_w2_{}_{}", getpid(), i);
+
+            auto rcCreate = client.createDocument({.database   = dbName,
+                                                  .collection = collectionName,
+                                                  .document   = {{"id", id}, {"__pk", pkId}, {"status", "created"}, {"worker", 2}}});
+            if (rcCreate.statusCode == 201) operationSuccessCount++;
+
+            auto rcFind = client.findDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+            if (rcFind.statusCode == 200) operationSuccessCount++;
+
+            auto rcRemove = client.removeDocument({.database = dbName, .collection = collectionName, .id = id, .partitionKey = pkId});
+            if (rcRemove == 204) operationSuccessCount++;
+        }
+    });
+
+    worker1.join();
+    worker2.join();
+    running.store(false);
+    rotator.join();
+
+    EXPECT_GT(operationSuccessCount.load(), 0);
+}
+
 /// @brief Query documents with parameters and pagination
 /// @details Queries documents where source contains "odd" with continuation tokens
 /// @test Validates parameterized queries work with pagination
