@@ -972,10 +972,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fields" class="md-nav__link">
+  <a href="#fields-methods" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields
+        Fields &amp; Methods
       
     </span>
   </a>
@@ -1000,10 +1000,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fields_1" class="md-nav__link">
+  <a href="#fields-methods_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields
+        Fields &amp; Methods
       
     </span>
   </a>
@@ -1153,10 +1153,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fields" class="md-nav__link">
+  <a href="#fields-methods" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields
+        Fields &amp; Methods
       
     </span>
   </a>
@@ -1181,10 +1181,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fields_1" class="md-nav__link">
+  <a href="#fields-methods_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fields
+        Fields &amp; Methods
       
     </span>
   </a>
@@ -1269,23 +1269,35 @@
 <hr />
 <h2 id="cosmosendpoint-struct"><code>CosmosEndpoint</code> Struct<a class="headerlink" href="#cosmosendpoint-struct" title="Permanent link">&para;</a></h2>
 <div class="language-cpp highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">CosmosEndpoint</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">BaseUri</span><span class="p">;</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">EncodedKey</span><span class="p">;</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">Key</span><span class="p">;</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ReadableUris</span><span class="p">;</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">CurrentReadUriId</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">WritableUris</span><span class="p">;</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">CurrentWriteUriId</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">basic_string</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="w"> </span><span class="n">BaseUri</span><span class="p">{};</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">basic_string</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="w"> </span><span class="n">EncodedKey</span><span class="p">{};</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">Key</span><span class="p">{};</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">basic_string</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">ReadableUris</span><span class="p">{};</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CurrentReadUriId</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">basic_string</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">WritableUris</span><span class="p">{};</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CurrentWriteUriId</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">connectionString</span><span class="p">);</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">};</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">);</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">);</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="p">(</span><span class="n">CosmosEndpoint</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">)</span><span class="w"> </span><span class="k">noexcept</span><span class="p">;</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">CosmosEndpoint</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">)</span><span class="w"> </span><span class="k">noexcept</span><span class="p">;</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="k">explicit</span><span class="w"> </span><span class="k">operator</span><span class="w"> </span><span class="kt">bool</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="k">explicit</span><span class="w"> </span><span class="k">operator</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">basic_string</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">basic_string</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="w"> </span><span class="n">string</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">currentReadUri</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">currentWriteUri</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">rotateReadUri</span><span class="p">();</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">rotateWriteUri</span><span class="p">();</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="p">};</span>
 </span></code></pre></div>
-<h3 id="fields">Fields<a class="headerlink" href="#fields" title="Permanent link">&para;</a></h3>
+<h3 id="fields-methods">Fields &amp; Methods<a class="headerlink" href="#fields-methods" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Member</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
@@ -1293,12 +1305,12 @@
 <tbody>
 <tr>
 <td style="text-align: left;"><code>BaseUri</code></td>
-<td style="text-align: left;"><code>std::string</code></td>
+<td style="text-align: left;"><code>std::basic_string&lt;char&gt;</code></td>
 <td style="text-align: left;">Base HTTPS URI of the Cosmos DB account.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>EncodedKey</code></td>
-<td style="text-align: left;"><code>std::string</code></td>
+<td style="text-align: left;"><code>std::basic_string&lt;char&gt;</code></td>
 <td style="text-align: left;">Base64-encoded account master key.</td>
 </tr>
 <tr>
@@ -1308,48 +1320,83 @@
 </tr>
 <tr>
 <td style="text-align: left;"><code>ReadableUris</code></td>
-<td style="text-align: left;"><code>std::vector&lt;std::string&gt;</code></td>
+<td style="text-align: left;"><code>std::vector&lt;std::basic_string&lt;char&gt;&gt;</code></td>
 <td style="text-align: left;">Read-region URIs for failover / geo-replication.</td>
 </tr>
 <tr>
+<td style="text-align: left;"><code>CurrentReadUriId</code></td>
+<td style="text-align: left;"><code>std::atomic&lt;size_t&gt;</code></td>
+<td style="text-align: left;">Atomic index of currently selected read URI.</td>
+</tr>
+<tr>
 <td style="text-align: left;"><code>WritableUris</code></td>
-<td style="text-align: left;"><code>std::vector&lt;std::string&gt;</code></td>
+<td style="text-align: left;"><code>std::vector&lt;std::basic_string&lt;char&gt;&gt;</code></td>
 <td style="text-align: left;">Write-region URIs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>CurrentWriteUriId</code></td>
+<td style="text-align: left;"><code>std::atomic&lt;size_t&gt;</code></td>
+<td style="text-align: left;">Atomic index of currently selected write URI.</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="cosmosconnection-struct"><code>CosmosConnection</code> Struct<a class="headerlink" href="#cosmosconnection-struct" title="Permanent link">&para;</a></h2>
 <div class="language-cpp highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">CosmosConnection</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="w"> </span><span class="n">endpoint</span><span class="p">;</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">partitionKeyNames</span><span class="p">;</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">configured</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">};</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">CurrentConnectionIdType</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">uint16_t</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">        </span><span class="n">PrimaryConnection</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">        </span><span class="n">SecondaryConnection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="p">};</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="n">CurrentConnectionIdType</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CurrentConnectionId</span><span class="p">{</span><span class="n">CurrentConnectionIdType</span><span class="o">::</span><span class="n">PrimaryConnection</span><span class="p">};</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="w"> </span><span class="n">Primary</span><span class="p">{};</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="n">CosmosEndpoint</span><span class="w"> </span><span class="n">Secondary</span><span class="p">{};</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">CosmosConnection</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">);</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="o">&amp;</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">CosmosConnection</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">);</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="p">(</span><span class="n">CosmosConnection</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">)</span><span class="w"> </span><span class="k">noexcept</span><span class="p">;</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="o">&amp;</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">CosmosConnection</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">)</span><span class="w"> </span><span class="k">noexcept</span><span class="p">;</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">configure</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">nlohmann</span><span class="o">::</span><span class="n">json</span><span class="o">&amp;</span><span class="w"> </span><span class="n">config</span><span class="p">);</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">CosmosEndpoint</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">current</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="n">CosmosConnection</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">rotate</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="p">};</span>
 </span></code></pre></div>
-<h3 id="fields_1">Fields<a class="headerlink" href="#fields_1" title="Permanent link">&para;</a></h3>
+<h3 id="fields-methods_1">Fields &amp; Methods<a class="headerlink" href="#fields-methods_1" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Member</th>
 <th style="text-align: left;">Type</th>
 <th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><code>endpoint</code></td>
+<td style="text-align: left;"><code>CurrentConnectionId</code></td>
+<td style="text-align: left;"><code>std::atomic&lt;CurrentConnectionIdType&gt;</code></td>
+<td style="text-align: left;">Atomic active connection selector (Primary vs Secondary).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Primary</code></td>
 <td style="text-align: left;"><code>CosmosEndpoint</code></td>
-<td style="text-align: left;">Active endpoint data.</td>
+<td style="text-align: left;">Primary connection endpoint info.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>partitionKeyNames</code></td>
-<td style="text-align: left;"><code>std::vector&lt;std::string&gt;</code></td>
-<td style="text-align: left;">Configured partition key path names (e.g. <code>"/id"</code>).</td>
+<td style="text-align: left;"><code>Secondary</code></td>
+<td style="text-align: left;"><code>CosmosEndpoint</code></td>
+<td style="text-align: left;">Secondary connection endpoint info.</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>configured</code></td>
-<td style="text-align: left;"><code>bool</code></td>
-<td style="text-align: left;">True if successfully configured.</td>
+<td style="text-align: left;"><code>current()</code></td>
+<td style="text-align: left;"><code>const CosmosEndpoint&amp;</code></td>
+<td style="text-align: left;">Thread-safe accessor returning current active endpoint.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rotate(uint16_t)</code></td>
+<td style="text-align: left;"><code>CosmosConnection&amp;</code></td>
+<td style="text-align: left;">Atomically rotates connection active state.</td>
 </tr>
 </tbody>
 </table>
@@ -1448,7 +1495,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.8.6-beta.2"}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.8.6-beta.3"}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

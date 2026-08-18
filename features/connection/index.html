@@ -569,10 +569,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#multi-region-failover" class="md-nav__link">
+  <a href="#multi-region-failover-thread-safe-endpoint-rotation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Multi-Region Failover
+        Multi-Region Failover &amp; Thread-Safe Endpoint Rotation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#type-safety-explicit-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Type Safety &amp; Explicit Operators
       
     </span>
   </a>
@@ -584,6 +595,28 @@
     <span class="md-ellipsis">
       
         Automatic Authentication Token Generation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#http-payload-debug-tracing-restcl_debug_trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Payload Debug Tracing (restcl_DEBUG_TRACE)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#azure-cosmos-db-emulator-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Azure Cosmos DB Emulator Configuration
       
     </span>
   </a>
@@ -1129,10 +1162,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#multi-region-failover" class="md-nav__link">
+  <a href="#multi-region-failover-thread-safe-endpoint-rotation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Multi-Region Failover
+        Multi-Region Failover &amp; Thread-Safe Endpoint Rotation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#type-safety-explicit-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Type Safety &amp; Explicit Operators
       
     </span>
   </a>
@@ -1144,6 +1188,28 @@
     <span class="md-ellipsis">
       
         Automatic Authentication Token Generation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#http-payload-debug-tracing-restcl_debug_trace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Payload Debug Tracing (restcl_DEBUG_TRACE)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#azure-cosmos-db-emulator-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Azure Cosmos DB Emulator Configuration
       
     </span>
   </a>
@@ -1244,20 +1310,67 @@
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="p">}</span>
 </span></code></pre></div>
 <hr />
-<h2 id="multi-region-failover">Multi-Region Failover<a class="headerlink" href="#multi-region-failover" title="Permanent link">&para;</a></h2>
-<p><code>CosmosEndpoint</code> automatically segregates readable and writable URIs:</p>
+<h2 id="multi-region-failover-thread-safe-endpoint-rotation">Multi-Region Failover &amp; Thread-Safe Endpoint Rotation<a class="headerlink" href="#multi-region-failover-thread-safe-endpoint-rotation" title="Permanent link">&para;</a></h2>
+<p><code>CosmosEndpoint</code> and <code>CosmosConnection</code> automatically manage primary and replica endpoints using lock-free atomic state (<code>std::atomic&lt;CurrentConnectionIdType&gt;</code>, <code>std::atomic&lt;size_t&gt;</code>):</p>
 <ul>
+<li><strong>Primary / Secondary Failover</strong>: Call <code>client.cnxn.rotate()</code> at any time on background monitor threads. Swapping active connections is atomic and thread-safe against concurrent HTTP operation workers.</li>
 <li><strong>Primary Writable URI</strong>: Used for write operations (create, replace, delete).</li>
-<li><strong>Readable URIs</strong>: Round-robined for read and query operations.</li>
+<li><strong>Readable URIs</strong>: Round-robined for read and query operations via <code>rotateReadUri()</code>.</li>
 </ul>
 <div class="language-cpp highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// Inspect active endpoint info</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Primary Base URI: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">primaryEndpoint</span><span class="p">().</span><span class="n">BaseUri</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Primary Base URI: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">cnxn</span><span class="p">.</span><span class="n">current</span><span class="p">().</span><span class="n">BaseUri</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">// Thread-safe endpoint rotation during active operations</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">client</span><span class="p">.</span><span class="n">cnxn</span><span class="p">.</span><span class="n">rotate</span><span class="p">();</span><span class="w"> </span><span class="c1">// Swaps Primary &lt;-&gt; Secondary atomically</span>
+</span></code></pre></div>
+<hr />
+<h2 id="type-safety-explicit-operators">Type Safety &amp; Explicit Operators<a class="headerlink" href="#type-safety-explicit-operators" title="Permanent link">&para;</a></h2>
+<p><code>CosmosEndpoint</code> provides explicit type conversion operators to prevent implicit string coercion and ambiguous conditional evaluation:</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">CosmosEndpoint</span><span class="w"> </span><span class="n">endpoint</span><span class="p">(</span><span class="s">&quot;AccountEndpoint=https://myaccount.documents.azure.com:443/;AccountKey=...;&quot;</span><span class="p">);</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">// Explicit boolean check</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="n">endpoint</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="c1">// Valid endpoint</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">}</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">// Explicit string conversion</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">connStr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">endpoint</span><span class="p">);</span>
 </span></code></pre></div>
 <hr />
 <h2 id="automatic-authentication-token-generation">Automatic Authentication Token Generation<a class="headerlink" href="#automatic-authentication-token-generation" title="Permanent link">&para;</a></h2>
 <p>Azure Cosmos DB REST API requires a master key signature in the <code>Authorization</code> header for every request:</p>
 <p>$$\text{Signature} = \text{HMAC-SHA256}(\text{Key}, \text{Verb} + \text{ResourceType} + \text{ResourceLink} + \text{Date})$$</p>
 <p><code>CosmosClient</code> builds and encodes this authorization header dynamically for each REST call, ensuring seamless access.</p>
+<hr />
+<h2 id="http-payload-debug-tracing-restcl_debug_trace">HTTP Payload Debug Tracing (<code>restcl_DEBUG_TRACE</code>)<a class="headerlink" href="#http-payload-debug-tracing-restcl_debug_trace" title="Permanent link">&para;</a></h2>
+<p>To inspect raw HTTP request headers, REST verbs, endpoints, and response payloads during troubleshooting, build your application with the CMake option <code>restcl_DEBUG_TRACE=ON</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-Drestcl_DEBUG_TRACE<span class="o">=</span>ON
+</span></code></pre></div>
+<p>When enabled, <code>restcl</code> outputs detailed diagnostics to <code>std::cerr</code> for every outgoing REST request and incoming HTTP response.</p>
+<hr />
+<h2 id="azure-cosmos-db-emulator-configuration">Azure Cosmos DB Emulator Configuration<a class="headerlink" href="#azure-cosmos-db-emulator-configuration" title="Permanent link">&para;</a></h2>
+<p>When running against a local Azure Cosmos DB Emulator on <code>localhost:8081</code>:</p>
+<ol>
+<li><strong>Endpoint Scheme Protocol (<code>http://</code> vs <code>https://</code>)</strong>:</li>
+<li><strong>Azure Cosmos DB vNext Linux Emulator</strong> (<code>mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest</code>): Serves plain <strong>HTTP</strong> on port 8081 (<code>AccountEndpoint=http://localhost:8081/;</code>). Attempting an <code>https://</code> TLS handshake against port 8081 will fail with an SSL protocol error (<code>SSL connect error</code>).</li>
+<li>
+<p><strong>Windows / Classic Emulator</strong>: Serves <strong>HTTPS</strong> on port 8081 with a self-signed TLS certificate (<code>AccountEndpoint=https://localhost:8081/;</code>).</p>
+</li>
+<li>
+<p><strong>Default Emulator Connection String</strong>:
+   <div class="language-cpp highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">client</span><span class="p">.</span><span class="n">configure</span><span class="p">({</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="p">{</span><span class="s">&quot;connectionStrings&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">        </span><span class="s">&quot;AccountEndpoint=http://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;&quot;</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="p">}},</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="p">{</span><span class="s">&quot;partitionKeyNames&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="s">&quot;/id&quot;</span><span class="p">}}</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">});</span>
+</span></code></pre></div></p>
+</li>
+<li>
+<p><strong>SSL Certificate Peer Verification</strong>:
+   When connecting to HTTPS emulators with self-signed certificates, ensure peer verification is disabled (<code>"verifyPeer": 0L</code>) or import <code>emulator.pem</code> into your local CA trust store.</p>
+</li>
+</ol>
 
 
 
@@ -1353,7 +1466,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.8.6-beta.2"}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.8.6-beta.3"}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

@@ -915,10 +915,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#header-file" class="md-nav__link">
+  <a href="#header-organization-sub-headers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Header File
+        Header Organization &amp; Sub-Headers
       
     </span>
   </a>
@@ -1118,10 +1118,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#header-file" class="md-nav__link">
+  <a href="#header-organization-sub-headers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Header File
+        Header Organization &amp; Sub-Headers
       
     </span>
   </a>
@@ -1247,9 +1247,62 @@
 </tbody>
 </table>
 <hr />
-<h2 id="header-file">Header File<a class="headerlink" href="#header-file" title="Permanent link">&para;</a></h2>
+<h2 id="header-organization-sub-headers">Header Organization &amp; Sub-Headers<a class="headerlink" href="#header-organization-sub-headers" title="Permanent link">&para;</a></h2>
+<p>The library is header-only and exposes a clean public facade header:</p>
 <div class="language-cpp highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;siddiqsoft/cosmoscl.hpp&gt;</span>
 </span></code></pre></div>
+<p>Internal implementations are modularized under <code>siddiqsoft/private/</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Module</th>
+<th style="text-align: left;">Location</th>
+<th style="text-align: left;">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Facade</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/cosmoscl.hpp</code></td>
+<td style="text-align: left;">Main entry point; defines <code>CosmosClient</code> class interface.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Types &amp; Logging</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/cosmos_types.hpp</code></td>
+<td style="text-align: left;">Logger instance (<code>gCLog</code>) and <code>CosmosOperation</code> enum.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Endpoint</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/cosmos_endpoint.hpp</code></td>
+<td style="text-align: left;"><code>CosmosEndpoint</code> connection parsing &amp; atomic rotation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Connection</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/cosmos_connection.hpp</code></td>
+<td style="text-align: left;"><code>CosmosConnection</code> primary/secondary failover state.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Response</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/cosmos_response.hpp</code></td>
+<td style="text-align: left;"><code>CosmosResponseType</code> and <code>CosmosIterableResponseType</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Argument</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/cosmos_argument.hpp</code></td>
+<td style="text-align: left;"><code>CosmosArgumentType</code> parameter struct and callback alias.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Operations</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/operations/</code></td>
+<td style="text-align: left;"><code>database_ops.hpp</code>, <code>collection_ops.hpp</code>, <code>document_ops.hpp</code>, <code>query_ops.hpp</code>, <code>region_ops.hpp</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Serializers</strong></td>
+<td style="text-align: left;"><code>include/siddiqsoft/private/cosmos_serializers.hpp</code></td>
+<td style="text-align: left;"><code>to_json</code>, <code>std::formatter</code>, and <code>operator&lt;&lt;</code> stream helpers.</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -1345,7 +1398,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.8.6-beta.2"}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "navigation.tracking", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": "0.8.6-beta.3"}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
