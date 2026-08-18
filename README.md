@@ -132,14 +132,18 @@ target_link_libraries(your_target PRIVATE cosmoscl::cosmoscl)
 
 ---
 
-## Architecture
+## Architecture & Modular Header Layout
 
-`CosmosClient` is structured into core header components:
+`CosmosClient` is structured as a header-only library using a main facade header (`siddiqsoft/cosmoscl.hpp`) and single-responsibility sub-headers in `siddiqsoft/private/`:
 
-- **`CosmosEndpoint`**: Parses Azure connection strings (`AccountEndpoint`, `AccountKey`), calculates HMAC-SHA256 signatures, and routes requests to primary or read-replica endpoints.
-- **`CosmosClient`**: Primary client instance handling database, collection, document, query, and stored procedure REST calls.
-- **`CosmosResponseType`**: Encloses response HTTP status, response headers, JSON body, request charge (RUs), and pagination tokens.
-- **`CosmosIterableResponseType`**: Wrapper for iterating over paged query results seamlessly.
+- **`cosmoscl.hpp`**: Public facade header defining the `CosmosClient` class interface and including internal modules.
+- **`private/cosmos_types.hpp`**: Global logging instance (`gCLog`) and `CosmosOperation` enum definitions.
+- **`private/cosmos_endpoint.hpp`**: `CosmosEndpoint` connection string parsing and lock-free atomic URI rotation.
+- **`private/cosmos_connection.hpp`**: `CosmosConnection` struct and atomic primary/secondary failover state.
+- **`private/cosmos_response.hpp`**: `CosmosResponseType` and `CosmosIterableResponseType` response envelopes.
+- **`private/cosmos_argument.hpp`**: `CosmosArgumentType` request payload structure and callback type definitions.
+- **`private/operations/`**: Single-responsibility operation headers (`database_ops.hpp`, `collection_ops.hpp`, `document_ops.hpp`, `query_ops.hpp`, `region_ops.hpp`).
+- **`private/cosmos_serializers.hpp`**: `nlohmann::to_json`, `std::formatter`, and `operator<<` stream helpers.
 
 ---
 
