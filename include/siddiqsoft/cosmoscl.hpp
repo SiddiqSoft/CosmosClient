@@ -54,7 +54,6 @@
 
 #include "siddiqsoft/ScopeTrace.hpp"
 /// @brief Provides the all important Rest Client using WinHTTP
-#define DEBUG_TRACE 1
 #include "siddiqsoft/restcl.hpp"
 
 /// @brief Add asynchrony to our library
@@ -134,7 +133,7 @@ namespace siddiqsoft
 
 
         /// @brief Checks if the BaseUri and the EncodedKey is non-empty
-        operator bool() const { return !BaseUri.empty() && !EncodedKey.empty(); }
+        explicit operator bool() const { return !BaseUri.empty() && !EncodedKey.empty(); }
 
 
         /// @brief Cast operator for string
@@ -143,7 +142,7 @@ namespace siddiqsoft
 
         /// @brief Encodes the contents back into the original connection string from Azure Portal
         /// @return The rebuilt connection string must match that of the original connection string from the Azure Portal
-        const std::basic_string<char> string() const { return std::format("AccountEndpoint={};AccountKey={};", BaseUri, EncodedKey); }
+        std::basic_string<char> string() const { return std::format("AccountEndpoint={};AccountKey={};", BaseUri, EncodedKey); }
 
 
         /// @brief Current read endpoint
@@ -202,7 +201,7 @@ namespace siddiqsoft
     /// @tparam CharT We currently only support char (as the underlying json library does not support wchar_t)
     /// @param dest Destination json object
     /// @param src The source cosmos connection string
-    static void to_json(nlohmann::json& dest, const CosmosEndpoint& src)
+    inline void to_json(nlohmann::json& dest, const CosmosEndpoint& src)
     {
         dest["baseUri"]           = src.BaseUri;
         dest["readUris"]          = src.ReadableUris;
@@ -598,101 +597,109 @@ namespace siddiqsoft
         /// @param req The queued request
         void asyncDispatcher(CosmosArgumentType&& req)
         {
-            switch (req.operation) {
-                case CosmosOperation::createDatabase: {
-                    auto resp = createDatabase(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
+            try {
+                switch (req.operation) {
+                    case CosmosOperation::createDatabase: {
+                        auto resp = createDatabase(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
 
-                case CosmosOperation::createCollection: {
-                    auto resp = createCollection(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
+                    case CosmosOperation::createCollection: {
+                        auto resp = createCollection(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
 
-                case CosmosOperation::discoverRegions: {
-                    auto resp = discoverRegions();
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
+                    case CosmosOperation::discoverRegions: {
+                        auto resp = discoverRegions();
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
 
-                case CosmosOperation::listDatabases: {
-                    auto resp = listDatabases();
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
+                    case CosmosOperation::listDatabases: {
+                        auto resp = listDatabases();
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
 
-                case CosmosOperation::listCollections: {
-                    auto resp = listCollections(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
+                    case CosmosOperation::listCollections: {
+                        auto resp = listCollections(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
 
-                case CosmosOperation::listDocuments: {
-                    // This returns CosmosIterableResponseType and the client's handler is invoked for each block.
-                    CosmosIterableResponseType resp = listDocuments(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                    if (resp.success() && !resp.continuationToken.empty()) {
-                        req.continuationToken = resp.continuationToken;
+                    case CosmosOperation::listDocuments: {
+                        // This returns CosmosIterableResponseType and the client's handler is invoked for each block.
+                        CosmosIterableResponseType resp = listDocuments(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                        if (resp.success() && !resp.continuationToken.empty()) {
+                            req.continuationToken = resp.continuationToken;
 
-                        gCLog.trace("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue",
-                                    resp.statusCode,
-                                    resp.continuationToken,
-                                    resp.document.value("_count", 0),
-                                    resp.ttx);
+                            gCLog.trace("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue",
+                                        resp.statusCode,
+                                        resp.continuationToken,
+                                        resp.document.value("_count", 0),
+                                        resp.ttx);
 
-                        // Queue the next instance.
-                        // This approach allows for controlled shutdown as the thread is able to listen and handle
-                        // stop requests.
-                        asyncWorkers.queue(std::move(req));
+                            // Queue the next instance.
+                            // This approach allows for controlled shutdown as the thread is able to listen and handle
+                            // stop requests.
+                            asyncWorkers.queue(std::move(req));
+                        }
+                    } break;
+
+                    case CosmosOperation::create: {
+                        auto resp = createDocument(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
+
+                    case CosmosOperation::upsert: {
+                        auto resp = upsertDocument(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
+
+                    case CosmosOperation::update: {
+                        auto resp = updateDocument(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
+
+                    case CosmosOperation::find: {
+                        // Returns at most a single document or it is not found.
+                        auto resp = findDocument(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                    } break;
+
+                    case CosmosOperation::remove: {
+                        // The response is an error code so we will need to normalize into a response type for the callback.
+                        auto rc = removeDocument(req);
+                        if (req.onResponse) req.onResponse(req, {rc, nullptr});
+                    } break;
+
+                    case CosmosOperation::query: {
+                        // This returns CosmosIterableResponseType and the client's handler is invoked for each block.
+                        CosmosIterableResponseType resp = queryDocuments(req);
+                        if (req.onResponse) req.onResponse(req, resp);
+                        if (resp.success() && !resp.continuationToken.empty()) {
+                            req.continuationToken = resp.continuationToken;
+
+                            gCLog.trace("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue",
+                                        resp.statusCode,
+                                        resp.continuationToken,
+                                        resp.document.value("_count", 0),
+                                        resp.ttx);
+
+                            // Queue the next instance.
+                            // This approach allows for controlled shutdown as the thread is able to listen and handle
+                            // stop requests.
+                            asyncWorkers.queue(std::move(req));
+                        }
+                    } break;
+                    default: {
+                        gCLog.warn("....Operation `{}` NOT SUPPORTED", std::to_underlying(req.operation));
                     }
-                } break;
-
-                case CosmosOperation::create: {
-                    auto resp = createDocument(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
-
-                case CosmosOperation::upsert: {
-                    auto resp = upsertDocument(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
-
-                case CosmosOperation::update: {
-                    auto resp = updateDocument(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
-
-                case CosmosOperation::find: {
-                    // Returns at most a single document or it is not found.
-                    auto resp = findDocument(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                } break;
-
-                case CosmosOperation::remove: {
-                    // The response is an error code so we will need to normalize into a response type for the callback.
-                    auto rc = removeDocument(req);
-                    if (req.onResponse) req.onResponse(req, {rc, nullptr});
-                } break;
-
-                case CosmosOperation::query: {
-                    // This returns CosmosIterableResponseType and the client's handler is invoked for each block.
-                    CosmosIterableResponseType resp = queryDocuments(req);
-                    if (req.onResponse) req.onResponse(req, resp);
-                    if (resp.success() && !resp.continuationToken.empty()) {
-                        req.continuationToken = resp.continuationToken;
-
-                        gCLog.trace("....Status:{}  continueToken:{}  count:{}  ttx:{} requeue",
-                                    resp.statusCode,
-                                    resp.continuationToken,
-                                    resp.document.value("_count", 0),
-                                    resp.ttx);
-
-                        // Queue the next instance.
-                        // This approach allows for controlled shutdown as the thread is able to listen and handle
-                        // stop requests.
-                        asyncWorkers.queue(std::move(req));
-                    }
-                } break;
-                default: {
-                    gCLog.warn("....Operation `{}` NOT SUPPORTED", std::to_underlying(req.operation));
                 }
+            }
+            catch (const std::exception& ex) {
+                gCLog.exp(ex);
+            }
+            catch (...) {
+                gCLog.err("....Unknown Exception in asyncDispatcher");
             }
         }
 
@@ -712,7 +719,6 @@ namespace siddiqsoft
             , cnxn(std::move(src.cnxn))
         {
         }
-
 
         auto& operator=(CosmosClient&& src)  = delete;
         CosmosClient(const CosmosClient&)    = delete;
